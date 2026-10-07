@@ -1,0 +1,6 @@
+{
+  "name": "Aethelgard: Chronicles of the Shattered Titans",
+  "description": "An expansive 2D top-down open-world pixel art action RPG featuring challenging boss fights, dynamic lighting, real-time dodge & parry combat, and vast biomes to explore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
