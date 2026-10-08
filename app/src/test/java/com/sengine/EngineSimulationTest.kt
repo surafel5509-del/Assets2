@@ -15,14 +15,21 @@ import java.nio.file.Files
 /**
  * Headless simulation of the bundled templates: runs the real engine loop,
  * physics and Rhino scripts without any rendering.
+ *
+ * Templates are resolved by name via [Templates.byName], never by index. The
+ * previous version of this file indexed `Templates.all` positionally, so when
+ * the Platformer and Space Shooter templates were removed -- they are explicitly
+ * out of scope for this engine -- every index silently retargeted at a different
+ * template and these tests failed against scenes they were never written for.
  */
 class EngineSimulationTest {
 
-    private fun newProject(template: Int): Project {
+    private fun newProject(name: String): Project {
         val dir = Files.createTempDirectory("sengine").toFile()
         val p = Project(File(dir, "Test"))
         p.saveMeta()
-        Templates.all[template].build(p)
+        val t = Templates.byName(name) ?: error("no template named '$name'")
+        t.build(p)
         p.saveMeta()
         return p
     }
@@ -50,69 +57,41 @@ class EngineSimulationTest {
 
     @Test
     fun serializationRoundTrip() {
-        val p = newProject(1)
+        val p = newProject("Physics Sandbox")
         val s = p.loadScene("Main")
         val json = SceneSerializer.toJson(s).toString()
         val s2 = SceneSerializer.fromJson(JSONObject(json))
         assertEquals(s.objects.size, s2.objects.size)
         assertEquals(json, SceneSerializer.toJson(s2).toString())
-        println("SIM platformer objects=${s.objects.size}")
+        println("SIM physics sandbox objects=${s.objects.size}")
     }
 
+    /**
+     * Dynamic bodies in the sandbox must come to rest on the static floor rather
+     * than sinking through it.  This is the grounding coverage the removed
+     * Platformer template used to provide.
+     */
     @Test
-    fun platformerPlayerMovesJumpsAndCollects() {
-        val r = start(newProject(1))
-        val player = r.engine.scene.find("Player")!!
-        val x0 = player.x
-        // settle on the ground
-        r.frames(60)
-        val rb = player.getAny<Rigidbody2D>()!!
-        println("SIM settled y=${player.y} grounded=${rb.grounded}")
-        assertTrue("player should be grounded", rb.grounded)
-        // run right for 1s
-        r.frames(60) { r.engine.input.joyX = 1f }
-        println("SIM after run x=${player.x}")
-        assertTrue("player should move right", player.x > x0 + 3f)
-        // jump
-        var maxY = player.y
-        r.frames(50) { i -> r.engine.input.rawA = i < 3; maxY = maxOf(maxY, player.y) }
-        println("SIM jump maxY=$maxY")
-        assertTrue("player should jump", maxY > -0.5f)
-        r.engine.input.rawA = false
-        r.engine.input.joyX = 0f
-        // teleport onto a coin to test trigger + spawn + destroy + text update
-        val coinsBefore = r.engine.scene.objects.count { it.tag == "Coin" }
-        val coin = r.engine.scene.objects.first { it.tag == "Coin" }
-        synchronized(r.engine.lock) { player.x = coin.x; player.y = coin.y }
-        r.frames(10)
-        val coinsAfter = r.engine.scene.objects.count { it.tag == "Coin" }
-        val label = r.engine.scene.find("ScoreText")!!.getAny<com.sengine.engine.core.TextRenderer>()!!.text
-        println("SIM coins $coinsBefore -> $coinsAfter label='$label' objects=${r.engine.scene.objects.size}")
-        assertEquals(coinsBefore - 1, coinsAfter)
-        assertEquals("Coins: ${7 - coinsAfter}", label)
-        r.frames(120) // FX cleanup timer
-        assertTrue("CoinFX clone should be destroyed", r.engine.scene.objects.none { it.name.startsWith("CoinFX (") })
-        assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
-        r.engine.stop()
-        r.frames(1)
-        assertEquals(Engine.Mode.EDIT, r.engine.mode)
-        assertEquals(7, r.engine.scene.objects.count { it.tag == "Coin" }) // scene restored on stop
-    }
-
-    @Test
-    fun shooterRunsWithoutErrors() {
-        val r = start(newProject(2))
-        r.frames(600) { r.engine.input.rawA = true; r.engine.input.joyX = if ((it / 60) % 2 == 0) 1f else -1f }
-        val stars = r.engine.scene.objects.count { it.name.startsWith("Star (") }
-        val score = r.engine.scene.find("ScoreText")!!.getAny<com.sengine.engine.core.TextRenderer>()!!.text
-        println("SIM shooter stars=$stars objects=${r.engine.scene.objects.size} score='$score'")
-        assertEquals(40, stars)
+    fun dynamicBodiesComeToRestOnTheFloor() {
+        val r = start(newProject("Physics Sandbox"))
+        val crates = r.engine.scene.objects.filter { it.name.startsWith("Crate") }
+        assertTrue("sandbox should contain crates", crates.isNotEmpty())
+        r.frames(180)
+        val bodies = crates.mapNotNull { it.getAny<Rigidbody2D>() }
+        println("SIM crates=${crates.size} bodies=${bodies.size} " +
+                "grounded=${bodies.count { it.grounded }} lowestY=${crates.minOf { it.y }}")
+        assertTrue("crates must not fall through the floor at y=-6.5",
+            crates.all { it.y > -6.5f })
+        assertTrue("at least one crate should be resting (grounded)",
+            bodies.any { it.grounded })
+        assertTrue("crates should have stopped drifting",
+            bodies.all { kotlin.math.abs(it.vy) < 1f })
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
     }
 
     @Test
     fun physicsSandboxTapSpawns() {
-        val r = start(newProject(3))
+        val r = start(newProject("Physics Sandbox"))
         val before = r.engine.scene.objects.size
         r.frames(30)
         r.engine.input.rawTouchSX = 800f; r.engine.input.rawTouchSY = 200f; r.engine.input.tapPending = true
@@ -127,9 +106,51 @@ class EngineSimulationTest {
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
     }
 
+    /**
+     * Stopping play mode must return the engine to EDIT and restore the scene, so
+     * anything spawned during the run does not leak into the editor.  This was
+     * previously only covered by the Platformer template's coin test.
+     */
+    @Test
+    fun stoppingPlayModeRestoresTheScene() {
+        val r = start(newProject("Physics Sandbox"))
+        val before = r.engine.scene.objects.size
+        r.engine.input.rawTouchSX = 800f; r.engine.input.rawTouchSY = 200f
+        repeat(4) { r.engine.input.tapPending = true; r.frames(2) }
+        r.frames(30)
+        val during = r.engine.scene.objects.size
+        assertTrue("tapping should have spawned objects", during > before)
+        r.engine.stop()
+        r.frames(2)
+        val after = r.engine.scene.objects.size
+        println("SIM stop: before=$before during=$during after=$after mode=${r.engine.mode}")
+        assertEquals(Engine.Mode.EDIT, r.engine.mode)
+        assertEquals("scene should be restored on stop", before, after)
+        assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
+    }
+
+    /**
+     * Every template that ships must survive a few seconds of play with input
+     * held down and produce no script errors.  This replaces the Space Shooter
+     * long-run test and is strictly broader: it covers all remaining templates
+     * instead of one, and it is immune to templates being added or removed.
+     */
+    @Test
+    fun everyTemplateRunsWithoutScriptErrors() {
+        for (t in Templates.all) {
+            val r = start(newProject(t.name))
+            r.frames(240) { i ->
+                r.engine.input.joyX = if ((i / 60) % 2 == 0) 1f else -1f
+                r.engine.input.rawA = i % 90 < 3
+            }
+            println("SIM template '${t.name}' ran 240 frames, objects=${r.engine.scene.objects.size}")
+            assertTrue("template '${t.name}' reported script errors: ${r.errors}", r.errors.isEmpty())
+        }
+    }
+
     @Test
     fun scriptErrorsAreReportedNotThrown() {
-        val p = newProject(0)
+        val p = newProject("Empty 2D")
         p.writeAsset("Bad.js", "function update(dt) { undefinedThing.foo(); }")
         val s = p.loadScene("Main")
         s.find("Square")!!.add(com.sengine.engine.core.ScriptComponent().also { it.script = "Bad.js" })
