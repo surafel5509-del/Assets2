@@ -150,6 +150,56 @@ def component_props():
 COMPONENT_PROPS = None
 
 
+def check_scene_names(game_dir, rep, gid):
+    """Tags and spawn prototypes a script asks for must exist in the scene.
+
+    scene.findAll(tag) returns an empty list when nothing carries the tag, and
+    scene.spawn(name) returns null when no object of that name exists.  Both let a
+    script run to completion while silently doing nothing -- an empty loop and a
+    null guard read as "no work to do", not as a misconfiguration.
+
+    Only pure string literals are checked.  Composed names ("StatPip_" + kind + "_"
+    + i) are skipped: a regex sees the prefix alone and reports a name that is
+    never actually passed to find().
+    """
+    scenes_dir = os.path.join(game_dir, "scenes")
+    scripts_dir = os.path.join(game_dir, "scripts")
+    if not os.path.isdir(scenes_dir) or not os.path.isdir(scripts_dir):
+        return
+
+    tags, names = set(), set()
+    for sf in os.listdir(scenes_dir):
+        if not sf.endswith(".scene.json"):
+            continue
+        try:
+            scene = json.load(open(os.path.join(scenes_dir, sf), encoding="utf-8"))
+        except Exception:
+            continue
+        for o in scene.get("objects", []):
+            names.add(o.get("name"))
+            tags.add(o.get("tag", "Untagged"))
+
+    # A script may also set a tag at runtime; those count as satisfiable.
+    assigned = set()
+    for f in os.listdir(scripts_dir):
+        if f.endswith(".js"):
+            assigned |= set(re.findall(r'\.tag\s*=\s*"([^"]+)"',
+                                       open(os.path.join(scripts_dir, f), encoding="utf-8").read()))
+
+    for f in sorted(x for x in os.listdir(scripts_dir) if x.endswith(".js")):
+        src = open(os.path.join(scripts_dir, f), encoding="utf-8").read()
+        # (?!"\s*\+) rejects literals immediately followed by concatenation.
+        for kind, pat in (("findAll tag", r'scene\.findAll\(\s*"([^"]+)"\s*\)(?!\s*\+)'),
+                          ("spawn prototype", r'scene\.spawn\(\s*"([^"]+)"\s*\)(?!\s*\+)')):
+            for m in re.finditer(pat, src):
+                target = m.group(1)
+                pool = (tags | assigned) if kind == "findAll tag" else names
+                rep.ok(target in pool,
+                       f"{gid}/{f}: {kind} '{target}' matches nothing in the scene "
+                       f"-- the call returns empty/null and the script silently "
+                       f"does nothing")
+
+
 def _resolve_receiver(src, recv, upto, obj_scripts, tag_scripts):
     """Chase a receiver back to the scene lookup that produced it.
 
@@ -506,6 +556,7 @@ def validate(repo, only=None):
 
         check_scripts(gd, game, rep, gid, declared_scripts, declared_audio)
         check_send_targets(gd, rep, gid)
+        check_scene_names(gd, rep, gid)
         print(f"   scripts: {len(declared_scripts)} declared")
 
     return rep

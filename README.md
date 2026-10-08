@@ -53,7 +53,7 @@ python3 tools/build_asset_store.py
 
 # Validate all four games against the store manifest and the engine
 python3 tools/validate_games.py
-#   → 2 602 checks, 0 errors — RESULT: PASS
+#   → 2 608 checks, 0 errors — RESULT: PASS
 
 # Actually execute every game script headlessly (240 frames each)
 node tools/run_games.js
@@ -69,7 +69,7 @@ native Android build needs the NDK and `cmake`.
 |---|---|
 | Native C++ core | **Verified.** `make` → 219 checks, 0 failures |
 | Asset store generation | **Verified.** 25 packs, 5 008 files, 154 sprite sheets |
-| Games vs. store vs. engine | **Verified.** 2 602 checks, 0 errors |
+| Games vs. store vs. engine | **Verified.** 2 608 checks, 0 errors |
 | Game scripts, executed | **Verified.** `run_games.js` — 27 scripts × 240 frames, 89 checks |
 | Kotlin / Gradle | **Not compiled** — no JDK or Android SDK in this environment |
 | Native Android build | **Not built** — no NDK, no `cmake` |

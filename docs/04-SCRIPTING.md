@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 2 602 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 2 608 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -252,8 +252,22 @@ there while the value it was meant to set never changes. Five were dead:
                 Removed rather than left as decoration.
 
 The validator now rejects any Script param the attached script never references,
-taking the static suite to 2 602 checks. Verified by re-adding `tileSize` and
+taking the static suite to 2 608 checks. Verified by re-adding `tileSize` and
 confirming it fails.
+
+### Tags and spawn prototypes
+
+`scene.findAll(tag)` returns an empty list when nothing carries the tag, and
+`scene.spawn(name)` returns null when no object of that name exists. Both let a
+script run to completion while silently doing nothing — an empty loop and a null
+guard read as "no work to do", not as a misconfiguration.
+
+Checked for all four games: every queried tag exists on some object, and every
+spawn prototype exists in the scene. Only pure string literals are tested.
+Composed names are skipped deliberately — `scene.find("StatPip_" + kind + "_" + i)`
+shows a regex the prefix alone, which reports a name that is never actually passed
+to `find()`. Verified by retargeting `findAll("NPC")` at the object name
+`Villager`, which is not a tag, and confirming it is rejected.
 
 ### Inert scene keys
 
