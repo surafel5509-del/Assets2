@@ -1,0 +1,108 @@
+name: CI
+
+# Runs on every PR (so a push to an open PR branch rebuilds the APK), on main,
+# and on demand.  Also callable from release.yml so a tagged build cannot ship
+# an APK that skipped the checks.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The engine checks.  These are fast and need no Android SDK, so they run in
+  # parallel with the APK build and give a quick signal when something broke.
+  #
+  # Each of these is a real assertion suite, not a lint:
+  #   native    -- the C++ ECS/scene/render/physics reference implementation
+  #   validator -- the four games against the engine and the asset store
+  #   harness   -- the shipped game scripts executed headlessly, 240 frames each
+  # ---------------------------------------------------------------------------
+  engine:
+    name: Engine checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Native engine test suite
+        run: |
+          cd native
+          make
+
+      - name: Game / store / engine validator
+        run: python3 tools/validate_games.py
+
+      - name: JavaScript syntax check
+        run: |
+          for f in games/*/scripts/*.js tools/run_games.js; do
+            node --check "$f"
+          done
+          echo "all scripts parse"
+
+      - name: Headless runtime harness
+        run: node tools/run_games.js
+
+  # ---------------------------------------------------------------------------
+  # The APK.  compileSdk 34, AGP 8.3.2, Kotlin 1.9.23, JDK 17 -- all pinned by
+  # the Gradle files, so the runner only has to supply a matching JDK and the
+  # Android SDK, which the ubuntu image already carries.
+  #
+  # assembleRelease is signed with the debug keystore (see app/build.gradle.kts),
+  # which AGP generates on first use, so the release APK is installable straight
+  # from the artifact without any secret in CI.
+  # ---------------------------------------------------------------------------
+  android:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Show toolchain
+        run: |
+          java -version
+          ./gradlew --version
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+
+      - name: Unit tests
+        run: ./gradlew test --stacktrace
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: List built APKs
+        run: find app/build/outputs -name '*.apk' -exec ls -lh {} \;
+
+      - name: Verify the store and games were packaged
+        run: |
+          apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          echo "inspecting $apk"
+          unzip -l "$apk" | grep -c 'assets/store/' || true
+          unzip -l "$apk" | grep -c 'assets/games/' || true
+          unzip -l "$apk" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sengine-apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 30
