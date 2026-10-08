@@ -115,13 +115,28 @@ val stageGameLibrary = tasks.register("stageGameLibrary") {
         if (out.exists()) out.deleteRecursively()
         out.mkdirs()
         var games = 0
+        File(out, "games").mkdirs()
         src.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name }?.forEach { g ->
             if (!File(g, "game.json").exists()) return@forEach
-            File(out, "games").mkdirs()
             g.copyRecursively(File(out, "games/${g.name}"), overwrite = true)
             games++
         }
         require(games > 0) { "No games found in $src" }
+
+        // index.json sits *beside* the game directories, so a filter that keeps
+        // only directories drops it.  GameLibrary.load() reads games/index.json
+        // and falls back to a hardcoded KNOWN_IDS list when it is missing, so the
+        // omission is silent: the four shipped games still appear, but the index
+        // that tools/build_asset_store.py generates is never actually consulted.
+        // A fifth game would be listed by the index and still not show up.
+        val index = File(src, "index.json")
+        if (index.exists()) {
+            index.copyTo(File(out, "games/index.json"), overwrite = true)
+            logger.lifecycle("S Engine game library: staged index.json")
+        } else {
+            logger.warn("S Engine game library: $index is missing; GameLibrary will " +
+                    "fall back to its hardcoded KNOWN_IDS list")
+        }
         logger.lifecycle("S Engine game library: staged $games games into $out")
     }
 }

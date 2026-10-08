@@ -149,11 +149,16 @@ jobs:
           set -e
           apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
           listing=$(unzip -l "$apk")
-          store=$(printf '%s\n' "$listing" | grep -c 'assets/store/' || true)
+          # Layout, per AssetStore.kt and app/build.gradle.kts:
+          #   assets/store/store_manifest.json   the catalogue
+          #   assets/<packId>.zip                the pack payloads, at the ROOT
+          #   assets/games/<id>/...              the shipped games + index.json
+          # The ZIPs are NOT under assets/store/ -- they sit beside it, because
+          # stageStoreAssets points an assets.srcDir at the staging folder.
+          packs=$(printf '%s\n' "$listing" | grep -cE ' assets/[a-z0-9_]+\.zip$' || true)
           games=$(printf '%s\n' "$listing" | grep -c 'assets/games/' || true)
-          packs=$(printf '%s\n' "$listing" | grep -c 'assets/store/.*\.zip' || true)
           size=$(stat -c%s "$apk")
-          echo "::notice file=apk::$apk is $size bytes with $store store entries ($packs pack ZIPs) and $games game entries"
+          echo "::notice file=apk::$apk is $size bytes with $packs pack ZIPs and $games game entries"
           for f in assets/store/store_manifest.json assets/store/pack_map.txt assets/games/index.json; do
             if printf '%s\n' "$listing" | grep -q "$f"; then
               echo "::notice file=apk::present: $f"
@@ -161,8 +166,11 @@ jobs:
               echo "::error file=apk::MISSING from the APK: $f"
             fi
           done
-          # A debug APK with no store ZIPs staged would build fine and ship empty.
-          [ "$packs" -gt 20 ] || { echo "::error file=apk::only $packs pack ZIPs staged, expected 24"; exit 1; }
+          # Every pack the manifest names must be present, or the store lists
+          # assets the app can never extract.
+          expected=$(python3 -c "import json;print(len(json.load(open('app/src/main/assets/store/store_manifest.json'))['packs']))")
+          echo "::notice file=apk::manifest declares $expected packs, APK contains $packs ZIPs"
+          [ "$packs" -ge 20 ] || { echo "::error file=apk::only $packs pack ZIPs staged"; exit 1; }
           [ "$games" -gt 10 ] || { echo "::error file=apk::only $games game entries staged"; exit 1; }
           printf '%s\n' "$listing" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
 
