@@ -9,7 +9,7 @@
   "fogStart": 30.0,
   "fogEnd": 120.0,
   "fog": true,
-  "nextId": 21,
+  "nextId": 26,
   "objects": [
     {
       "id": 1,
@@ -76,18 +76,12 @@
           "Color": "#FFFFE8C0",
           "Intensity": 1.25,
           "Range": 100.0
-        },
-        {
-          "type": "Script",
-          "enabled": true,
-          "Script": "LightingRig.js",
-          "Params": "cycleSeconds=600, startHour=9, nightIntensity=0.18"
         }
       ]
     },
     {
       "id": 3,
-      "name": "GameSystems",
+      "name": "Combat3D",
       "tag": "Untagged",
       "active": true,
       "order": 0,
@@ -103,13 +97,43 @@
           "enabled": true,
           "Script": "Combat3D.js",
           "Params": ""
-        },
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "InteractionSystem",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
         {
           "type": "Script",
           "enabled": true,
           "Script": "InteractionSystem.js",
           "Params": "range=2.4"
-        },
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "AdventureHUD",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
         {
           "type": "Script",
           "enabled": true,
@@ -274,7 +298,7 @@
       "id": 7,
       "name": "Creature",
       "tag": "Enemy",
-      "active": false,
+      "active": true,
       "order": 8,
       "x": 8.0,
       "y": 0.0,
@@ -328,7 +352,7 @@
       "id": 8,
       "name": "RidgeGuard",
       "tag": "Enemy",
-      "active": false,
+      "active": true,
       "order": 8,
       "x": -9.0,
       "y": 0.0,
@@ -838,6 +862,27 @@
           "Color": "#FFD0453F",
           "Align": "Center",
           "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "LightingRig",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "LightingRig.js",
+          "Params": "cycleSeconds=600, startHour=9, nightIntensity=0.18"
         }
       ]
     }

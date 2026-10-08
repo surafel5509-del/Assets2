@@ -9,26 +9,35 @@
 // Params: columns=6, slotSize=0.55, padX=-2.6, padY=1.4
 
 var built = false;
+var shown = false;
 var slots = [];
 
 function start() {
     // 'I' on a hardware keyboard toggles the panel; on touch, the bag button
     // calls scene.find("InventoryPanel").send("toggle").
-    self.active = false;
+    //
+    // Hiding is done with `visible`, not `active`.  ScriptSystem.update() skips
+    // any object that is not active in the hierarchy, so a panel that hid itself
+    // with active=false also stopped receiving update() -- and update() is what
+    // listens for the key that reopens it.  The panel could be closed but never
+    // opened again.
+    shown = false;
+    self.visible = false;
 }
 
 function update(dt) {
-    if (!self.active) return;
     if (input.bDown) toggle();
 }
 
 function toggle() {
-    self.active = !self.active;
-    if (self.active) { rebuild(); audio.play("sfx_ui.ogg"); }
+    shown = !shown;
+    self.visible = shown;
+    if (shown) { rebuild(); audio.play("sfx_ui.ogg"); }
 }
 
-function open()  { self.active = true;  rebuild(); }
-function close() { self.active = false; }
+function open()  { shown = true;  self.visible = true;  rebuild(); }
+function close() { shown = false; self.visible = false; }
+function isOpen() { return shown; }
 
 /**
  * Lays the grid out as children of this object.  Positions are local, so the

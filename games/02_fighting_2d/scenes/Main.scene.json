@@ -9,7 +9,7 @@
   "fogStart": 0.0,
   "fogEnd": 0.0,
   "fog": false,
-  "nextId": 31,
+  "nextId": 50,
   "objects": [
     {
       "id": 1,
@@ -809,6 +809,500 @@
           "Color": "#FF6A6E76",
           "Align": "Left",
           "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "name": "PipP1_1",
+      "tag": "UI",
+      "active": true,
+      "order": 110,
+      "x": -4.6,
+      "y": 3.05,
+      "rotation": 0.0,
+      "scaleX": 0.22,
+      "scaleY": 0.22,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FF3A3D44",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "PipP1_2",
+      "tag": "UI",
+      "active": true,
+      "order": 110,
+      "x": -4.18,
+      "y": 3.05,
+      "rotation": 0.0,
+      "scaleX": 0.22,
+      "scaleY": 0.22,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FF3A3D44",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "name": "PipP2_1",
+      "tag": "UI",
+      "active": true,
+      "order": 110,
+      "x": 4.0,
+      "y": 3.05,
+      "rotation": 0.0,
+      "scaleX": 0.22,
+      "scaleY": 0.22,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FF3A3D44",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "PipP2_2",
+      "tag": "UI",
+      "active": true,
+      "order": 110,
+      "x": 4.42,
+      "y": 3.05,
+      "rotation": 0.0,
+      "scaleX": 0.22,
+      "scaleY": 0.22,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FF3A3D44",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "name": "StatPip_power_1",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -2.2600000000000002,
+      "y": 1.1,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "name": "StatPip_power_2",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.92,
+      "y": 1.1,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "name": "StatPip_power_3",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.58,
+      "y": 1.1,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "name": "StatPip_power_4",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.24,
+      "y": 1.1,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "name": "StatPip_power_5",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -0.8999999999999999,
+      "y": 1.1,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "StatPip_speed_1",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -2.2600000000000002,
+      "y": 0.6800000000000002,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "name": "StatPip_speed_2",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.92,
+      "y": 0.6800000000000002,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "StatPip_speed_3",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.58,
+      "y": 0.6800000000000002,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "StatPip_speed_4",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.24,
+      "y": 0.6800000000000002,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "StatPip_speed_5",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -0.8999999999999999,
+      "y": 0.6800000000000002,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "StatPip_defense_1",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -2.2600000000000002,
+      "y": 0.2600000000000001,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "name": "StatPip_defense_2",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.92,
+      "y": 0.2600000000000001,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "StatPip_defense_3",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.58,
+      "y": 0.2600000000000001,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "name": "StatPip_defense_4",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -1.24,
+      "y": 0.2600000000000001,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "StatPip_defense_5",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": -0.8999999999999999,
+      "y": 0.2600000000000001,
+      "rotation": 0.0,
+      "scaleX": 0.2,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF33363C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
         }
       ]
     }

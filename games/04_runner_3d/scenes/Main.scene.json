@@ -9,7 +9,7 @@
   "fogStart": 40.0,
   "fogEnd": 140.0,
   "fog": true,
-  "nextId": 25,
+  "nextId": 30,
   "objects": [
     {
       "id": 1,
@@ -81,7 +81,7 @@
     },
     {
       "id": 3,
-      "name": "GameSystems",
+      "name": "TrackGenerator",
       "tag": "Untagged",
       "active": true,
       "order": 0,
@@ -97,25 +97,85 @@
           "enabled": true,
           "Script": "TrackGenerator.js",
           "Params": "segments=14, segmentLength=24, laneHalfWidth=6.5"
-        },
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "ObstacleSpawner",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
         {
           "type": "Script",
           "enabled": true,
           "Script": "ObstacleSpawner.js",
           "Params": "poolSize=48, carHalfWidth=0.9, minGap=3.2"
-        },
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "PickupSystem",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
         {
           "type": "Script",
           "enabled": true,
           "Script": "PickupSystem.js",
           "Params": "poolSize=40, comboWindow=1.4"
-        },
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "RacerHUD",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
         {
           "type": "Script",
           "enabled": true,
           "Script": "RacerHUD.js",
           "Params": "kmhScale=3.6, nitroMax=100"
-        },
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "MenuFlow",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
         {
           "type": "Script",
           "enabled": true,
@@ -658,6 +718,30 @@
           "Size": 0.45,
           "Color": "#FF9AA0A6",
           "Align": "Center",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "BestText",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": 6.4,
+      "y": -2.3,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "BEST 0 m",
+          "Screen Space UI": false,
+          "Size": 0.8,
+          "Color": "#FF8A8F98",
+          "Align": "Right",
           "Bold": false
         }
       ]

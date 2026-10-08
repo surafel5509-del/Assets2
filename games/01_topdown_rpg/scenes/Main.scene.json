@@ -9,7 +9,7 @@
   "fogStart": 0.0,
   "fogEnd": 0.0,
   "fog": false,
-  "nextId": 28,
+  "nextId": 29,
   "objects": [
     {
       "id": 1,
@@ -159,7 +159,7 @@
       "id": 6,
       "name": "EnemySkeleton",
       "tag": "Enemy",
-      "active": false,
+      "active": true,
       "order": 8,
       "x": 5.0,
       "y": 2.0,
@@ -218,7 +218,7 @@
       "id": 7,
       "name": "EnemyVampire",
       "tag": "Enemy",
-      "active": false,
+      "active": true,
       "order": 8,
       "x": -6.0,
       "y": 3.0,
@@ -812,7 +812,7 @@
       "id": 25,
       "name": "InventoryPanel",
       "tag": "UI",
-      "active": false,
+      "active": true,
       "order": 110,
       "x": 0.0,
       "y": 0.0,
@@ -822,7 +822,7 @@
       "components": [
         {
           "type": "SpriteRenderer",
-          "enabled": true,
+          "enabled": false,
           "Shape": "Square",
           "Color": "#EE1B1D24",
           "Texture": "ui_panel_9slice.png",
@@ -887,6 +887,30 @@
           "Color": "#FFFFFFFF",
           "Align": "Center",
           "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "DeathBanner",
+      "tag": "UI",
+      "active": false,
+      "order": 130,
+      "x": 0.0,
+      "y": 1.2,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "YOU DIED",
+          "Screen Space UI": false,
+          "Size": 1.6,
+          "Color": "#FFD0453F",
+          "Align": "Center",
+          "Bold": true
         }
       ]
     }

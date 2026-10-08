@@ -337,6 +337,8 @@ class World {
         this.spawnedCount = 0;
         this.shakeCount = 0;
         this.clips = new Set();
+        this.missingFinds = new Set();
+        this.foundNames = new Set();
 
         for (const def of scene.objects) {
             const go = new GameObj(def.id, def, this);
@@ -375,7 +377,16 @@ class World {
             find(name) {
                 if (typeof name !== 'string') throw new Error('scene.find() expects a name');
                 const go = self.byName.get(name);
-                return go && !go._destroyed ? self.proxyFor(go) : null;
+                if (!go || go._destroyed) {
+                    // A miss is not an error on its own -- scripts legitimately
+                    // probe for optional objects -- but a name that NEVER resolves
+                    // across a whole run is a wiring bug, and it is invisible in
+                    // the editor because the guard just never fires.
+                    self.missingFinds.add(name);
+                    return null;
+                }
+                self.foundNames.add(name);
+                return self.proxyFor(go);
             },
             findAll(tag) {
                 if (typeof tag !== 'string') throw new Error('scene.findAll() expects a tag');
@@ -543,7 +554,7 @@ function runGame(gameDir) {
             sandbox.transform = proxy;
             sandbox.selfRef = proxy;
             world.scopes.set(go._id, sandbox);
-            attached.push({ go, file, sandbox, ctx });
+            attached.push({ go, file, sandbox, ctx, started: false, ticks: 0 });
         }
     }
 
@@ -552,6 +563,7 @@ function runGame(gameDir) {
         if (typeof a.sandbox.start === 'function') {
             try {
                 a.sandbox.start.apply(a.sandbox.selfRef, []);
+                a.started = true;
             } catch (e) {
                 fail(`${id}/${a.file}: start() threw -- ${e.message}`);
             }
@@ -595,6 +607,7 @@ function runGame(gameDir) {
             if (typeof a.sandbox.update !== 'function') continue;
             try {
                 a.sandbox.update.apply(a.sandbox.selfRef, [DT]);
+                a.ticks++;
             } catch (e) {
                 const key = a.file + ':' + e.message;
                 if (!thrown.has(key)) {
@@ -613,11 +626,26 @@ function runGame(gameDir) {
     // --- post-run assertions
     ok(attached.length > 0, `${id}: no scripts were attached`);
 
-    // Every object the scripts touched by name must exist.  scene.find() returning
-    // null is handled, but a script that only ever gets null is a wiring bug.
-    const nullFinds = [];
+    // A name that was looked up but never found across the whole run means the
+    // scene and the script disagree about what exists.  Names that resolved at
+    // least once are fine: they may be spawned or destroyed mid-run.
+    const neverFound = [...world.missingFinds].filter(n => !world.foundNames.has(n));
+    for (const n of neverFound) {
+        fail(`${id}: scene.find('${n}') never resolved -- no object by that name in the scene`);
+    }
+
+    // Every script that defines update() must actually have been ticked, and
+    // every object it ran on must still be live.  A script silently skipped
+    // because its object started inactive is exactly the kind of bug that reads
+    // as "the feature does nothing".
     for (const a of attached) {
-        if (a.sandbox.__missingFinds) nullFinds.push(...a.sandbox.__missingFinds);
+        const hasUpdate = typeof a.sandbox.update === 'function';
+        const hasStart = typeof a.sandbox.start === 'function';
+        if (!hasStart && !hasUpdate) {
+            fail(`${id}/${a.file}: defines neither start() nor update() -- dead script`);
+        }
+        if (hasStart) ok(a.started, `${id}/${a.file}: start() was never called`);
+        if (hasUpdate) ok(a.ticks > 0, `${id}/${a.file}: update() was never called`);
     }
 
     // Textures set at runtime must be declared assets.

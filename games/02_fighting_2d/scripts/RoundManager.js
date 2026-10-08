@@ -64,8 +64,12 @@ function startRound() {
     place("Fighter_P2", 2.6, -1);
 
     setBanner("ROUND " + roundNumber);
-    var pips = scene.find("RoundPips");
-    if (pips) pips.send("refresh", wins.P1, wins.P2);
+    // The pip renderer is refreshPips() on HealthBarUI.js, which lives on the
+    // HealthBars object.  This used to look for a "RoundPips" object and send
+    // "refresh" -- neither exists, and send() to an unknown handler is silently
+    // dropped, so the round-win pips never lit.
+    var bars = scene.find("HealthBars");
+    if (bars) bars.send("refreshPips", wins.P1, wins.P2);
     log("Round " + roundNumber + " - fight!");
 }
 
@@ -96,8 +100,12 @@ function onKnockout(loserName) {
     setBanner("K.O.");
     log(winner + " wins round " + roundNumber);
 
-    var pips = scene.find("RoundPips");
-    if (pips) pips.send("refresh", wins.P1, wins.P2);
+    // The pip renderer is refreshPips() on HealthBarUI.js, which lives on the
+    // HealthBars object.  This used to look for a "RoundPips" object and send
+    // "refresh" -- neither exists, and send() to an unknown handler is silently
+    // dropped, so the round-win pips never lit.
+    var bars = scene.find("HealthBars");
+    if (bars) bars.send("refreshPips", wins.P1, wins.P2);
 }
 
 function timeUp() {

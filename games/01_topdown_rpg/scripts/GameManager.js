@@ -123,7 +123,7 @@ function refreshHud() {
     if (lvl) lvl.text = "Lv " + STATE.level + "  XP " + STATE.xp + "/" + STATE.xpNext;
 
     var inv = scene.find("InventoryPanel");
-    if (inv && inv.active) inv.send("rebuild");
+    if (inv && inv.visible) inv.send("rebuild");
 }
 
 function getState() { return STATE; }
