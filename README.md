@@ -50,7 +50,7 @@ python3 tools/build_asset_store.py           # Pillow recommended
 
 # Validate all four games against the store manifest and the engine
 python3 tools/validate_games.py
-#   → 1 077 checks, 0 errors — RESULT: PASS
+#   → 1 154 checks, 0 errors — RESULT: PASS
 
 # Actually execute every game script headlessly (240 frames each)
 node tools/run_games.js
@@ -66,7 +66,7 @@ native Android build needs the NDK and `cmake`.
 |---|---|
 | Native C++ core | **Verified.** `make` → 219 checks, 0 failures |
 | Asset store generation | **Verified.** 25 packs, 5 008 files, 154 sprite sheets |
-| Games vs. store vs. engine | **Verified.** 1 077 checks, 0 errors |
+| Games vs. store vs. engine | **Verified.** 1 154 checks, 0 errors |
 | Game scripts, executed | **Verified.** `run_games.js` runs all 27 scripts, 240 frames each |
 | Kotlin / Gradle | **Not compiled** — no JDK or Android SDK in this environment |
 | Native Android build | **Not built** — no NDK, no `cmake` |
@@ -74,10 +74,12 @@ native Android build needs the NDK and `cmake`.
 
 Every Kotlin file is uncompiled. The game scripts *are* executed — by
 `tools/run_games.js`, which reimplements the `Api.kt` surface closely enough to
-run them frame by frame, and which found 16 real bugs that a syntax check had
-passed. That is stronger than "internally consistent", and still not the same
-claim as "they work on a phone": the harness models the engine, it is not the
-engine. The details are in
+run them frame by frame, and which found 20 real bugs that a syntax check had
+passed. Several of them silently removed whole features: the inventory could be
+closed but never reopened, two games shipped with no enemies, and the runner's
+systems could not find each other. That is stronger than "internally consistent",
+and still not the same claim as "they work on a phone": the harness models the
+engine, it is not the engine. The details are in
 [docs/00-ARCHITECTURE.md §5](docs/00-ARCHITECTURE.md#5-verification).
 
 Editor features that were requested but are **not implemented** — terrain editor,

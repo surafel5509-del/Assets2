@@ -119,7 +119,7 @@ What is actually checked, and by what:
 |---|---|---|
 | Native core | `cd native && make` | **219 checks, 0 failures — PASS** |
 | Asset store generation | `python3 tools/build_asset_store.py` | 25 packs, 5 008 files, 154 sprite sheets |
-| Games vs. store vs. engine | `python3 tools/validate_games.py` | **1 077 checks, 0 errors — PASS** |
+| Games vs. store vs. engine | `python3 tools/validate_games.py` | **1 154 checks, 0 errors — PASS** |
 | Game scripts, executed | `node tools/run_games.js` | **27 scripts × 240 frames — PASS** |
 | Kotlin / Gradle | — | **Not runnable here**: no `java`, no Android SDK |
 | Native Android build | — | **Not runnable here**: no NDK, no `cmake` |

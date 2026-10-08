@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 1 077 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 1 154 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -135,8 +135,9 @@ not expose throws rather than returning `undefined`, because silently returning
 
 ### What running them found
 
-A syntax check had already passed on all 27 scripts. Executing them found 16
-failures across three classes, none of which a parse can see:
+A syntax check had already passed on all 27 scripts. Executing them found 20
+failures across seven classes, none of which a parse can see. The first wave came
+from running the code at all:
 
 1. **A texture-name syntax that does not exist.** `TilemapBuilder.js` built
    `"tileset_overworld.png#27"` as an atlas index. `Textures.image()` resolves a
@@ -165,3 +166,36 @@ failures across three classes, none of which a parse can see:
 The third class is why the harness exists. `send()` to a dead handler and `play()`
 of an undeclared clip produce no error, no warning and no visible difference in
 the editor.
+
+### What asserting on the run found
+
+The first version of the harness passed while asserting almost nothing — nine
+checks for 27 scripts run 240 frames each, one of which read a field nothing ever
+wrote. Adding two assertions (every `scene.find()` name that never resolves is a
+failure; every script defining `start()` or `update()` must actually have been
+called) took it from 9 checks to 72 and found four more:
+
+4. **Systems could not find each other.** Games 3 and 4 put every system script on
+   one `GameSystems` object, but the scripts look each other up by *script* name —
+   `scene.find("TrackGenerator")`, `scene.find("Combat3D")`. `scene.find` matches
+   on object name, so every one returned null and the `if (x)` guard swallowed it.
+   The runner's track generator never told the obstacle spawner anything; the
+   hero's attack never reached the combat system.
+
+5. **`RoundManager`** looked for a `RoundPips` object and sent it `refresh`.
+   Neither exists — the renderer is `refreshPips()` on `HealthBars`. The
+   round-win pips never lit.
+
+6. **The inventory could be closed but never reopened.** It hid itself with
+   `active = false` in `start()`, and `ScriptSystem.update()` skips anything not
+   active in the hierarchy — so the `update()` listening for the reopen key never
+   ran again.
+
+7. **Both games with enemies shipped without any.** The four enemies are placed
+   world entities authored inactive, nothing ever activates them, and `findAll()`
+   filters on `isActiveInHierarchy()` — so even the code looking for them could
+   not see them.
+
+Classes 4 through 7 are not scripting bugs at all; they are scene-authoring bugs
+that only surface once something executes against the scene. Every one of them
+silently removes a feature.
