@@ -92,15 +92,55 @@ jobs:
           set -o pipefail
           ./gradlew compileDebugKotlin compileDebugUnitTestKotlin --stacktrace 2>&1 | tee /tmp/gradle-compile.log
 
-      - name: Unit tests
-        run: |
-          set -o pipefail
-          ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
-
+      # The export test repackages a built APK, so the debug APK has to exist
+      # before the unit tests run.
       - name: Build debug APK
         run: |
           set -o pipefail
           ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-debug.log
+
+      # A throwaway signing key, generated per run.  The export path signs with a
+      # caller-supplied key, so exercising it needs a real keystore rather than a
+      # stub -- and this keeps no secret in the repository.
+      - name: Generate an export signing key
+        run: |
+          keytool -genkeypair -v \
+            -keystore /tmp/export.p12 -storetype PKCS12 \
+            -storepass sengine -keypass sengine \
+            -alias sengine -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=S Engine Export Test, OU=CI, O=S Engine, C=US"
+          keytool -list -keystore /tmp/export.p12 -storepass sengine | head -5
+
+      - name: Unit tests
+        env:
+          SENGINE_SOURCE_APK: app/build/outputs/apk/debug/app-debug.apk
+          SENGINE_KEYSTORE: /tmp/export.p12
+          SENGINE_EXPORT_OUT: /tmp/exported-game.apk
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
+
+      # The export test only asserts on the ZIP contents and the manifest string
+      # pool.  apksigner and aapt2 answer the questions it cannot: is the result
+      # actually signed, and does the platform agree on the package and version?
+      - name: Verify the exported game APK
+        run: |
+          set -e
+          [ -f /tmp/exported-game.apk ] || { echo "::error::no APK was exported"; exit 1; }
+          ls -lh /tmp/exported-game.apk
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)
+          echo "build-tools: ${bt:-not found}"
+          if [ -n "$bt" ] && [ -x "$bt/apksigner" ]; then
+            "$bt/apksigner" verify --print-certs /tmp/exported-game.apk \
+              && echo "::notice file=export::apksigner: signature verifies" \
+              || echo "::error file=export::apksigner rejected the exported APK"
+            "$bt/aapt2" dump badging /tmp/exported-game.apk \
+              | grep -E "^package:|application-label:|sdkVersion:" \
+              | while IFS= read -r line; do echo "::notice file=export::aapt2: $line"; done
+          else
+            echo "::notice file=export::build-tools unavailable; skipped apksigner/aapt2"
+          fi
+          cp /tmp/exported-game.apk app/build/outputs/exported-game.apk
 
       - name: Build release APK
         run: |
@@ -177,6 +217,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sengine-apk
-          path: app/build/outputs/apk/**/*.apk
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/outputs/exported-game.apk
           if-no-files-found: error
           retention-days: 30
