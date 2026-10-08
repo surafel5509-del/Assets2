@@ -57,6 +57,12 @@ jobs:
   # the Gradle files, so the runner only has to supply a matching JDK and the
   # Android SDK, which the ubuntu image already carries.
   #
+  # Compile is a separate step from test so a Kotlin error is distinguishable
+  # from a failing assertion, and every Gradle invocation tees to a log that a
+  # later step turns into annotations.  Annotations are readable through the
+  # GitHub API without downloading the run archive, so a failure can be
+  # diagnosed from the metadata alone.
+  #
   # assembleRelease is signed with the debug keystore (see app/build.gradle.kts),
   # which AGP generates on first use, so the release APK is installable straight
   # from the artifact without any secret in CI.
@@ -79,15 +85,52 @@ jobs:
           java -version
           ./gradlew --version
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          sdkmanager --list_installed 2>/dev/null | head -20 || true
+
+      - name: Compile Kotlin
+        run: |
+          set -o pipefail
+          ./gradlew compileDebugKotlin compileDebugUnitTestKotlin --stacktrace 2>&1 | tee /tmp/gradle-compile.log
 
       - name: Unit tests
-        run: ./gradlew test --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-debug.log
 
       - name: Build release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee /tmp/gradle-release.log
+
+      # Runs whether or not the build passed.  Pulls the lines that actually
+      # explain a failure out of the Gradle logs and republishes them as job
+      # annotations.
+      - name: Surface build errors as annotations
+        if: always()
+        run: |
+          shopt -s nullglob
+          failed=0
+          for log in /tmp/gradle-*.log; do
+            [ -s "$log" ] || continue
+            grep -E '^e: |error:|FAILURE:|What went wrong|^> Task .* FAILED|Caused by:|Execution failed' "$log" \
+              | sort -u | head -40 | while IFS= read -r line; do
+                  echo "::error file=$(basename "$log")::${line}"
+                done
+            if grep -qE '^e: |FAILURE:' "$log"; then failed=1; fi
+          done
+          # A failing test does not always print "e:"; name the tests that failed.
+          for log in /tmp/gradle-test.log; do
+            [ -s "$log" ] || continue
+            grep -E '^[A-Za-z0-9_.]+ > .* FAILED' "$log" | head -30 | while IFS= read -r line; do
+              echo "::error file=gradle-test.log::${line}"
+            done
+          done
+          exit 0
 
       - name: List built APKs
         run: find app/build/outputs -name '*.apk' -exec ls -lh {} \;
@@ -96,8 +139,8 @@ jobs:
         run: |
           apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
           echo "inspecting $apk"
-          unzip -l "$apk" | grep -c 'assets/store/' || true
-          unzip -l "$apk" | grep -c 'assets/games/' || true
+          echo "store entries: $(unzip -l "$apk" | grep -c 'assets/store/')"
+          echo "game entries:  $(unzip -l "$apk" | grep -c 'assets/games/')"
           unzip -l "$apk" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
 
       - uses: actions/upload-artifact@v4
