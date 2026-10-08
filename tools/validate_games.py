@@ -281,6 +281,20 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
                 declared_scripts.add(base)
                 rep.ok(os.path.exists(os.path.join(scripts_dir, base)),
                        f"{where}: script '{s}' has no file in scripts/")
+    # Every top-level scene key must be read by the scene loader.  Same shape as
+    # the game.json check: an unrecognised key is skipped, not reported, so it
+    # looks like a setting the engine honours while nothing reads it.
+    scene_kt = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "app/src/main/java/com/sengine/engine/core/Scene.kt")
+    if os.path.exists(scene_kt):
+        read_keys = set(re.findall(r'"([A-Za-z0-9_]+)"',
+                                   open(scene_kt, encoding="utf-8").read()))
+        for key in scene:
+            rep.ok(key in read_keys,
+                   f"{gid}/{name}: scene key '{key}' is never read by Scene.kt "
+                   f"-- it looks configured but is inert")
+
     # Every Script param must be read by the script it is attached to.
     # applyParams() binds each "k=v" onto the script scope with putProperty, so a
     # param the script never mentions is not an error the engine reports -- it

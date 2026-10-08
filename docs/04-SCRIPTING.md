@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 2 554 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 2 602 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -252,8 +252,18 @@ there while the value it was meant to set never changes. Five were dead:
                 Removed rather than left as decoration.
 
 The validator now rejects any Script param the attached script never references,
-taking the static suite to 2 554 checks. Verified by re-adding `tileSize` and
+taking the static suite to 2 602 checks. Verified by re-adding `tileSize` and
 confirming it fails.
+
+### Inert scene keys
+
+The scene loader reads a fixed set of top-level keys.  The four games use twelve
+-- `name`, `nextId`, `objects`, `gravityX/Y/Z`, `gravity3D`, `ambient`, `fog`,
+`fogColor`, `fogStart`, `fogEnd` -- and all twelve are read.  Nothing was inert,
+which is a clean result rather than an absence of checking: the guard is now in
+the validator, so a key added later without wiring it up fails the build instead
+of sitting there looking configured.  Verified by adding a `windStrength` key and
+confirming it is rejected.
 
 ### send() targets, checked statically too
 
