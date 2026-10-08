@@ -49,6 +49,29 @@ game and the engine runtime**. It is not a from-source Gradle build, and it does
 shrink or obfuscate — the exported APK is roughly the size of the editor plus the
 project's assets.
 
+### Verified in CI
+
+`ApkExportTest` runs the whole path against a real built APK: CI assembles the
+debug APK, generates a throwaway PKCS12 key, and points the test at both. The test
+asserts on the output ZIP — `classes.dex` and `resources.arsc` present, the project
+and scenes under `assets/game/project/`, dotfiles excluded, the old signature
+stripped — and on the rewritten manifest's string pool.
+
+Two tools then answer what the test cannot, since a test reading its own output can
+only confirm the code agrees with itself:
+
+- `apksigner verify` — the signature actually validates.
+- `aapt2 dump badging` — an independent reader of the binary manifest confirms the
+  package, label, `versionName` and `versionCode` the export intended to write.
+
+Both results are published as CI annotations, and the exported APK is uploaded as
+an artifact alongside the engine's own.
+
+This test was dead until then. It was gated on three environment variables nothing
+set, so it silently skipped in every run — and it built the `Space Shooter`
+template, which no longer exists, meaning the first person to supply those
+variables would have hit `NoSuchElementException` rather than a working export.
+
 ## 2. Profiler
 
 `Engine.kt` maintains a smoothed, `@Volatile` stats surface:
