@@ -202,6 +202,14 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
 
     // hierarchy & lifecycle
     fun getParent(): Any? = go.parent?.let { sys.toJs(it) }
+    /** Reparents at runtime; null detaches.  Cycles are refused. */
+    fun setParentTo(p: SObject?) {
+        val target = p?.go
+        if (target === go) return
+        var a: GameObject? = target
+        while (a != null) { if (a === go) return; a = a.parent }   // would be a cycle
+        go.parent = target
+    }
     fun child(name: String): Any? = engine.scene.childrenOf(go).firstOrNull { it.name == name }?.let { sys.toJs(it) }
     fun destroy() { go.destroyed = true }
     fun hasComponent(type: String): Boolean = go.components.any { it.type.equals(type, true) }

@@ -49,6 +49,70 @@ for (let i = 0; i < argv.length; i++) {
 const DT = 1 / 60;
 
 // ---------------------------------------------------------------------------
+// Drift guard.
+//
+// The member lists above are a hand-maintained model of Api.kt.  If Api.kt
+// changes and this file does not, the harness will happily accept a call the
+// engine would reject -- which is worse than no harness, because it passes.  So
+// the lists are checked against the Kotlin source on every run.
+// ---------------------------------------------------------------------------
+function checkApiDrift() {
+    const apiPath = path.join(repo, 'app/src/main/java/com/sengine/engine/script/Api.kt');
+    if (!fs.existsSync(apiPath)) {
+        console.log('  (Api.kt not found; skipping drift check)');
+        return;
+    }
+    const src = fs.readFileSync(apiPath, 'utf8');
+
+    function kotlinMembers(cls) {
+        const m = src.match(new RegExp('class ' + cls + '\\b[\\s\\S]*?\\n}'));
+        if (!m) return { methods: new Set(), props: new Set() };
+        const body = m[0];
+        const methods = new Set();
+        for (const mm of body.matchAll(/fun [`]?([A-Za-z_]\w*)[`]?\s*\(/g)) {
+            if (mm[1] !== 'toString') methods.add(mm[1]);
+        }
+        // getX()/setX() pairs surface to JS as a single property `x`.
+        const props = new Set();
+        for (const mm of body.matchAll(/fun get([A-Z]\w*)\s*\(\s*\)/g)) {
+            props.add(mm[1][0].toLowerCase() + mm[1].slice(1));
+        }
+        // JavaBean boolean getters: Rhino's introspection also maps isX() to the
+        // property `x`, so isGrounded() is reachable as self.grounded.
+        for (const mm of body.matchAll(/fun is([A-Z]\w*)\s*\(\s*\)\s*:\s*Boolean/g)) {
+            props.add(mm[1][0].toLowerCase() + mm[1].slice(1));
+        }
+        for (const mm of body.matchAll(/@JvmField var (\w+)/g)) props.add(mm[1]);
+        return { methods, props };
+    }
+
+    let drift = 0;
+    for (const [cls, mset, pset] of [
+        ['SObject', SOBJECT_METHODS, SOBJECT_PROPS],
+        ['SScene', SCENE_METHODS, SCENE_PROPS],
+    ]) {
+        const k = kotlinMembers(cls);
+        // Only flag members the harness offers but the engine does not have:
+        // that is the direction that lets a bad script pass.  Members the engine
+        // has and the harness lacks just mean less coverage, not a false pass.
+        for (const m of mset) {
+            if (!k.methods.has(m)) {
+                fail(`harness drift: ${cls}.${m}() is modelled here but does not exist in Api.kt`);
+                drift++;
+            }
+        }
+        for (const pr of pset) {
+            if (!k.props.has(pr)) {
+                fail(`harness drift: ${cls}.${pr} is modelled here but Api.kt exposes no such property`);
+                drift++;
+            }
+        }
+    }
+    console.log(`  Api.kt drift check: ${drift === 0 ? 'in sync' : drift + ' mismatch(es)'}`);
+}
+
+
+// ---------------------------------------------------------------------------
 // Reporting
 // ---------------------------------------------------------------------------
 
@@ -78,7 +142,7 @@ const SOBJECT_PROPS = new Set([
     'worldX', 'worldY',
     'z', 'rotX', 'rotY', 'rotZ', 'scaleZ', 'worldZ',
     'vx', 'vy', 'vz', 'grounded', 'flipX',
-    'color', 'text', 'size', 'visible', 'animation', 'index',
+    'color', 'text', 'size', 'visible', 'animation',
 ]);
 
 const SOBJECT_METHODS = new Set([
@@ -132,7 +196,6 @@ class GameObj {
         this.size = 1;
         this.visible = true;
         this.animation = '';
-        this.index = 0;
         this.parent = def.parent === undefined ? null : def.parent;
 
         this._destroyed = false;
@@ -193,7 +256,6 @@ function makeSObject(go, world) {
         get size() { return go.size; }, set size(v) { go.size = num(v, 'size', go); },
         get visible() { return go.visible; }, set visible(v) { go.visible = !!v; },
         get animation() { return go.animation; },
-        get index() { return go.index; },
 
         // Light and Camera3D properties (added to Api.kt).
         get lightIntensity() { return go.lightIntensity === undefined ? 1 : go.lightIntensity; },
@@ -689,6 +751,8 @@ if (dirs.length === 0) {
     console.error(`no games matched '${filter}' in ${gamesRoot}`);
     process.exit(2);
 }
+
+checkApiDrift();
 
 console.log(`S Engine headless game harness`);
 console.log(`repo=${repo}  frames=${frames} (${(frames * DT).toFixed(1)} s)  games=${dirs.length}\n`);

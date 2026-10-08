@@ -97,7 +97,8 @@ function ensureSlots(count) {
         s.order = 60 + i;
         var label = s.child("Count");
         if (label) { label.size = 0.5; label.color = "#FFFFFFFF"; }
-        s.index = i;
+        // The slot's position in the grid is its index in `slots`; there is no
+        // `index` property on a GameObject to stash it on.
         slots.push(s);
     }
 }
