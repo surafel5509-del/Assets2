@@ -10,3 +10,5 @@ build/
 *.apk
 *.aab
 *.keystore
+.asset-cache/
+native/build-host/
