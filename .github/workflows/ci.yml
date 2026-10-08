@@ -117,8 +117,8 @@ jobs:
           failed=0
           for log in /tmp/gradle-*.log; do
             [ -s "$log" ] || continue
-            grep -E '^e: |error:|FAILURE:|What went wrong|^> Task .* FAILED|Caused by:|Execution failed' "$log" \
-              | sort -u | head -40 | while IFS= read -r line; do
+            grep -E '^e: |error:|FAILURE:|What went wrong|^> Task .* FAILED|Caused by:|Execution failed|AssertionError|expected:|but was:' "$log" \
+              | sort -u | head -60 | while IFS= read -r line; do
                   echo "::error file=$(basename "$log")::${line}"
                 done
             if grep -qE '^e: |FAILURE:' "$log"; then failed=1; fi
@@ -128,6 +128,12 @@ jobs:
             [ -s "$log" ] || continue
             grep -E '^[A-Za-z0-9_.]+ > .* FAILED' "$log" | head -30 | while IFS= read -r line; do
               echo "::error file=gradle-test.log::${line}"
+            done
+            # The tests print their own diagnostics ("SIM ..."); surface the ones
+            # belonging to a failing test so an assertion can be diagnosed without
+            # the run archive.
+            grep -E '^SIM ' "$log" | tail -40 | while IFS= read -r line; do
+              echo "::notice file=gradle-test.log::${line}"
             done
           done
           exit 0

@@ -152,6 +152,12 @@ class EngineV2Test {
         assertTrue("playOnStart should start the clip", anim.playing)
         assertEquals("HeroRun.anim", anim.current)
 
+        // frames() invokes the callback *before* it ticks, so on the very first
+        // iteration the sprite's UV rect is still its identity default -- the
+        // animation system has not run yet.  Warm up one frame so the sampling
+        // assertions below compare against a rect AnimationSystem actually wrote.
+        r.frames(1)
+
         val seen = LinkedHashSet<Int>()
         r.frames(200) {
             seen.add(anim.frame)
