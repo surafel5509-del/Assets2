@@ -149,14 +149,15 @@ class EngineV2Test {
         val anim = hero.getAny<Animator>()!!
         val sr = hero.getAny<SpriteRenderer>()!!
 
+        // Engine.play() only *posts* startPlay(); resetRuntime() -- which is what
+        // copies clip into current and applies playOnStart -- runs on the next
+        // tick.  So neither playing nor current can be observed before one frame
+        // has been simulated.  The same warm-up also means the UV sampling loop
+        // below never compares against the sprite's identity-default rect.
+        r.frames(1)
+
         assertTrue("playOnStart should start the clip", anim.playing)
         assertEquals("HeroRun.anim", anim.current)
-
-        // frames() invokes the callback *before* it ticks, so on the very first
-        // iteration the sprite's UV rect is still its identity default -- the
-        // animation system has not run yet.  Warm up one frame so the sampling
-        // assertions below compare against a rect AnimationSystem actually wrote.
-        r.frames(1)
 
         val seen = LinkedHashSet<Int>()
         r.frames(200) {

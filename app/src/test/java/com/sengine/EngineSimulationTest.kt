@@ -78,14 +78,23 @@ class EngineSimulationTest {
         assertTrue("sandbox should contain crates", crates.isNotEmpty())
         r.frames(180)
         val bodies = crates.mapNotNull { it.getAny<Rigidbody2D>() }
-        println("SIM crates=${crates.size} bodies=${bodies.size} " +
-                "grounded=${bodies.count { it.grounded }} lowestY=${crates.minOf { it.y }}")
         assertTrue("crates must not fall through the floor at y=-6.5",
             crates.all { it.y > -6.5f })
         assertTrue("at least one crate should be resting (grounded)",
             bodies.any { it.grounded })
-        assertTrue("crates should have stopped drifting",
-            bodies.all { kotlin.math.abs(it.vy) < 1f })
+
+        // Settle is judged by displacement over a window, not by instantaneous
+        // velocity.  A sequential-impulse solver leaves a resting stack with a
+        // small residual velocity every step as contacts are re-solved, so an
+        // abs(vy) bound fails on a stack that is visibly at rest.  What "stopped
+        // moving" actually means is that the positions stop changing.
+        val y0 = crates.map { it.y }
+        r.frames(60)
+        val drift = crates.mapIndexed { i, go -> kotlin.math.abs(go.y - y0[i]) }.max()
+        println("SIM crates=${crates.size} bodies=${bodies.size} " +
+                "grounded=${bodies.count { it.grounded }} lowestY=${crates.minOf { it.y }} " +
+                "maxDrift=${"%.4f".format(drift)} maxAbsVy=${"%.3f".format(bodies.maxOf { kotlin.math.abs(it.vy) })}")
+        assertTrue("crates should hold position once settled (drift=$drift)", drift < 0.05f)
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
     }
 
