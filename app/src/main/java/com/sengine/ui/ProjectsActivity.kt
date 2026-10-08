@@ -18,6 +18,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.sengine.engine.core.AssetKind
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
+import com.sengine.project.GameLibrary
 import com.sengine.project.Templates
 import java.text.DateFormat
 import java.util.Date
@@ -74,8 +75,17 @@ class ProjectsActivity : AppCompatActivity() {
         if (!prefs.getBoolean("seeded", false)) {
             prefs.edit().putBoolean("seeded", true).apply()
             if (ProjectManager.list(this).isEmpty()) {
-                ProjectManager.create(this, "Platformer Demo", Templates.all[1])
-                ProjectManager.create(this, "Space Shooter", Templates.all[2])
+                // Seed the first-run project from the shipped game library rather
+                // than from a template: the games are the thing a new user should
+                // see working.  Names come from GameLibrary, and lookups are by
+                // name -- indexing Templates.all positionally silently creates the
+                // wrong project whenever the registry changes.
+                val seed = GameLibrary.entries.firstOrNull()
+                if (seed != null) {
+                    GameLibrary.materialize(this, seed)
+                } else {
+                    Templates.byName("Empty 2D")?.let { ProjectManager.create(this, "New Project", it) }
+                }
             }
         }
     }
@@ -96,7 +106,7 @@ class ProjectsActivity : AppCompatActivity() {
         intent.removeExtra("sengine_test")
         val name = intent.getStringExtra("project") ?: ProjectManager.list(this).firstOrNull()?.name ?: return
         if (!ProjectManager.exists(this, name)) {
-            val t = Templates.all.firstOrNull { it.name == name } ?: Templates.all.last()
+            val t = Templates.byName(name) ?: Templates.all.first()
             ProjectManager.create(this, name, t)
         }
         when (action) {
