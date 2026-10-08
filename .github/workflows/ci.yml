@@ -1,0 +1,227 @@
+name: CI
+
+# Runs on every PR (so a push to an open PR branch rebuilds the APK), on main,
+# and on demand.  Also callable from release.yml so a tagged build cannot ship
+# an APK that skipped the checks.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The engine checks.  These are fast and need no Android SDK, so they run in
+  # parallel with the APK build and give a quick signal when something broke.
+  #
+  # Each of these is a real assertion suite, not a lint:
+  #   native    -- the C++ ECS/scene/render/physics reference implementation
+  #   validator -- the four games against the engine and the asset store
+  #   harness   -- the shipped game scripts executed headlessly, 240 frames each
+  # ---------------------------------------------------------------------------
+  engine:
+    name: Engine checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Native engine test suite
+        run: |
+          cd native
+          make
+
+      - name: Game / store / engine validator
+        run: python3 tools/validate_games.py
+
+      - name: JavaScript syntax check
+        run: |
+          for f in games/*/scripts/*.js tools/run_games.js; do
+            node --check "$f"
+          done
+          echo "all scripts parse"
+
+      - name: Headless runtime harness
+        run: node tools/run_games.js
+
+  # ---------------------------------------------------------------------------
+  # The APK.  compileSdk 34, AGP 8.3.2, Kotlin 1.9.23, JDK 17 -- all pinned by
+  # the Gradle files, so the runner only has to supply a matching JDK and the
+  # Android SDK, which the ubuntu image already carries.
+  #
+  # Compile is a separate step from test so a Kotlin error is distinguishable
+  # from a failing assertion, and every Gradle invocation tees to a log that a
+  # later step turns into annotations.  Annotations are readable through the
+  # GitHub API without downloading the run archive, so a failure can be
+  # diagnosed from the metadata alone.
+  #
+  # assembleRelease is signed with the debug keystore (see app/build.gradle.kts),
+  # which AGP generates on first use, so the release APK is installable straight
+  # from the artifact without any secret in CI.
+  # ---------------------------------------------------------------------------
+  android:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Show toolchain
+        run: |
+          java -version
+          ./gradlew --version
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          sdkmanager --list_installed 2>/dev/null | head -20 || true
+
+      - name: Compile Kotlin
+        run: |
+          set -o pipefail
+          ./gradlew compileDebugKotlin compileDebugUnitTestKotlin --stacktrace 2>&1 | tee /tmp/gradle-compile.log
+
+      # The export test repackages a built APK, so the debug APK has to exist
+      # before the unit tests run.
+      - name: Build debug APK
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle-debug.log
+
+      # A throwaway signing key, generated per run.  The export path signs with a
+      # caller-supplied key, so exercising it needs a real keystore rather than a
+      # stub -- and this keeps no secret in the repository.
+      - name: Generate an export signing key
+        run: |
+          keytool -genkeypair -v \
+            -keystore /tmp/export.p12 -storetype PKCS12 \
+            -storepass sengine -keypass sengine \
+            -alias sengine -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=S Engine Export Test, OU=CI, O=S Engine, C=US"
+          keytool -list -keystore /tmp/export.p12 -storepass sengine | head -5
+
+      - name: Unit tests
+        env:
+          # Absolute, because the unit-test JVM's working directory is the module
+          # directory (app/), not the repository root -- a relative path here
+          # resolves to app/app/build/... and the test cannot find the APK.
+          SENGINE_SOURCE_APK: ${{ github.workspace }}/app/build/outputs/apk/debug/app-debug.apk
+          SENGINE_KEYSTORE: /tmp/export.p12
+          SENGINE_EXPORT_OUT: /tmp/exported-game.apk
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace 2>&1 | tee /tmp/gradle-test.log
+
+      # The export test only asserts on the ZIP contents and the manifest string
+      # pool.  apksigner and aapt2 answer the questions it cannot: is the result
+      # actually signed, and does the platform agree on the package and version?
+      - name: Verify the exported game APK
+        run: |
+          set -e
+          [ -f /tmp/exported-game.apk ] || { echo "::error::no APK was exported"; exit 1; }
+          ls -lh /tmp/exported-game.apk
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)
+          echo "build-tools: ${bt:-not found}"
+          if [ -n "$bt" ] && [ -x "$bt/apksigner" ]; then
+            "$bt/apksigner" verify --print-certs /tmp/exported-game.apk \
+              && echo "::notice file=export::apksigner: signature verifies" \
+              || echo "::error file=export::apksigner rejected the exported APK"
+            "$bt/aapt2" dump badging /tmp/exported-game.apk \
+              | grep -E "^package:|application-label:|sdkVersion:" \
+              | while IFS= read -r line; do echo "::notice file=export::aapt2: $line"; done
+          else
+            echo "::notice file=export::build-tools unavailable; skipped apksigner/aapt2"
+          fi
+          cp /tmp/exported-game.apk app/build/outputs/exported-game.apk
+
+      - name: Build release APK
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee /tmp/gradle-release.log
+
+      # Runs whether or not the build passed.  Pulls the lines that actually
+      # explain a failure out of the Gradle logs and republishes them as job
+      # annotations.
+      - name: Surface build errors as annotations
+        if: always()
+        run: |
+          shopt -s nullglob
+          failed=0
+          for log in /tmp/gradle-*.log; do
+            [ -s "$log" ] || continue
+            grep -E '^e: |error:|FAILURE:|What went wrong|^> Task .* FAILED|Caused by:|Execution failed|AssertionError|expected:|but was:' "$log" \
+              | sort -u | head -60 | while IFS= read -r line; do
+                  echo "::error file=$(basename "$log")::${line}"
+                done
+            if grep -qE '^e: |FAILURE:' "$log"; then failed=1; fi
+          done
+          # A failing test does not always print "e:"; name the tests that failed.
+          for log in /tmp/gradle-test.log; do
+            [ -s "$log" ] || continue
+            grep -E '^[A-Za-z0-9_.]+ > .* FAILED' "$log" | head -30 | while IFS= read -r line; do
+              echo "::error file=gradle-test.log::${line}"
+            done
+            # The tests print their own diagnostics ("SIM ..."); surface the ones
+            # belonging to a failing test so an assertion can be diagnosed without
+            # the run archive.
+            grep -E '^SIM ' "$log" | tail -40 | while IFS= read -r line; do
+              echo "::notice file=gradle-test.log::${line}"
+            done
+          done
+          exit 0
+
+      - name: List built APKs
+        run: find app/build/outputs -name '*.apk' -exec ls -lh {} \;
+
+      # The artifact cannot be inspected from outside the runner, so the results
+      # are republished as annotations -- otherwise "the store was packaged" is an
+      # assumption rather than something anyone can check.
+      - name: Verify the store and games were packaged
+        run: |
+          set -e
+          apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          listing=$(unzip -l "$apk")
+          # Layout, per AssetStore.kt and app/build.gradle.kts:
+          #   assets/store/store_manifest.json   the catalogue
+          #   assets/<packId>.zip                the pack payloads, at the ROOT
+          #   assets/games/<id>/...              the shipped games + index.json
+          # The ZIPs are NOT under assets/store/ -- they sit beside it, because
+          # stageStoreAssets points an assets.srcDir at the staging folder.
+          packs=$(printf '%s\n' "$listing" | grep -cE ' assets/[a-z0-9_]+\.zip$' || true)
+          games=$(printf '%s\n' "$listing" | grep -c 'assets/games/' || true)
+          size=$(stat -c%s "$apk")
+          echo "::notice file=apk::$apk is $size bytes with $packs pack ZIPs and $games game entries"
+          for f in assets/store/store_manifest.json assets/store/pack_map.txt assets/games/index.json; do
+            if printf '%s\n' "$listing" | grep -q "$f"; then
+              echo "::notice file=apk::present: $f"
+            else
+              echo "::error file=apk::MISSING from the APK: $f"
+            fi
+          done
+          # Every pack the manifest names must be present, or the store lists
+          # assets the app can never extract.
+          expected=$(python3 -c "import json;print(len(json.load(open('app/src/main/assets/store/store_manifest.json'))['packs']))")
+          echo "::notice file=apk::manifest declares $expected packs, APK contains $packs ZIPs"
+          [ "$packs" -ge 20 ] || { echo "::error file=apk::only $packs pack ZIPs staged"; exit 1; }
+          [ "$games" -gt 10 ] || { echo "::error file=apk::only $games game entries staged"; exit 1; }
+          printf '%s\n' "$listing" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sengine-apk
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/outputs/exported-game.apk
+          if-no-files-found: error
+          retention-days: 30

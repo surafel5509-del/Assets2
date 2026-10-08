@@ -1,0 +1,750 @@
+{
+  "name": "Main",
+  "gravityX": 0.0,
+  "gravityY": 0.0,
+  "gravityZ": 0.0,
+  "gravity3D": -9.8,
+  "ambient": "#FF3A3F4A",
+  "fogColor": "#FF1A1E2A",
+  "fogStart": 40.0,
+  "fogEnd": 140.0,
+  "fog": true,
+  "nextId": 30,
+  "objects": [
+    {
+      "id": 1,
+      "name": "Main Camera",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 4.2,
+      "z": 9.5,
+      "rotX": -18.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "Camera3D",
+          "enabled": true,
+          "Field of View": 62.0,
+          "Near": 0.1,
+          "Far": 260.0,
+          "Sky Top": "#FF141A2E",
+          "Sky Horizon": "#FF4A2E5C",
+          "Follow Target": "",
+          "Offset X": 0.0,
+          "Offset Y": 4.2,
+          "Offset Z": 9.5,
+          "Look At Target": true,
+          "Follow Smoothing": 7.0,
+          "Post FX": "None",
+          "FX Intensity": 1.0,
+          "FX Shader": ""
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "CameraRig.js",
+          "Params": "distance=9.5, height=4.2, baseFov=62, maxFov=82, smoothing=7"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Sun",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 30.0,
+      "z": 0.0,
+      "rotX": -50.0,
+      "rotY": 20.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "Light",
+          "enabled": true,
+          "Type": "Directional",
+          "Color": "#FFFFB0D0",
+          "Intensity": 1.0,
+          "Range": 100.0
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "TrackGenerator",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "TrackGenerator.js",
+          "Params": "segments=14, segmentLength=24, laneHalfWidth=6.5"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "ObstacleSpawner",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "ObstacleSpawner.js",
+          "Params": "poolSize=48, carHalfWidth=0.9, minGap=3.2"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "PickupSystem",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "PickupSystem.js",
+          "Params": "poolSize=40, comboWindow=1.4"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "RacerHUD",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "RacerHUD.js",
+          "Params": "kmhScale=3.6, nitroMax=100, nearMissPoints=25, nearMissStreak=5"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "MenuFlow",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "MenuFlow.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "TrackSegment",
+      "tag": "Track",
+      "active": false,
+      "order": -50,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 14.0,
+      "scaleY": 1.0,
+      "scaleZ": 24.0,
+      "components": [
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "Mesh": "Plane",
+          "Model (.obj)": "",
+          "Color": "#FF2E3340",
+          "Texture": "",
+          "Tiling": 6.0,
+          "Specular": 0.4,
+          "Shininess": 48.0,
+          "Emission": 0.0,
+          "Unlit": false,
+          "Shader": "",
+          "Shader Param": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 1.0,
+          "Size Y": 1.0,
+          "Size Z": 1.0,
+          "Radius": 0.5,
+          "Center X": 0.0,
+          "Center Y": -0.5,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "Rigidbody3D",
+          "enabled": true,
+          "Body Type": "Static",
+          "Mass": 1.0,
+          "Gravity Scale": 0.0,
+          "Linear Drag": 0.0,
+          "Bounciness": 0.0,
+          "Friction": 0.9,
+          "Velocity X": 0.0,
+          "Velocity Y": 0.0,
+          "Velocity Z": 0.0
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Vehicle",
+      "tag": "Player",
+      "active": true,
+      "order": 10,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.6,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "car_player.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "car_player.anim",
+          "Play On Start": true,
+          "Speed": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 1.8,
+          "Size Y": 1.2,
+          "Size Z": 3.2,
+          "Radius": 0.6,
+          "Center X": 0.0,
+          "Center Y": 0.6,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "ParticleEmitter",
+          "enabled": true,
+          "Emitting": true,
+          "Rate": 40.0,
+          "Lifetime": 0.45,
+          "Speed": 6.0,
+          "Direction": 0.0,
+          "Spread": 30.0,
+          "Start Size": 0.5,
+          "End Size": 0.05,
+          "Start Color": "#CC6FE0FF",
+          "End Color": "#00204060",
+          "Gravity": 0.0,
+          "Max Particles": 80,
+          "Additive Blend": true,
+          "Texture": "fx_smoke.png"
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "VehicleController.js",
+          "Params": "baseSpeed=18, maxSpeed=52, accel=3.2, steerSpeed=11, lateralClamp=13, jumpForce=9.5, gravity=26, nitroBoost=1.6, driftGrip=0.45, skin=car, states=idle|drive|jump|crash"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Obstacle",
+      "tag": "Hazard",
+      "active": false,
+      "order": 5,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "Mesh": "Custom Model",
+          "Model (.obj)": "rock_large.obj",
+          "Color": "#FF9A968E",
+          "Texture": "",
+          "Tiling": 1.0,
+          "Specular": 0.1,
+          "Shininess": 6.0,
+          "Emission": 0.0,
+          "Unlit": false,
+          "Shader": "",
+          "Shader Param": 1.0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Pickup",
+      "tag": "Pickup",
+      "active": false,
+      "order": 6,
+      "x": 0.0,
+      "y": 0.9,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.8,
+      "scaleY": 0.8,
+      "scaleZ": 0.8,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFE080",
+          "Texture": "pickup_coin.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "Type": "Point",
+          "Color": "#FFFFD24A",
+          "Intensity": 0.9,
+          "Range": 4.0
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "SpeedText",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": -6.4,
+      "y": -2.3,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "000",
+          "Screen Space UI": false,
+          "Size": 1.1,
+          "Color": "#FF6FE0FF",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "ScoreText",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": 6.4,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "0000000",
+          "Screen Space UI": false,
+          "Size": 0.6,
+          "Color": "#FFFFFFFF",
+          "Align": "Right",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "DistanceText",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": 6.4,
+      "y": 1.9,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "0 m",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FFB8BEC8",
+          "Align": "Right",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "NitroFill",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": -6.4,
+      "y": -1.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF4C8DFF",
+          "Texture": "ui_nitrobar.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "ComboText",
+      "tag": "UI",
+      "active": false,
+      "order": 105,
+      "x": 0.0,
+      "y": 1.2,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "x2 COMBO",
+          "Screen Space UI": false,
+          "Size": 0.7,
+          "Color": "#FFFFD24A",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "TitlePanel",
+      "tag": "UI",
+      "active": true,
+      "order": 150,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 16.0,
+      "scaleY": 9.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#D8101319",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "TitleText",
+      "tag": "UI",
+      "active": true,
+      "order": 151,
+      "x": 0.0,
+      "y": 1.6,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "NEON OVERDRIVE",
+          "Screen Space UI": false,
+          "Size": 1.4,
+          "Color": "#FF6FE0FF",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "TitleHint",
+      "tag": "UI",
+      "active": true,
+      "order": 151,
+      "x": 0.0,
+      "y": -0.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "TAP TO DRIVE",
+          "Screen Space UI": false,
+          "Size": 0.6,
+          "Color": "#FFFFFFFF",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "TitleControls",
+      "tag": "UI",
+      "active": true,
+      "order": 151,
+      "x": 0.0,
+      "y": -1.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "STEER: drag   JUMP: A   NITRO: B",
+          "Screen Space UI": false,
+          "Size": 0.36,
+          "Color": "#FF9AA0A6",
+          "Align": "Center",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "GameOverPanel",
+      "tag": "UI",
+      "active": false,
+      "order": 160,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 9.0,
+      "scaleY": 5.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#EE141821",
+          "Texture": "ui_panel.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "GameOverTitle",
+      "tag": "UI",
+      "active": true,
+      "order": 161,
+      "x": 0.0,
+      "y": 1.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "WRECKED",
+          "Screen Space UI": false,
+          "Size": 0.9,
+          "Color": "#FFD0453F",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "FinalDistance",
+      "tag": "UI",
+      "active": true,
+      "order": 161,
+      "x": 0.0,
+      "y": 0.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "0 m",
+          "Screen Space UI": false,
+          "Size": 0.7,
+          "Color": "#FFFFFFFF",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "FinalScore",
+      "tag": "UI",
+      "active": true,
+      "order": 161,
+      "x": 0.0,
+      "y": -0.3,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "0000000",
+          "Screen Space UI": false,
+          "Size": 0.6,
+          "Color": "#FFFFD24A",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "RetryHint",
+      "tag": "UI",
+      "active": true,
+      "order": 161,
+      "x": 0.0,
+      "y": -1.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "TAP TO RETRY",
+          "Screen Space UI": false,
+          "Size": 0.45,
+          "Color": "#FF9AA0A6",
+          "Align": "Center",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "BestText",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": 6.4,
+      "y": -2.3,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "BEST 0 m",
+          "Screen Space UI": false,
+          "Size": 0.8,
+          "Color": "#FF8A8F98",
+          "Align": "Right",
+          "Bold": false
+        }
+      ]
+    }
+  ]
+}

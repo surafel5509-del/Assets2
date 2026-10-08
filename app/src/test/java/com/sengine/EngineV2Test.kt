@@ -1,12 +1,16 @@
 package com.sengine
 
 import com.sengine.engine.Engine
+import com.sengine.engine.anim.AnimationClip
 import com.sengine.engine.blueprint.Blueprint
 import com.sengine.engine.blueprint.BlueprintCompiler
 import com.sengine.engine.blueprint.BlueprintNodes
 import com.sengine.engine.core.Animator
+import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Rigidbody3D
+import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
+import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
 import com.sengine.project.AssetLibrary
 import com.sengine.project.Project
@@ -19,14 +23,24 @@ import org.mozilla.javascript.Context
 import java.io.File
 import java.nio.file.Files
 
-/** Headless tests for the Ultimate Edition systems: 3D physics, animation, blueprints and asset store content. */
+/**
+ * Headless tests for the Ultimate Edition systems: 3D physics, animation,
+ * blueprints and asset store content.
+ *
+ * Templates are looked up by name via [Templates.byName]. The animation tests no
+ * longer depend on a template at all -- the "Animated Platformer" template was
+ * removed (Platformer demos are explicitly out of scope for this engine), so they
+ * now build their own scene and drive [AnimationSystem] through the real engine
+ * loop. That keeps the coverage and removes the dependency on template contents.
+ */
 class EngineV2Test {
 
     private fun newProject(name: String): Project {
         val dir = Files.createTempDirectory("sengine2").toFile()
         val p = Project(File(dir, "Test"))
         p.saveMeta()
-        Templates.all.first { it.name == name }.build(p)
+        val t = Templates.byName(name) ?: error("no template named '$name'")
+        t.build(p)
         p.saveMeta()
         return p
     }
@@ -58,6 +72,25 @@ class EngineV2Test {
             cx.languageVersion = Context.VERSION_ES6
             cx.compileString(js, name, 1, null)
         } finally { Context.exit() }
+    }
+
+    /** A project holding one hero sprite driven by a hand-written .anim clip. */
+    private fun animProject(clip: AnimationClip, playOnStart: Boolean = true, active: Boolean = true): Pair<Project, String> {
+        val dir = Files.createTempDirectory("sengineAnim").toFile()
+        val p = Project(File(dir, "AnimTest"))
+        p.saveMeta()
+        p.writeAsset("HeroRun.anim", clip.toJson().toString())
+        val s = Scene("Main")
+        val cam = s.create("Main Camera")
+        cam.add(Camera2D().also { it.size = 5f })
+        val hero = s.create("Hero")
+        hero.add(SpriteRenderer())
+        hero.add(Animator().also { it.clip = "HeroRun.anim"; it.playOnStart = playOnStart })
+        hero.active = active
+        p.saveScene(s)
+        p.startScene = "Main"
+        p.saveMeta()
+        return p to "Hero"
     }
 
     @Test
@@ -102,25 +135,80 @@ class EngineV2Test {
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
     }
 
+    /**
+     * A looping clip must start on play, advance with time, sample the UV rect of
+     * the cell it is on, and wrap around the sheet.  Eight frames at 10 fps over a
+     * 4x2 sheet, so a full loop is 0.8s and 200 frames covers four of them.
+     */
     @Test
-    fun animatedPlatformerPlaysClips() {
-        val p = newProject("Animated Platformer")
+    fun loopingClipAdvancesAndWraps() {
+        val clip = AnimationClip("hero.png", 4, 2, (0..7).toMutableList(), 10f, true)
+        val (p, heroName) = animProject(clip)
         val r = start(p)
-        val hero = r.engine.scene.find("Player")!!
-        r.frames(60)
-        r.frames(30) { r.engine.input.joyX = 1f }
+        val hero = r.engine.scene.find(heroName)!!
         val anim = hero.getAny<Animator>()!!
-        println("SIM anim current='${anim.current}' playing=${anim.playing} frame=${anim.frame} x=${hero.x}")
+        val sr = hero.getAny<SpriteRenderer>()!!
+
+        // Engine.play() only *posts* startPlay(); resetRuntime() -- which is what
+        // copies clip into current and applies playOnStart -- runs on the next
+        // tick.  So neither playing nor current can be observed before one frame
+        // has been simulated.  The same warm-up also means the UV sampling loop
+        // below never compares against the sprite's identity-default rect.
+        r.frames(1)
+
+        assertTrue("playOnStart should start the clip", anim.playing)
         assertEquals("HeroRun.anim", anim.current)
-        assertTrue("run animation should play", anim.playing)
-        r.engine.input.joyX = 0f
-        r.frames(10)
-        assertTrue("animation should stop when idle", !anim.playing)
-        val coin = r.engine.scene.objects.first { it.tag == "Coin" }
-        val ca = coin.getAny<Animator>()!!
-        println("SIM coin anim frame=${ca.frame} playing=${ca.playing}")
-        assertTrue("coin spin should autoplay", ca.playing)
+
+        val seen = LinkedHashSet<Int>()
+        r.frames(200) {
+            seen.add(anim.frame)
+            // The UV rect must always describe the cell the current frame names.
+            val want = FloatArray(4)
+            clip.cellUv(clip.frames[anim.frame], want)
+            assertEquals("u0 for frame ${anim.frame}", want[0], sr.uv[0], 1e-6f)
+            assertEquals("u1 for frame ${anim.frame}", want[2], sr.uv[2], 1e-6f)
+            assertEquals("vBottom for frame ${anim.frame}", want[1], sr.uv[1], 1e-6f)
+            assertEquals("vTop for frame ${anim.frame}", want[3], sr.uv[3], 1e-6f)
+        }
+        println("SIM anim frames seen=$seen texture=${sr.animTexture}")
+        assertEquals("a looping 8-frame clip should visit every frame", (0..7).toSet(), seen)
+        assertEquals("clip texture should be applied to the sprite", "hero.png", sr.animTexture)
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
+    }
+
+    /** A non-looping clip must hold its last frame and report finished. */
+    @Test
+    fun nonLoopingClipFinishesOnLastFrame() {
+        val clip = AnimationClip("hero.png", 4, 1, (0..3).toMutableList(), 10f, false)
+        val (p, heroName) = animProject(clip)
+        val r = start(p)
+        val anim = r.engine.scene.find(heroName)!!.getAny<Animator>()!!
+        r.frames(180) // 3s: well past the 0.4s clip
+        println("SIM nonloop frame=${anim.frame} finished=${anim.finished} playing=${anim.playing}")
+        assertEquals("should hold the final frame", 3, anim.frame)
+        assertTrue("a non-looping clip should report finished", anim.finished)
+        assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
+    }
+
+    /** An inactive object must not animate in play mode, and playOnStart=false must not autoplay. */
+    @Test
+    fun inactiveOrDisabledAnimatorsDoNotAdvance() {
+        val clip = AnimationClip("hero.png", 4, 1, (0..3).toMutableList(), 10f, true)
+
+        val (p1, h1) = animProject(clip, active = false)
+        val r1 = start(p1)
+        r1.frames(120)
+        val a1 = r1.engine.scene.find(h1)!!.getAny<Animator>()!!
+        println("SIM inactive frame=${a1.frame}")
+        assertEquals("an inactive object must not advance its clip", 0, a1.frame)
+
+        val (p2, h2) = animProject(clip, playOnStart = false)
+        val r2 = start(p2)
+        r2.frames(120)
+        val a2 = r2.engine.scene.find(h2)!!.getAny<Animator>()!!
+        println("SIM playOnStart=false frame=${a2.frame} playing=${a2.playing}")
+        assertTrue("playOnStart=false should not autoplay", !a2.playing)
+        assertEquals(0, a2.frame)
     }
 
     @Test
@@ -147,14 +235,21 @@ class EngineV2Test {
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
     }
 
+    /**
+     * Every shipping template must survive a serialize/deserialize round trip.
+     * Iterating [Templates.all] rather than a hard-coded list means this cannot
+     * go stale when a template is added or removed -- which is exactly how the
+     * previous version broke when "Animated Platformer" was retired.
+     */
     @Test
-    fun v2TemplatesSerializeRoundTrip() {
-        for (name in listOf("3D Demo", "Animated Platformer", "Blueprint Demo")) {
-            val p = newProject(name)
+    fun everyTemplateSerializesRoundTrip() {
+        for (t in Templates.all) {
+            val p = newProject(t.name)
             val s = p.loadScene("Main")
             val json = SceneSerializer.toJson(s).toString()
-            assertEquals(json, SceneSerializer.toJson(SceneSerializer.fromJson(JSONObject(json))).toString())
-            println("SIM template '$name' objects=${s.objects.size}")
+            assertEquals("template '${t.name}' round trip",
+                json, SceneSerializer.toJson(SceneSerializer.fromJson(JSONObject(json))).toString())
+            println("SIM template '${t.name}' objects=${s.objects.size}")
         }
     }
 

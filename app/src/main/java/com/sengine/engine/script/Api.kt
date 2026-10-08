@@ -120,6 +120,49 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
         go.getAny<com.sengine.engine.core.MeshRenderer>()?.color = c
     }
+    // ---- lights
+    // Exposed as properties (getLightIntensity/setLightIntensity -> lightIntensity).
+    // Scripts need these for day-night cycles and damage flashes; without them a
+    // Light component can only be configured from the Inspector.
+    fun getLightIntensity(): Double = go.getAny<com.sengine.engine.core.Light>()?.intensity?.toDouble() ?: 0.0
+    fun setLightIntensity(v: Double) {
+        go.getAny<com.sengine.engine.core.Light>()?.intensity = v.toFloat().coerceIn(0f, 10f)
+    }
+    fun getLightColor(): String = {
+        val c = go.getAny<com.sengine.engine.core.Light>()?.color
+        if (c == null) "" else String.format("#%08X", c)
+    }()
+    fun setLightColor(hex: String) {
+        val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
+        go.getAny<com.sengine.engine.core.Light>()?.color = c
+    }
+    fun getLightRange(): Double = go.getAny<com.sengine.engine.core.Light>()?.range?.toDouble() ?: 0.0
+    fun setLightRange(v: Double) {
+        go.getAny<com.sengine.engine.core.Light>()?.range = v.toFloat().coerceAtLeast(0.1f)
+    }
+
+    // ---- 3D camera
+    fun getFov(): Double = go.getAny<com.sengine.engine.core.Camera3D>()?.fov?.toDouble() ?: 0.0
+    fun setFov(v: Double) {
+        go.getAny<com.sengine.engine.core.Camera3D>()?.fov = v.toFloat().coerceIn(10f, 120f)
+    }
+    fun getSkyTop(): String = {
+        val c = go.getAny<com.sengine.engine.core.Camera3D>()?.skyTop
+        if (c == null) "" else String.format("#%08X", c)
+    }()
+    fun setSkyTop(hex: String) {
+        val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
+        go.getAny<com.sengine.engine.core.Camera3D>()?.skyTop = c
+    }
+    fun getSkyHorizon(): String = {
+        val c = go.getAny<com.sengine.engine.core.Camera3D>()?.skyHorizon
+        if (c == null) "" else String.format("#%08X", c)
+    }()
+    fun setSkyHorizon(hex: String) {
+        val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
+        go.getAny<com.sengine.engine.core.Camera3D>()?.skyHorizon = c
+    }
+
     fun overlaps(other: SObject): Boolean {
         val a = go.computeWorld(); val b = other.go.computeWorld()
         val ca = go.getAny<Collider2D>(); val cb = other.go.getAny<Collider2D>()
@@ -159,6 +202,14 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
 
     // hierarchy & lifecycle
     fun getParent(): Any? = go.parent?.let { sys.toJs(it) }
+    /** Reparents at runtime; null detaches.  Cycles are refused. */
+    fun setParentTo(p: SObject?) {
+        val target = p?.go
+        if (target === go) return
+        var a: GameObject? = target
+        while (a != null) { if (a === go) return; a = a.parent }   // would be a cycle
+        go.parent = target
+    }
     fun child(name: String): Any? = engine.scene.childrenOf(go).firstOrNull { it.name == name }?.let { sys.toJs(it) }
     fun destroy() { go.destroyed = true }
     fun hasComponent(type: String): Boolean = go.components.any { it.type.equals(type, true) }

@@ -1,0 +1,890 @@
+{
+  "name": "Main",
+  "gravityX": 0.0,
+  "gravityY": 0.0,
+  "gravityZ": 0.0,
+  "gravity3D": -9.8,
+  "ambient": "#FF4A4A58",
+  "fogColor": "#FFBFD8F0",
+  "fogStart": 30.0,
+  "fogEnd": 120.0,
+  "fog": true,
+  "nextId": 26,
+  "objects": [
+    {
+      "id": 1,
+      "name": "Main Camera",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 4.0,
+      "z": 8.0,
+      "rotX": -18.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "Camera3D",
+          "enabled": true,
+          "Field of View": 62.0,
+          "Near": 0.1,
+          "Far": 300.0,
+          "Sky Top": "#FF3B7BD4",
+          "Sky Horizon": "#FFBFD8F0",
+          "Follow Target": "",
+          "Offset X": 0.0,
+          "Offset Y": 4.0,
+          "Offset Z": 8.0,
+          "Look At Target": true,
+          "Follow Smoothing": 6.0,
+          "Post FX": "None",
+          "FX Intensity": 1.0,
+          "FX Shader": ""
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "ThirdPersonCamera.js",
+          "Params": "distance=7.5, height=3.2, minPitch=-35, maxPitch=55, sensitivity=0.28"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Sun",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 20.0,
+      "z": 0.0,
+      "rotX": -55.0,
+      "rotY": -40.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "Light",
+          "enabled": true,
+          "Type": "Directional",
+          "Color": "#FFFFE8C0",
+          "Intensity": 1.25,
+          "Range": 100.0
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Combat3D",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Combat3D.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "InteractionSystem",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "InteractionSystem.js",
+          "Params": "range=2.4"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "AdventureHUD",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "AdventureHUD.js",
+          "Params": "maxHealth=100, maxStamina=100, staminaDrain=22, staminaRegen=16, regenDelay=1.2, attack=12"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Ground",
+      "tag": "Ground",
+      "active": true,
+      "order": -50,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 120.0,
+      "scaleY": 1.0,
+      "scaleZ": 120.0,
+      "components": [
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "Mesh": "Plane",
+          "Model (.obj)": "",
+          "Color": "#FF5C7A46",
+          "Texture": "",
+          "Tiling": 24.0,
+          "Specular": 0.05,
+          "Shininess": 4.0,
+          "Emission": 0.0,
+          "Unlit": false,
+          "Shader": "",
+          "Shader Param": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 1.0,
+          "Size Y": 1.0,
+          "Size Z": 1.0,
+          "Radius": 0.5,
+          "Center X": 0.0,
+          "Center Y": -0.5,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "Rigidbody3D",
+          "enabled": true,
+          "Body Type": "Static",
+          "Mass": 1.0,
+          "Gravity Scale": 0.0,
+          "Linear Drag": 0.0,
+          "Bounciness": 0.0,
+          "Friction": 0.8,
+          "Velocity X": 0.0,
+          "Velocity Y": 0.0,
+          "Velocity Z": 0.0
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Hero",
+      "tag": "Player",
+      "active": true,
+      "order": 10,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.8,
+      "scaleY": 1.8,
+      "scaleZ": 1.8,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "hero_idle.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "hero_idle.anim",
+          "Play On Start": true,
+          "Speed": 1.0
+        },
+        {
+          "type": "Rigidbody3D",
+          "enabled": true,
+          "Body Type": "Dynamic",
+          "Mass": 1.0,
+          "Gravity Scale": 0.0,
+          "Linear Drag": 2.0,
+          "Bounciness": 0.0,
+          "Friction": 0.6,
+          "Velocity X": 0.0,
+          "Velocity Y": 0.0,
+          "Velocity Z": 0.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 0.6,
+          "Size Y": 1.7,
+          "Size Z": 0.6,
+          "Radius": 0.4,
+          "Center X": 0.0,
+          "Center Y": 0.85,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "CharacterController3D.js",
+          "Params": "moveSpeed=4.6, sprintMultiplier=1.55, jumpForce=7.2, gravity=22, coyoteTime=0.12, jumpBuffer=0.14, turnSpeed=14, skin=hero, states=idle|walk|jump|attack|hurt|death"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "HeroShadow",
+      "tag": "Player",
+      "active": true,
+      "order": 9,
+      "x": 0.0,
+      "y": 0.02,
+      "z": 0.0,
+      "rotation": 90.0,
+      "scaleX": 1.1,
+      "scaleY": 1.1,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#55000000",
+          "Texture": "fx_shadow.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Creature",
+      "tag": "Enemy",
+      "active": true,
+      "order": 8,
+      "x": 8.0,
+      "y": 0.0,
+      "z": 6.0,
+      "rotation": 0.0,
+      "scaleX": 2.2,
+      "scaleY": 2.2,
+      "scaleZ": 2.2,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "creature_idle.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "creature_idle.anim",
+          "Play On Start": true,
+          "Speed": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 0.7,
+          "Size Y": 1.4,
+          "Size Z": 0.7,
+          "Radius": 0.5,
+          "Center X": 0.0,
+          "Center Y": 0.7,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "EnemyAI3D.js",
+          "Params": "sightRange=14, hearRange=7, attackRange=2.2, attackCooldown=1.4, moveSpeed=3.2, hp=40, maxHp=40, damage=10, patrolRadius=8, skin=creature, states=idle|attack"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "RidgeGuard",
+      "tag": "Enemy",
+      "active": true,
+      "order": 8,
+      "x": -9.0,
+      "y": 0.0,
+      "z": 8.0,
+      "rotation": 0.0,
+      "scaleX": 2.4,
+      "scaleY": 2.4,
+      "scaleZ": 2.4,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "guard_idle.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "guard_idle.anim",
+          "Play On Start": true,
+          "Speed": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 0.7,
+          "Size Y": 1.8,
+          "Size Z": 0.7,
+          "Radius": 0.5,
+          "Center X": 0.0,
+          "Center Y": 0.9,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "EnemyAI3D.js",
+          "Params": "sightRange=18, hearRange=9, attackRange=2.6, attackCooldown=1.2, moveSpeed=3.6, hp=65, maxHp=65, damage=16, patrolRadius=10, skin=guard, states=idle|walk|attack|death"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "TreeCluster",
+      "tag": "Scenery",
+      "active": false,
+      "order": -20,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.0,
+      "scaleY": 3.0,
+      "scaleZ": 3.0,
+      "components": [
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "Mesh": "Custom Model",
+          "Model (.obj)": "tree_default.obj",
+          "Color": "#FFFFFFFF",
+          "Texture": "",
+          "Tiling": 1.0,
+          "Specular": 0.1,
+          "Shininess": 8.0,
+          "Emission": 0.0,
+          "Unlit": false,
+          "Shader": "",
+          "Shader Param": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 0.5,
+          "Size Y": 2.0,
+          "Size Z": 0.5,
+          "Radius": 0.4,
+          "Center X": 0.0,
+          "Center Y": 1.0,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "CliffBlock",
+      "tag": "Scenery",
+      "active": false,
+      "order": -20,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 4.0,
+      "scaleY": 4.0,
+      "scaleZ": 4.0,
+      "components": [
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "Mesh": "Custom Model",
+          "Model (.obj)": "cliff_rock.obj",
+          "Color": "#FFB0ACA4",
+          "Texture": "",
+          "Tiling": 1.0,
+          "Specular": 0.08,
+          "Shininess": 6.0,
+          "Emission": 0.0,
+          "Unlit": false,
+          "Shader": "",
+          "Shader Param": 1.0
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 1.0,
+          "Size Y": 1.0,
+          "Size Z": 1.0,
+          "Radius": 0.5,
+          "Center X": 0.0,
+          "Center Y": 0.5,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        },
+        {
+          "type": "Rigidbody3D",
+          "enabled": true,
+          "Body Type": "Static",
+          "Mass": 1.0,
+          "Gravity Scale": 0.0,
+          "Linear Drag": 0.0,
+          "Bounciness": 0.0,
+          "Friction": 0.9,
+          "Velocity X": 0.0,
+          "Velocity Y": 0.0,
+          "Velocity Z": 0.0
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Campfire",
+      "tag": "Campfire",
+      "active": true,
+      "order": -10,
+      "x": 6.0,
+      "y": 0.0,
+      "z": -5.0,
+      "rotation": 0.0,
+      "scaleX": 2.0,
+      "scaleY": 2.0,
+      "scaleZ": 2.0,
+      "components": [
+        {
+          "type": "MeshRenderer",
+          "enabled": true,
+          "Mesh": "Custom Model",
+          "Model (.obj)": "campfire.obj",
+          "Color": "#FFFFFFFF",
+          "Texture": "",
+          "Tiling": 1.0,
+          "Specular": 0.05,
+          "Shininess": 4.0,
+          "Emission": 0.0,
+          "Unlit": false,
+          "Shader": "",
+          "Shader Param": 1.0
+        },
+        {
+          "type": "Light",
+          "enabled": true,
+          "Type": "Point",
+          "Color": "#FFFF9A3C",
+          "Intensity": 2.4,
+          "Range": 12.0
+        },
+        {
+          "type": "ParticleEmitter",
+          "enabled": true,
+          "Emitting": true,
+          "Rate": 26.0,
+          "Lifetime": 1.1,
+          "Speed": 2.2,
+          "Direction": 90.0,
+          "Spread": 22.0,
+          "Start Size": 0.55,
+          "End Size": 0.05,
+          "Start Color": "#FFFFC060",
+          "End Color": "#00FF4010",
+          "Gravity": -1.5,
+          "Max Particles": 120,
+          "Additive Blend": true,
+          "Texture": "fx_fire.png"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Chest",
+      "tag": "Interactable",
+      "active": true,
+      "order": -10,
+      "x": -6.0,
+      "y": 0.0,
+      "z": -6.0,
+      "rotation": 0.0,
+      "scaleX": 1.4,
+      "scaleY": 1.4,
+      "scaleZ": 1.4,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "icon_chest.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Collider3D",
+          "enabled": true,
+          "Shape": "Box",
+          "Size X": 0.9,
+          "Size Y": 0.8,
+          "Size Z": 0.9,
+          "Radius": 0.5,
+          "Center X": 0.0,
+          "Center Y": 0.4,
+          "Center Z": 0.0,
+          "Is Trigger": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "ImpactFX3D",
+      "tag": "FX",
+      "active": false,
+      "order": 30,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "ParticleEmitter",
+          "enabled": true,
+          "Emitting": false,
+          "Rate": 0.0,
+          "Lifetime": 0.35,
+          "Speed": 4.5,
+          "Direction": 90.0,
+          "Spread": 360.0,
+          "Start Size": 0.45,
+          "End Size": 0.02,
+          "Start Color": "#FFFFE0A0",
+          "End Color": "#00FF6020",
+          "Gravity": 2.0,
+          "Max Particles": 60,
+          "Additive Blend": true,
+          "Texture": "fx_fire.png"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "InteractPrompt",
+      "tag": "UI",
+      "active": false,
+      "order": 60,
+      "x": 0.0,
+      "y": 1.6,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.7,
+      "scaleY": 0.7,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "icon_prompt.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "InteractLabel",
+      "tag": "UI",
+      "active": true,
+      "order": 61,
+      "x": 0.0,
+      "y": -1.9,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "Interact",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FFFFFFFF",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "HealthFill",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": -6.4,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.3,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFC0453F",
+          "Texture": "ui_healthbar.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "StaminaFill",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": -6.4,
+      "y": 2.05,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.18,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF4CC26A",
+          "Texture": "ui_healthbar.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "HealthText",
+      "tag": "UI",
+      "active": true,
+      "order": 101,
+      "x": -6.4,
+      "y": 2.95,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "100 / 100",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FFFFFFFF",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "ObjectiveText",
+      "tag": "UI",
+      "active": true,
+      "order": 101,
+      "x": -6.4,
+      "y": 1.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "- Find the campfire",
+          "Screen Space UI": false,
+          "Size": 0.36,
+          "Color": "#FFD8DEE8",
+          "Align": "Left",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "ClockText",
+      "tag": "UI",
+      "active": true,
+      "order": 101,
+      "x": 6.4,
+      "y": 2.95,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "09:00",
+          "Screen Space UI": false,
+          "Size": 0.45,
+          "Color": "#FFFFE8C0",
+          "Align": "Right",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "HurtVignette",
+      "tag": "UI",
+      "active": true,
+      "order": 95,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 16.0,
+      "scaleY": 9.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#00000000",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "DeathBanner",
+      "tag": "UI",
+      "active": false,
+      "order": 120,
+      "x": 0.0,
+      "y": 0.5,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "YOU DIED",
+          "Screen Space UI": false,
+          "Size": 1.3,
+          "Color": "#FFD0453F",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "LightingRig",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "LightingRig.js",
+          "Params": "cycleSeconds=600, startHour=9, nightIntensity=0.18"
+        }
+      ]
+    }
+  ]
+}
