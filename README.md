@@ -61,7 +61,13 @@ node tools/run_games.js
 ```
 
 The Android build (`./gradlew assembleDebug`) needs a JDK and the Android SDK; the
-native Android build needs the NDK and `cmake`.
+native Android build needs the NDK and `cmake`. Neither exists in the sandbox this
+was developed in, so **CI does the Android build** — see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). Every push and pull request
+compiles the Kotlin, runs the unit tests, builds debug *and* release APKs, and
+uploads them as an artifact. Pushing a `v*` tag additionally attaches the release
+APK to a GitHub Release via
+[`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 ## Verification status — read this
 
@@ -71,11 +77,18 @@ native Android build needs the NDK and `cmake`.
 | Asset store generation | **Verified.** 25 packs, 5 008 files, 154 sprite sheets |
 | Games vs. store vs. engine | **Verified.** 3 132 checks, 0 errors |
 | Game scripts, executed | **Verified.** `run_games.js` — 27 scripts × 240 frames, 89 checks |
-| Kotlin / Gradle | **Not compiled** — no JDK or Android SDK in this environment |
-| Native Android build | **Not built** — no NDK, no `cmake` |
+| Kotlin / Gradle | **Verified in CI.** 60 files compile; unit tests pass; debug + release APKs build |
+| APK packaging | **Verified in CI.** 25 pack ZIPs, 40 game entries, `index.json` present |
+| Native Android build | **Not built** — no NDK, no `cmake`; the C++ core builds on the host only |
 | The four games on a device | **Not played** — no Android runtime here |
 
-Every Kotlin file is uncompiled. The game scripts *are* executed — by
+The Kotlin is compiled and unit-tested, but only on CI — this sandbox has no JDK,
+so nothing here can build it. That distinction matters: a green local run says
+nothing about the Android layer, which is why
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) exists and why its build
+errors are republished as annotations.
+
+The game scripts *are* executed locally — by
 `tools/run_games.js`, which reimplements the `Api.kt` surface closely enough to
 run them frame by frame, and which found 20 real bugs that a syntax check had
 passed. Several of them silently removed whole features: the inventory could be

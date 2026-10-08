@@ -121,13 +121,25 @@ What is actually checked, and by what:
 | Asset store generation | `python3 tools/build_asset_store.py` | 25 packs, 5 008 files, 154 sprite sheets |
 | Games vs. store vs. engine | `python3 tools/validate_games.py` | **3 132 checks, 0 errors — PASS** |
 | Game scripts, executed | `node tools/run_games.js` | **89 checks, 0 failures — PASS** |
-| Kotlin / Gradle | — | **Not runnable here**: no `java`, no Android SDK |
-| Native Android build | — | **Not runnable here**: no NDK, no `cmake` |
+| Kotlin / Gradle | `./gradlew compileDebugKotlin testDebugUnitTest` (CI) | **Compiles; unit tests pass** |
+| APK | `./gradlew assembleDebug assembleRelease` (CI) | **Both build; 25 pack ZIPs, 40 game entries** |
+| Native Android build | — | **Not runnable**: no NDK, no `cmake` |
 
-The last two rows are a real gap, not a formality. Every Kotlin file added or
-edited in this work is uncompiled. The validator and the native suite are what
-stand in for a compiler on the parts they cover, and they have caught real defects
-— see [07-GAMES.md](07-GAMES.md#what-the-validator-caught).
+The first four rows run locally. The Kotlin and APK rows run only in CI — the
+development sandbox has no JDK or Android SDK, so a green local run says nothing
+about the Android layer. That is why
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) compiles the Kotlin, runs
+the unit tests, builds both APKs, and republishes Gradle failures as annotations.
+
+The remaining row is a real gap: the native C++ core is exercised by its own host
+test suite, and nothing in this repository builds it for Android.
+
+The validator and the native suite stand in for a compiler on the parts they cover,
+and they have caught real defects — see
+[07-GAMES.md](07-GAMES.md#what-the-validator-caught). CI has caught its own share:
+an unclosed KDoc comment in `GameLibrary.kt` that broke the build outright, and a
+`games/index.json` that was never packaged into the APK because the staging task
+filtered to directories only.
 
 ## 6. Scope boundaries
 
