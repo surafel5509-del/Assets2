@@ -10,8 +10,8 @@ import java.io.File
  * The shipped game library.
  *
  * The four games live in the repository under `games/<id>/` as plain text --
- * `game.json`, `scenes/*.scene.json` and `scripts/*.js` -- and are staged into
- * the APK's assets by the `stageGameLibrary` Gradle task.  They are *not*
+ * `game.json`, the `scenes` folder and the `scripts` folder -- and are staged
+ * into the APK's assets by the `stageGameLibrary` Gradle task.  They are *not*
  * templates: a template is a code-only starting point, whereas these are
  * complete games whose art is imported from the offline Asset Store on demand.
  *
