@@ -1,0 +1,167 @@
+# 04 — Scripting
+
+Gameplay logic runs as **JavaScript**, executed by Mozilla Rhino 1.7.13 in
+interpreted mode. `engine/script/` is `Api.kt` (the object model exposed to
+scripts) plus `ScriptSystem.kt` (compilation, lifecycle, the prelude).
+
+Visual scripting (`.bp` graphs) attaches through the same `Script` component, so a
+graph and a `.js` file are interchangeable at runtime — see
+[03-EDITOR.md](03-EDITOR.md#5-visual-scripting).
+
+## 1. Why Rhino, and why 1.7.13
+
+The dependency is pinned with a comment in `app/build.gradle.kts`:
+
+```kotlin
+// JavaScript scripting runtime (interpreted mode).
+// 1.7.14 breaks on Android (javax.lang.model), keep 1.7.13
+implementation("org.mozilla:rhino:1.7.13")
+```
+
+Rhino is pure Java, so it runs on Android with no native library and no JIT —
+which matters because Android forbids writable-and-executable memory for apps.
+QuickJS would be faster but requires an NDK build and a JNI bridge. Given that the
+native core is not yet linked, adding a second native dependency now would be
+premature; Rhino is the right call until the JNI boundary exists.
+
+**The consequence for game code:** scripts must be **ES5**. `var`, not `let`/`const`;
+`function`, not arrow functions. All four shipped games follow this, and
+`tools/validate_games.py` syntax-checks every script with `node --check`, which
+would fail on ES6 syntax if it leaked in.
+
+## 2. Lifecycle
+
+```js
+function start()          {}   // once, after the object is active
+function update(dt)       {}   // every frame
+function onCollision(o)   {}   // physics contact
+function onTrigger(o)     {}   // trigger-volume enter
+function onTriggerExit(o) {}   // trigger-volume leave
+function onTap()          {}   // screen tap while this object is hit
+function onDestroy()      {}   // before removal
+function onStop()         {}   // when the scene stops
+```
+
+`self` and `transform` both refer to the object the script is attached to. Scripts
+are invoked by name through `send`, which is how the games' systems talk to each
+other without holding references:
+
+```js
+var rm = scene.find("RoundManager");
+if (rm) rm.send("onKnockout", self.name);
+```
+
+## 3. The API surface
+
+Exposed by `Api.kt` and documented in-app by `ScriptEditorActivity`'s cheat sheet.
+
+**`self` / `transform`** — `id name tag active order x y rotation scaleX scaleY
+worldX worldY z rotX rotY rotZ scaleZ worldZ vx vy vz grounded flipX color text
+size visible` plus `setPosition setWorldPosition move rotate distanceTo
+distanceTo3 forward overlaps play stopAnimation isAnimationFinished setAnimSpeed
+setShaderParam setMeshColor setColor getColor setText getText setVisible
+setTexture burst setEmitting setSize getParent setParentTo child destroy
+hasComponent setComponentEnabled send is animation index`, plus
+`lightIntensity lightColor lightRange fov skyTop skyHorizon` for objects carrying
+a `Light` or `Camera3D`.
+
+The last six were added because the shipped games needed them and there was no
+other way to reach those components from a script. Day-night lighting, a
+speed-based FOV kick and a sky gradient are all scriptable now; before, the only
+route was `send()` to a handler that did not exist, which the engine drops
+silently.
+
+**`scene`** — `name find findAll count spawn(name[,x,y[,z]]) shake raycast
+camera3D gravity3D load reload camera gravityX gravityY`.
+
+**`input`** — `axisX axisY a b aDown bDown touching tapped touchX touchY`.
+
+**`time`** — `time frame fps`.
+
+**`audio`** — `play(name[,vol]) beep stopAll`.
+
+**Helpers** — `log warn error random(a,b) randomInt clamp lerp after(sec,fn)
+every(sec,fn)`.
+
+## 4. Patterns the shipped games rely on
+
+These are not engine features; they are the discipline the games apply, recorded
+here because they are what make the games behave.
+
+**Frame-rate-independent smoothing.** Never `lerp(a, b, rate * dt)`, which drifts
+with frame rate. Use exponential decay:
+
+```js
+var k = 1 - Math.exp(-rate * dt);
+camX += (wantX - camX) * k;
+```
+
+Both camera rigs do this. It is the difference between a camera that feels the same
+at 30 Hz and 120 Hz and one that does not.
+
+**Per-swing hit ledgers.** An attack overlapping an enemy for several frames would
+apply damage every frame without a guard. `Combat3D.js` records
+`{attacker, victim, ttl}` pairs and expires them.
+
+**Deferred structural change.** Scripts spawn and destroy freely, but the engine
+flushes those changes after iteration completes — the same rule the native ECS
+enforces, so behaviour will not change when the native world takes over.
+
+**Cheap test before expensive test.** Enemy AI checks distance every frame but only
+raycasts at 10 Hz, behind a cached result.
+
+## 5. Hot reload
+
+Script editing happens in `ScriptEditorActivity`, which watches the text buffer
+(`TextWatcher`) and writes back to the project asset. Re-entering play mode
+recompiles. There is **no live hot-swap into a running frame** — the script is
+reloaded on scene load, not patched mid-execution. That is a real limitation
+against the brief, and it is stated here rather than implied otherwise.
+
+## 6. Verification
+
+Two layers, because they catch different things.
+
+**Static — `tools/validate_games.py`.** Runs `node --check` on every declared
+script and cross-references every `audio.play("x")` and every literal
+`self.play("clip")` against what `game.json` declares. 1 077 checks, 0 errors.
+
+**Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
+the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
+script, 240 frames each, with synthetic input cycling through all the control
+presets. It is deliberately strict: touching a property or method the engine does
+not expose throws rather than returning `undefined`, because silently returning
+`undefined` is exactly what would let a bug ship.
+
+### What running them found
+
+A syntax check had already passed on all 27 scripts. Executing them found 16
+failures across three classes, none of which a parse can see:
+
+1. **A texture-name syntax that does not exist.** `TilemapBuilder.js` built
+   `"tileset_overworld.png#27"` as an atlas index. `Textures.image()` resolves a
+   name straight to a file and `BitmapFactory` decodes it — there is no `#`
+   parsing anywhere in the engine. The whole overworld would have drawn blank.
+   Fixed by using the mechanism the engine does have: a single-frame `.anim` clip
+   per tile, whose `cellUv` selects the sub-rectangle.
+
+2. **`send()` calls to handlers that did not exist.** `ScriptSystem.call()`
+   returns `null` when the name is not a function — it does not throw. So
+   `send("setLightIntensity")`, `send("setStamina")`, `send("applyRoster")` and
+   `send("setFov")` were silent no-ops: the day-night cycle ran and the sun never
+   moved, the stamina bar filled and sprinting never gated, the character-select
+   screen confirmed a fighter and applied nothing. Five fixed — two by adding the
+   missing handler, three by exposing the underlying property (`lightIntensity`,
+   `lightColor`, `skyTop`, `skyHorizon`, `fov`) on the scripting API and assigning
+   it directly.
+
+3. **Animation clips that were never materialised.** `game.json` declares `clips`
+   per sheet, but nothing read that key, so no `.anim` files were written and
+   every `play()` resolved to nothing — the sprite silently draws its entire
+   sheet. `GameLibrary` now writes one `.anim` per declared clip. This one was
+   systemic: it affected all four games, and the static validator could not see it
+   because the names are built at runtime from `skin` and `states` params.
+
+The third class is why the harness exists. `send()` to a dead handler and `play()`
+of an undeclared clip produce no error, no warning and no visible difference in
+the editor.
