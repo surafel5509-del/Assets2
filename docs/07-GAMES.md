@@ -92,7 +92,7 @@ effective speed feedback available.
 ## 2. What the validator caught
 
 `tools/validate_games.py` cross-checks every game against the store manifest and the
-engine's `ComponentRegistry`: 2 484 checks, 0 errors. It found real defects, not
+engine's `ComponentRegistry`: 2 554 checks, 0 errors. It found real defects, not
 stylistic ones:
 
 1. **Nine enemy sheet paths still carried a stripped wrapper folder.** The
@@ -132,5 +132,5 @@ absence of the excluded platformer/shooter templates.
 The games are **not run**. There is no Android runtime here, so nothing confirms
 that they play correctly, that frame timings feel right, or that the cameras are
 framed well. What is verified is that they are internally consistent and reference
-only assets that exist. That distinction matters: a game can pass 2 484 checks and
+only assets that exist. That distinction matters: a game can pass 2 554 checks and
 still be no fun.

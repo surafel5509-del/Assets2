@@ -159,7 +159,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "RacerHUD.js",
-          "Params": "kmhScale=3.6, nitroMax=100"
+          "Params": "kmhScale=3.6, nitroMax=100, nearMissPoints=25, nearMissStreak=5"
         }
       ]
     },

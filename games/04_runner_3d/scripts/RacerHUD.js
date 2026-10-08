@@ -6,11 +6,13 @@
 // runner.  The HUD and the camera have to agree on the same speed value or the
 // two readouts contradict each other.
 //
-// Params: kmhScale=3.6, nitroMax=100
+// Params: kmhScale=3.6, nitroMax=100, nearMissPoints=25, nearMissStreak=5
 
 var score = 0;
 var comboFlash = 0;
 var bestDistance = 0;
+
+var nearMisses = 0;
 
 function start() {
     score = 0;
@@ -73,6 +75,22 @@ function showCombo(n) {
     after(0.12, function () { if (c) { c.scaleX = c.scaleY = 1.0; } });
 }
 
+/**
+ * Called by ObstacleSpawner when the car passes close to a hazard without
+ * hitting it.  ObstacleSpawner already grants the nitro; this is the score and
+ * the feedback half.
+ *
+ * This handler did not exist.  send() to an unknown name is silently dropped by
+ * the engine, so near-misses awarded nitro and played the sound but never scored
+ * -- the risk/reward mechanic the spawner's own comment describes was half wired.
+ */
+function onNearMiss() {
+    nearMisses++;
+    addScore(nearMissPoints);
+    // Streaks are what make threading a tight gap worth attempting twice.
+    if (nearMisses % nearMissStreak === 0) showCombo(nearMisses);
+}
+
 function onCrash() {
     var panel = scene.find("GameOverPanel");
     if (panel) panel.active = true;
@@ -92,6 +110,7 @@ function getScore() { return score; }
 function getDistance() { return bestDistance; }
 
 function reset() {
+    nearMisses = 0;
     score = 0;
     comboFlash = 0;
     var p = scene.find("GameOverPanel");

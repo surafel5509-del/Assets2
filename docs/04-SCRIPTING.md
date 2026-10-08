@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 2 484 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 2 554 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -252,8 +252,35 @@ there while the value it was meant to set never changes. Five were dead:
                 Removed rather than left as decoration.
 
 The validator now rejects any Script param the attached script never references,
-taking the static suite to 2 484 checks. Verified by re-adding `tileSize` and
+taking the static suite to 2 554 checks. Verified by re-adding `tileSize` and
 confirming it fails.
+
+### send() targets, checked statically too
+
+The harness catches a `send()` to a missing handler only on a path it actually
+executes. Death, knockout and game-over handlers need specific state to fire, so
+in four seconds of synthetic input they never run — and a missing handler there
+would go unnoticed. The validator now resolves every `send("name")` through the
+scene to the script that owns the receiver and requires the handler to exist.
+
+Resolution follows assignment chains rather than taking the obvious shortcut.
+`best.send("talk")` needs `best = npcs[i]` chased back to
+`npcs = scene.findAll("NPC")`; matching the first `findAll` in the file instead
+resolves it against `findAll("Enemy")` and reports a handler that does exist as
+missing. Receivers that cannot be followed are skipped — guessing would only
+produce false failures.
+
+That found one real bug the harness could not reach:
+
+  onNearMiss    ObstacleSpawner sends it to RacerHUD on every close pass.
+                RacerHUD never defined it.  The spawner granted the nitro and
+                played the sound, so the mechanic *felt* half-alive, but no points
+                were ever awarded — and its own comment describes awarding points
+                as the reason the mechanic exists.  Added, with a streak counter
+                that resets with the run.
+
+Verified by renaming the handler and confirming the validator reports the call
+site.
 
 ### Movement is integrated, and the assertions are mutation-tested
 

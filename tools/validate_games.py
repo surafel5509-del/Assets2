@@ -150,6 +150,95 @@ def component_props():
 COMPONENT_PROPS = None
 
 
+def _resolve_receiver(src, recv, upto, obj_scripts, tag_scripts):
+    """Chase a receiver back to the scene lookup that produced it.
+
+    Assignment chains are followed (best = npcs[i], npcs = scene.findAll("NPC")),
+    because the interesting receivers are loop variables, not the lookup result
+    itself.  Matching the first scene.find/findAll in the file instead -- the
+    obvious shortcut -- resolves a receiver against the wrong lookup and reports a
+    handler that does exist as missing.  Returns None when the chain cannot be
+    followed; callers skip rather than guess.
+    """
+    head = src[:upto]
+    seen = set()
+    cur = recv
+    for _ in range(5):
+        if cur in seen:
+            return None
+        seen.add(cur)
+        assigns = list(re.finditer(r"(?:var\s+)?" + re.escape(cur) + r"\s*=\s*([^;,\n]+)", head))
+        if not assigns:
+            return None
+        expr = assigns[-1].group(1).strip()
+        m = re.match(r'scene\.find\(\s*"([^"]+)"\s*\)', expr)
+        if m:
+            return obj_scripts.get(m.group(1))
+        m = re.match(r'scene\.findAll\(\s*"([^"]+)"\s*\)', expr)
+        if m:
+            return tag_scripts.get(m.group(1))
+        m = re.match(r"([A-Za-z_]\w*)\s*\[", expr)
+        if m:
+            cur = m.group(1)
+            continue
+        return None
+    return None
+
+
+def check_send_targets(game_dir, rep, gid):
+    """Every send("name") must name a handler the receiver actually defines.
+
+    ScriptSystem.call() returns null when the name is not a function rather than
+    throwing, so a mistyped or missing handler is a silent no-op: the caller runs,
+    nothing happens, and there is no log line.  The runtime harness catches these
+    on paths it happens to execute, but death, knockout and game-over handlers
+    need specific state to fire -- so they are checked statically as well.
+    """
+    scenes_dir = os.path.join(game_dir, "scenes")
+    scripts_dir = os.path.join(game_dir, "scripts")
+    if not os.path.isdir(scenes_dir) or not os.path.isdir(scripts_dir):
+        return
+
+    obj_scripts, tag_scripts = {}, {}
+    for sf in os.listdir(scenes_dir):
+        if not sf.endswith(".scene.json"):
+            continue
+        try:
+            scene = json.load(open(os.path.join(scenes_dir, sf), encoding="utf-8"))
+        except Exception:
+            continue
+        for o in scene.get("objects", []):
+            sc = [c["Script"] for c in o.get("components", [])
+                  if c.get("type") == "Script" and c.get("Script")]
+            if not sc:
+                continue
+            obj_scripts[o.get("name")] = sc
+            tag_scripts.setdefault(o.get("tag", "Untagged"), []).extend(sc)
+
+    handlers = {}
+    for f in os.listdir(scripts_dir):
+        if f.endswith(".js"):
+            src = open(os.path.join(scripts_dir, f), encoding="utf-8").read()
+            handlers[f] = set(re.findall(r"^function\s+([A-Za-z_]\w*)", src, re.M))
+
+    resolved = skipped = 0
+    for f in sorted(handlers):
+        src = open(os.path.join(scripts_dir, f), encoding="utf-8").read()
+        for m in re.finditer(r'(\w+)\.send\(\s*"([^"]+)"', src):
+            recv, msg = m.group(1), m.group(2)
+            if recv == "self":
+                targets = [f]
+            else:
+                targets = _resolve_receiver(src, recv, m.start(), obj_scripts, tag_scripts)
+                if targets is None:
+                    skipped += 1
+                    continue
+            resolved += 1
+            rep.ok(any(msg in handlers.get(t, set()) for t in targets),
+                   f"{gid}/{f}: send('{msg}') -> {', '.join(sorted(set(targets)))} "
+                   f"defines no such handler -- the call is silently dropped")
+
+
 def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
     global COMPONENT_PROPS
     if COMPONENT_PROPS is None:
@@ -402,6 +491,7 @@ def validate(repo, only=None):
         print(f"   scenes: {', '.join(f.replace('.scene.json', '') for f in scene_files)}")
 
         check_scripts(gd, game, rep, gid, declared_scripts, declared_audio)
+        check_send_targets(gd, rep, gid)
         print(f"   scripts: {len(declared_scripts)} declared")
 
     return rep
