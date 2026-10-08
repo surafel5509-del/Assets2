@@ -92,7 +92,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "TilemapBuilder.js",
-          "Params": "tileSize=16, chunk=8, atlasCols=26"
+          "Params": "chunk=8"
         }
       ]
     },

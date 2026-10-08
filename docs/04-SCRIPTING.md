@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 2 366 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 2 484 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -228,6 +228,32 @@ player and both fighters would have slid without ever settling.
 `Components.kt` and rejects any key that is not one of them, which took the static
 suite from 1 154 checks to 2 295. The check was verified by reintroducing the bug
 and confirming it fails.
+
+### Params that no script reads
+
+`applyParams()` binds each `k=v` from a Script component onto the script scope with
+`putProperty`. A key the script never mentions is not an error — it just sits
+there while the value it was meant to set never changes. Five were dead:
+
+  `facing`      Fighter.js declared it and never read it, so a fighter kept
+                whatever `flipX` the scene authored until the first `resetRound()`
+                corrected it. Now applied in `start()`.
+
+  `minGap`      ObstacleSpawner.js declared it as the breathing room between
+                hazards in a lane and never enforced it, so `z` was drawn freely
+                per lane and two obstacles could land within a car length — which
+                reads as an unavoidable wall even though a lane was nominally
+                clear. Now enforced.
+
+  `atlasCols`,
+  `tileSize`    Both on TilemapBuilder.js. `atlasCols` fed the invented
+                `atlas.png#27` syntax that was removed; `tileSize` describes the
+                source atlas in pixels while the map is built in world units.
+                Removed rather than left as decoration.
+
+The validator now rejects any Script param the attached script never references,
+taking the static suite to 2 484 checks. Verified by re-adding `tileSize` and
+confirming it fails.
 
 ### Movement is integrated, and the assertions are mutation-tested
 

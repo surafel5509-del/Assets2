@@ -41,6 +41,10 @@ var FRAMES = {
 
 function start() {
     health = maxHealth;
+    // `facing` is a param, and until now nothing read it: a fighter kept whatever
+    // flipX the scene happened to author until the first resetRound() corrected
+    // it.  Facing is -1 or +1, and the sprite is drawn looking left.
+    self.flipX = (typeof facing !== "undefined" && facing < 0);
     setState("idle");
 }
 

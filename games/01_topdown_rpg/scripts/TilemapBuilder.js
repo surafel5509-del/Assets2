@@ -10,7 +10,11 @@
 // by scaling a sub-rectangle of the atlas.  That keeps the object count near 50
 // and the draw calls with it.
 //
-// Params: tileSize=16, chunk=8, atlasCols=26
+// Params: chunk=8
+//
+// `atlasCols` used to be a param here; it fed an invented "atlas.png#27"
+// texture syntax that the engine never had.  Tiles are selected by playing a
+// declared single-frame clip now, so the grid lives in game.json instead.
 
 // tile id -> [atlasCol, atlasRow, solid]
 var TILES = {

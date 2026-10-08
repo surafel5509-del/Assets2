@@ -15,9 +15,11 @@ var pool = [];
 var poolIndex = 0;
 var carHalfWidth = 0.9;
 var lastPattern = -1;
+var lastZ = [];            // per-lane z of the last obstacle placed, for minGap
 
 function start() {
     pool.length = 0;
+    lastZ.length = 0;
     for (var i = 0; i < poolSize; i++) {
         var o = scene.spawn("Obstacle", 0, 0, 0);
         if (!o) continue;
@@ -71,7 +73,21 @@ function populateSegment(segment, difficulty) {
         if (!isBlocked) continue;
 
         var x = -halfW + laneW * (l + 0.5);
+
+        // `minGap` is the declared breathing room between obstacles in the same
+        // lane.  It was a param nothing read, so z was drawn freely per lane and
+        // two hazards could land within a car length of each other -- which the
+        // player reads as an unavoidable wall even though a lane was "clear".
         var z = segment.z - random(2, len - 2);
+        var gap = (typeof minGap !== "undefined") ? minGap : 0;
+        if (gap > 0 && lastZ[l] !== undefined) {
+            if (Math.abs(z - lastZ[l]) < gap) {
+                z = lastZ[l] - gap - random(0, 1.5);
+                if (z < segment.z - len + 1) continue;   // no room; skip this lane
+            }
+        }
+        lastZ[l] = z;
+
         place(segment.x + x, z, pickKind(difficulty));
     }
 }

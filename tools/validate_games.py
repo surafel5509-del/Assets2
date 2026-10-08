@@ -192,6 +192,31 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
                 declared_scripts.add(base)
                 rep.ok(os.path.exists(os.path.join(scripts_dir, base)),
                        f"{where}: script '{s}' has no file in scripts/")
+    # Every Script param must be read by the script it is attached to.
+    # applyParams() binds each "k=v" onto the script scope with putProperty, so a
+    # param the script never mentions is not an error the engine reports -- it
+    # just sits there unused while the value it was meant to set never changes.
+    for o in objects:
+        for c in o.get("components", []):
+            if c.get("type") != "Script" or not c.get("Script"):
+                continue
+            src_path = os.path.join(scripts_dir, c["Script"])
+            if not os.path.exists(src_path):
+                continue
+            code = open(src_path, encoding="utf-8").read()
+            code = re.sub(r"//[^\n]*", "", code)
+            code = re.sub(r"/\*.*?\*/", "", code, flags=re.S)
+            code = re.sub(r'"[^"\n]*"', "''", code)
+            where = f"{gid}/{name}: {o.get('name', '?')} ({c['Script']})"
+            for kv in re.split(r"[,\n;]", c.get("Params", "") or ""):
+                if "=" not in kv:
+                    continue
+                key = kv.split("=", 1)[0].strip()
+                if not key:
+                    continue
+                rep.ok(re.search(r"(?<![.\w])" + re.escape(key) + r"(?![\w])", code) is not None,
+                       f"{where}: param '{key}' is never referenced by the script -- dead value")
+
     # Parent references must resolve.
     for o in objects:
         p = o.get("parent")
