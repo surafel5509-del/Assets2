@@ -113,7 +113,10 @@ jobs:
 
       - name: Unit tests
         env:
-          SENGINE_SOURCE_APK: app/build/outputs/apk/debug/app-debug.apk
+          # Absolute, because the unit-test JVM's working directory is the module
+          # directory (app/), not the repository root -- a relative path here
+          # resolves to app/app/build/... and the test cannot find the APK.
+          SENGINE_SOURCE_APK: ${{ github.workspace }}/app/build/outputs/apk/debug/app-debug.apk
           SENGINE_KEYSTORE: /tmp/export.p12
           SENGINE_EXPORT_OUT: /tmp/exported-game.apk
         run: |
