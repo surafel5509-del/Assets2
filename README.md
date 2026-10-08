@@ -79,6 +79,7 @@ APK to a GitHub Release via
 | Game scripts, executed | **Verified.** `run_games.js` — 27 scripts × 240 frames, 89 checks |
 | Kotlin / Gradle | **Verified in CI.** 60 files compile; unit tests pass; debug + release APKs build |
 | APK packaging | **Verified in CI.** 25 pack ZIPs, 40 game entries, `index.json` present |
+| In-app APK export | **Verified in CI.** Exports a signed standalone game APK; `apksigner` verifies it, `aapt2` confirms the rewritten package, label and version |
 | Native Android build | **Not built** — no NDK, no `cmake`; the C++ core builds on the host only |
 | The four games on a device | **Not played** — no Android runtime here |
 

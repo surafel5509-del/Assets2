@@ -123,6 +123,7 @@ What is actually checked, and by what:
 | Game scripts, executed | `node tools/run_games.js` | **89 checks, 0 failures — PASS** |
 | Kotlin / Gradle | `./gradlew compileDebugKotlin testDebugUnitTest` (CI) | **Compiles; unit tests pass** |
 | APK | `./gradlew assembleDebug assembleRelease` (CI) | **Both build; 25 pack ZIPs, 40 game entries** |
+| In-app APK export | `testDebugUnitTest` with a built APK + keystore (CI) | **Exports a signed game APK; `apksigner` verifies, `aapt2` confirms the rewrite** |
 | Native Android build | — | **Not runnable**: no NDK, no `cmake` |
 
 The first four rows run locally. The Kotlin and APK rows run only in CI — the
