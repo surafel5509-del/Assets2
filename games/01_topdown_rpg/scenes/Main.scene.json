@@ -135,7 +135,7 @@
           "Friction": 0.9,
           "Bounciness": 0.0,
           "Gravity Scale": 0.0,
-          "Drag": 4.0
+          "Linear Drag": 4.0
         },
         {
           "type": "Collider2D",
@@ -194,7 +194,7 @@
           "Friction": 0.9,
           "Bounciness": 0.0,
           "Gravity Scale": 0.0,
-          "Drag": 5.0
+          "Linear Drag": 5.0
         },
         {
           "type": "Collider2D",
@@ -253,7 +253,7 @@
           "Friction": 0.9,
           "Bounciness": 0.0,
           "Gravity Scale": 0.0,
-          "Drag": 5.0
+          "Linear Drag": 5.0
         },
         {
           "type": "Collider2D",
@@ -580,7 +580,7 @@
           "Friction": 0.5,
           "Bounciness": 0.0,
           "Gravity Scale": 0.0,
-          "Drag": 0.0
+          "Linear Drag": 0.0
         }
       ]
     },

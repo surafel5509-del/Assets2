@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 1 154 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 2 295 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -199,3 +199,40 @@ called) took it from 9 checks to 72 and found four more:
 Classes 4 through 7 are not scripting bugs at all; they are scene-authoring bugs
 that only surface once something executes against the scene. Every one of them
 silently removes a feature.
+
+### Checking the harness against the engine
+
+A harness that models an API by hand can drift from it, and drift in one
+direction is worse than no harness at all: if the harness offers a member
+`Api.kt` does not have, it will pass a script the engine would reject. So the
+harness now parses `Api.kt` on every run and fails on any member it models that
+the engine does not expose.
+
+That check found `setParentTo()` immediately — `InventoryUI.js` called it,
+`Api.kt` never defined it, and the harness had been inventing it. Reparenting is
+supported by the engine (`Scene.duplicate` assigns `go.parent` directly) but was
+never exposed to scripts, while `getParent()` was. It is now, with a cycle check.
+
+The same audit found a property, `index`, that neither the engine nor any reader
+ever used — a dead write, removed rather than papered over with a property the
+engine does not have.
+
+### Scene props bind by display name
+
+`Rigidbody2D` declares its damping property as `"Linear Drag"`. Six components
+across two games said `"Drag"`. Nothing reports an unknown prop; the key is simply
+never read, so every one of those bodies ran with zero linear damping — the
+player and both fighters would have slid without ever settling.
+
+`validate_games.py` now derives the valid prop names for every component from
+`Components.kt` and rejects any key that is not one of them, which took the static
+suite from 1 154 checks to 2 295. The check was verified by reintroducing the bug
+and confirming it fails.
+
+### Movement is integrated, and the assertions are mutation-tested
+
+The harness integrates `vx`/`vy` into position each frame the way
+`PhysicsWorld.fixedStep` does, so "the player moved" means something. Each
+gameplay assertion was then mutation-tested: neutralising the player's velocity
+write makes the harness fail with *"the Player never moved under four seconds of
+input"*. An assertion that cannot fail is not a test.

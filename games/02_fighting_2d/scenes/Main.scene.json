@@ -227,7 +227,7 @@
           "Friction": 0.95,
           "Bounciness": 0.0,
           "Gravity Scale": 0.0,
-          "Drag": 8.0
+          "Linear Drag": 8.0
         },
         {
           "type": "Collider2D",
@@ -286,7 +286,7 @@
           "Friction": 0.95,
           "Bounciness": 0.0,
           "Gravity Scale": 0.0,
-          "Drag": 8.0
+          "Linear Drag": 8.0
         },
         {
           "type": "Collider2D",

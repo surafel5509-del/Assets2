@@ -125,7 +125,35 @@ def check_assets(game, packs, rep, gid):
     return declared_audio
 
 
+def component_props():
+    """Component type -> set of valid prop display names, read from Components.kt.
+
+    Props bind by their display name, so a scene that says "Drag" where the
+    component declares "Linear Drag" is not an error the engine reports -- the
+    key is simply never read and the value silently falls back to its default.
+    Deriving the table from the Kotlin keeps this from drifting.
+    """
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "app/src/main/java/com/sengine/engine/core/Components.kt")
+    if not os.path.exists(path):
+        return {}
+    src = open(path, encoding="utf-8").read()
+    out = {}
+    for block in re.split(r"\nclass ", src):
+        m = re.match(r"(\w+)\s*:\s*Component", block)
+        if not m:
+            continue
+        out[m.group(1)] = set(re.findall(r'Prop\.\w+\(\s*"([^"]+)"', block))
+    return out
+
+
+COMPONENT_PROPS = None
+
+
 def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
+    global COMPONENT_PROPS
+    if COMPONENT_PROPS is None:
+        COMPONENT_PROPS = component_props()
     name = os.path.basename(scene_path)
     try:
         with open(scene_path, encoding="utf-8") as f:
@@ -148,6 +176,14 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
             if not rep.ok(ctype in ENGINE_COMPONENTS,
                           f"{where}: unknown component type '{ctype}'"):
                 continue
+            valid = COMPONENT_PROPS.get(ctype)
+            if valid:
+                for key in c:
+                    if key in ("type", "enabled"):
+                        continue
+                    rep.ok(key in valid,
+                           f"{where}: {ctype} has no property '{key}' "
+                           f"(valid: {', '.join(sorted(valid))})")
             if ctype == "Script":
                 # Props serialise under their display names, so the script
                 # filename is at "Script", not "script".

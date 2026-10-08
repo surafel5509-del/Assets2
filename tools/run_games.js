@@ -204,7 +204,18 @@ class GameObj {
         this._animFps = 12;
         this._scripts = [];
 
+        this.bodyType = null;      // null = no Rigidbody2D
+        this.gravityScale = 1;
+        this.drag = 0;
+
         for (const c of (def.components || [])) {
+            if (c.type === 'Rigidbody2D') {
+                // Display names, as the scene serialises them.
+                this.bodyType = ({ Dynamic: 0, Kinematic: 1, Static: 2 })[c['Body Type']];
+                if (this.bodyType === undefined) this.bodyType = 0;
+                this.gravityScale = c['Gravity Scale'] === undefined ? 1 : c['Gravity Scale'];
+                this.drag = c['Linear Drag'] === undefined ? 0 : c['Linear Drag'];
+            }
             if (c.type === 'SpriteRenderer' && c.Texture) this._texture = c.Texture;
             if (c.type === 'TextRenderer' && c.Text !== undefined) this.text = c.Text;
             if (c.type === 'Animator') { this._animFrames = 8; }
@@ -392,6 +403,8 @@ class World {
         this.usedTextures = new Set();
         this.usedAudio = new Set();
         this.nextId = scene.nextId || 1000;
+        this.gravityX = scene.gravityX || 0;
+        this.gravityY = scene.gravityY || 0;
         this.time = 0;
         this.frame = 0;
         this.declaredAudio = declaredAudio;
@@ -407,6 +420,7 @@ class World {
             this.objects.push(go);
             this.byId.set(go._id, go);
             this.byName.set(go.name, go);
+            go._start = { x: go.x, y: go.y, z: go.z };
         }
     }
 
@@ -679,8 +693,24 @@ function runGame(gameDir) {
             }
         }
 
-        // advance animation clocks so isAnimationFinished() eventually returns true
-        for (const go of world.objects) go._animTime += DT;
+        // Integrate velocity, mirroring PhysicsWorld.fixedStep.  Scripts move by
+        // writing vx/vy and letting the body carry them; without this step nothing
+        // would ever change position and every movement assertion would be a lie.
+        for (const go of world.objects) {
+            if (!go.active || go._destroyed || go.bodyType === null) continue;
+            if (go.bodyType === 0) {
+                go.vx += world.gravityX * go.gravityScale * DT;
+                go.vy += world.gravityY * go.gravityScale * DT;
+                if (go.drag > 0) {
+                    const k = Math.max(0, 1 - go.drag * DT);
+                    go.vx *= k; go.vy *= k;
+                }
+                go.x += go.vx * DT; go.y += go.vy * DT;
+            } else if (go.bodyType === 1) {
+                go.x += go.vx * DT; go.y += go.vy * DT;
+            }
+            go._animTime += DT;      // so isAnimationFinished() eventually returns true
+        }
 
         world.time += DT;
     }
@@ -723,6 +753,80 @@ function runGame(gameDir) {
             if (!Number.isFinite(v)) fail(`${id}: '${go.name}'.${k} became ${v}`);
             else if (Math.abs(v) > 1e6) fail(`${id}: '${go.name}'.${k} ran away to ${v}`);
         }
+    }
+
+
+    // --- gameplay assertions
+    // Running without throwing is not the same as working.  Each game has to be
+    // shown to have actually done the thing it is for: the runner must have
+    // covered ground, the fighter must have taken damage, the day-night cycle
+    // must have moved.  These read the scripts' own state after the run.
+    const scriptState = {};
+    for (const a of attached) scriptState[a.file] = a.sandbox;
+    const stateOf = (file, key) => {
+        const sb = scriptState[file];
+        return sb ? sb[key] : undefined;
+    };
+    const moved = (name) => {
+        const go = world.byName.get(name);
+        if (!go) return false;
+        const st = go._start;
+        return st && (Math.abs(go.x - st.x) > 1e-3 || Math.abs(go.y - st.y) > 1e-3
+                   || Math.abs(go.z - st.z) > 1e-3);
+    };
+
+    if (id === '01_topdown_rpg') {
+        // The player is driven by synthetic input for four seconds; if it never
+        // moved, the controller is not wired to input.
+        ok(moved('Player'), `${id}: the Player never moved under four seconds of input`);
+        const enemies = ['EnemySkeleton', 'EnemyVampire'];
+        for (const e of enemies) {
+            const go = world.byName.get(e);
+            ok(go && go.active, `${id}: '${e}' is not active -- the game ships with no enemies`);
+        }
+        // Enemies patrol, so they must move too.
+        ok(moved('EnemySkeleton'), `${id}: EnemySkeleton never moved -- its AI is not ticking`);
+        const inv = world.byName.get('InventoryPanel');
+        ok(inv && inv.active, `${id}: InventoryPanel is inactive, so it can never receive update()`);
+    }
+
+    if (id === '02_fighting_2d') {
+        const hp1 = stateOf('Fighter.js', 'health');
+        // Both fighters run the same file, so the last instance wins; what matters
+        // is that health is a real number in range and not stuck at a sentinel.
+        ok(typeof hp1 === 'number' && Number.isFinite(hp1) && hp1 >= 0 && hp1 <= 100,
+           `${id}: fighter health is not a sane value (${hp1})`);
+        // The select screen must have activated the fighters it chose.
+        const p1 = world.byName.get('Fighter_P1');
+        ok(p1 && p1.active, `${id}: Fighter_P1 was never activated by character select`);
+        // A round must have been started.
+        const rn = stateOf('RoundManager.js', 'roundNumber');
+        ok(typeof rn === 'number' && rn >= 1, `${id}: roundNumber is not advancing (${rn})`);
+    }
+
+    if (id === '03_action_3d') {
+        ok(moved('Hero'), `${id}: the Hero never moved under four seconds of input`);
+        // The lighting rig advances a 600s cycle; in 4s the hour must move.
+        const hour = stateOf('LightingRig.js', 'hour');
+        ok(typeof hour === 'number' && hour !== 9,
+           `${id}: the day-night cycle never advanced (hour still ${hour})`);
+        const sun = world.byName.get('Sun');
+        ok(sun && typeof sun.lightIntensity === 'number',
+           `${id}: the Sun's lightIntensity was never set`);
+        for (const e of ['Creature', 'RidgeGuard']) {
+            const go = world.byName.get(e);
+            ok(go && go.active, `${id}: '${e}' is not active -- the game ships with no enemies`);
+        }
+    }
+
+    if (id === '04_runner_3d') {
+        const dist = stateOf('TrackGenerator.js', 'distance');
+        ok(typeof dist === 'number' && dist > 0,
+           `${id}: the runner covered no distance (${dist}) -- the track never advanced`);
+        const spd = stateOf('VehicleController.js', 'speed');
+        ok(typeof spd === 'number' && spd > 0,
+           `${id}: the vehicle never reached speed (${spd})`);
+        ok(world.spawnedCount > 0, `${id}: nothing was spawned -- no track, obstacles or pickups`);
     }
 
     return {
