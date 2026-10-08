@@ -46,7 +46,10 @@ cd native && make
 #   → 219 checks, 0 failures — RESULT: PASS
 
 # Regenerate the asset-store catalogue from Assets/*.zip
-python3 tools/build_asset_store.py           # Pillow recommended
+# Pillow is required, not optional: without it every sprite grid is a guess, and
+# the generator now refuses to overwrite the 154 pixel-verified grids rather than
+# silently downgrade them.  Use --force if you really mean it.
+python3 tools/build_asset_store.py
 
 # Validate all four games against the store manifest and the engine
 python3 tools/validate_games.py

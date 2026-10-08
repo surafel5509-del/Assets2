@@ -150,9 +150,16 @@ obtain permission. It is called out here rather than buried.
 ## 6. Regenerating
 
 ```bash
-python3 tools/build_asset_store.py            # needs Pillow for sheet detection
+python3 tools/build_asset_store.py            # Pillow required; see below
 python3 tools/validate_games.py               # games vs. manifest vs. engine
 ```
+
+**Pillow is required, not optional.** Without it the grid probe falls back to a
+heuristic and marks every sheet `guess: true`. A guessed grid is worse than no
+grid: the games place their tiles and animation frames from these numbers, and the
+validator cross-checks against them. Running the generator without Pillow over the
+committed catalogue would replace 154 pixel-verified grids with 2 901 guesses, so
+the generator now refuses and exits non-zero unless `--force` is passed.
 
 Without Pillow the tool still runs but every sheet becomes a `guess`. The
 sandbox has Pillow in `/home/user/.venv` because system-wide `pip install` is

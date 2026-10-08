@@ -551,6 +551,8 @@ def main() -> int:
     ap.add_argument("--repo", default=default_repo)
     ap.add_argument("--cache", default=None, help="scratch extraction dir (default .asset-cache/)")
     ap.add_argument("--no-pil", action="store_true", help="skip Pillow sheet analysis")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite a pixel-verified manifest with guessed grids")
     ap.add_argument("--out", default=None)
     ap.add_argument("--keep-cache", action="store_true")
     args = ap.parse_args()
@@ -566,6 +568,27 @@ def main() -> int:
     except ImportError:
         use_pil = False
     if not use_pil:
+        # Without Pillow every grid is a guess, and a guess is worse than nothing:
+        # the games and the validator trust these numbers.  Regenerating over a
+        # manifest that was built with real pixel analysis would silently replace
+        # verified grids with heuristics, so refuse unless asked to.
+        verified = 0
+        if os.path.exists(out_path):
+            try:
+                with open(out_path, encoding="utf-8") as f:
+                    prev = json.load(f)
+                verified = sum(1 for pk in prev.get("packs", [])
+                               for fl in pk.get("files", [])
+                               if fl.get("sheet") and not fl["sheet"].get("guess"))
+            except Exception:
+                verified = 0
+        if verified and not args.force:
+            print(f"error: {out_path} already holds {verified} pixel-verified sprite "
+                  f"grids,\n       and Pillow is unavailable so this run could only "
+                  f"guess them.\n"
+                  f"       Install Pillow, or pass --force to overwrite anyway.",
+                  file=sys.stderr)
+            return 1
         print("note: Pillow unavailable - sprite-sheet grids will be heuristically guessed")
 
     zips = sorted(f for f in os.listdir(src_dir) if f.lower().endswith(".zip"))
