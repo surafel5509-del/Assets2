@@ -1,0 +1,560 @@
+{
+  "id": "02_fighting_2d",
+  "title": "Blade & Bulwark",
+  "genre": "2D Versus Fighting",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "RoundManager.js",
+    "Fighter.js",
+    "ComboSystem.js",
+    "HealthBarUI.js",
+    "CharacterSelect.js",
+    "HitboxDebug.js"
+  ],
+  "controls": {
+    "move": "virtual joystick (walk / crouch / jump)",
+    "light": "action button A",
+    "heavy": "action button B",
+    "block": "hold joystick away from the opponent",
+    "pause": "tap the round timer"
+  },
+  "systems": [
+    "frame-data driven attacks: startup, active and recovery windows per move",
+    "separate hurtbox and hitbox rectangles, evaluated per active frame",
+    "combo counter with scaling damage and a prunable combo window",
+    "block, chip damage, blockstun and pushback",
+    "best-of-three rounds with round intros, KO slow motion and a winner banner",
+    "character select reading both fighters' full move sets from data"
+  ],
+  "frameData": {
+    "note": "Frame counts below are in 60fps frames and come from the sheet the store detected: every Human_Soldier_Sword_Shield and Monster_Slime strip is 96x96. Attack1 has 8 frames, Attack2 has 8, Walk 8, Idle 6, Block 6, Hurt 4, Death 10, Jump_Fall 6.",
+    "light": {
+      "startup": 4,
+      "active": 3,
+      "recovery": 7,
+      "damage": 6,
+      "hitstun": 12,
+      "blockstun": 6,
+      "pushback": 1.2,
+      "clip": "attack1"
+    },
+    "heavy": {
+      "startup": 9,
+      "active": 4,
+      "recovery": 16,
+      "damage": 14,
+      "hitstun": 22,
+      "blockstun": 10,
+      "pushback": 3.0,
+      "clip": "attack2"
+    }
+  },
+  "assets": [
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Idle-Sheet.png",
+      "as": "soldier_idle.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 8,
+        "loop": true
+      },
+      "clips": {
+        "soldier_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Walk-Sheet.png",
+      "as": "soldier_walk.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 12,
+        "loop": true
+      },
+      "clips": {
+        "soldier_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Attack1-Sheet.png",
+      "as": "soldier_attack1.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 20,
+        "loop": false
+      },
+      "clips": {
+        "soldier_attack1": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 20,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Attack2-Sheet.png",
+      "as": "soldier_attack2.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 18,
+        "loop": false
+      },
+      "clips": {
+        "soldier_attack2": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 18,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Block-Sheet.png",
+      "as": "soldier_block.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 10,
+        "loop": true
+      },
+      "clips": {
+        "soldier_block": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 10,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Hurt-Sheet.png",
+      "as": "soldier_hurt.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 4,
+        "rows": 1,
+        "frames": 4,
+        "fps": 16,
+        "loop": false
+      },
+      "clips": {
+        "soldier_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 16,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Death-Sheet.png",
+      "as": "soldier_death.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 10,
+        "rows": 1,
+        "frames": 10,
+        "fps": 14,
+        "loop": false
+      },
+      "clips": {
+        "soldier_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 14,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Jump_Fall-Sheet.png",
+      "as": "soldier_jump.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 12,
+        "loop": false
+      },
+      "clips": {
+        "soldier_jump": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 12,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Idle-Sheet.png",
+      "as": "slime_idle.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 8,
+        "loop": true
+      },
+      "clips": {
+        "slime_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Walk-Sheet.png",
+      "as": "slime_walk.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 12,
+        "loop": true
+      },
+      "clips": {
+        "slime_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Attack1-Sheet.png",
+      "as": "slime_attack1.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 20,
+        "loop": false
+      },
+      "clips": {
+        "slime_attack1": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 20,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Attack2-Sheet.png",
+      "as": "slime_attack2.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 18,
+        "loop": false
+      },
+      "clips": {
+        "slime_attack2": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 18,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Block-Sheet.png",
+      "as": "slime_block.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 10,
+        "loop": true
+      },
+      "clips": {
+        "slime_block": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 10,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Hurt-Sheet.png",
+      "as": "slime_hurt.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 4,
+        "rows": 1,
+        "frames": 4,
+        "fps": 16,
+        "loop": false
+      },
+      "clips": {
+        "slime_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 16,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Death-Sheet.png",
+      "as": "slime_death.png",
+      "anim": {
+        "frameW": 96,
+        "frameH": 96,
+        "columns": 10,
+        "rows": 1,
+        "frames": 10,
+        "fps": 14,
+        "loop": false
+      },
+      "clips": {
+        "slime_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 14,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Background/Background.png",
+      "as": "stage_bg.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/blue.png",
+      "as": "ui_bar_fill.png",
+      "nineSlice": {
+        "border": 4
+      }
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/grey.png",
+      "as": "ui_bar_back.png",
+      "nineSlice": {
+        "border": 4
+      }
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/green.png",
+      "as": "ui_bar_health.png",
+      "nineSlice": {
+        "border": 4
+      }
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/Rotated/spark_05_rotated.png",
+      "as": "fx_spark.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/slash_01.png",
+      "as": "fx_slash.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_select.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_hit.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_block.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_swing.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-b.ogg",
+      "as": "sfx_ko.ogg"
+    }
+  ]
+}

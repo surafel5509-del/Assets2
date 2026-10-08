@@ -1,0 +1,188 @@
+{
+  "id": "04_runner_3d",
+  "title": "Neon Overdrive",
+  "genre": "3D Endless Runner / Racer",
+  "orientation": 1,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "TrackGenerator.js",
+    "VehicleController.js",
+    "ObstacleSpawner.js",
+    "PickupSystem.js",
+    "RacerHUD.js",
+    "CameraRig.js",
+    "MenuFlow.js"
+  ],
+  "controls": {
+    "steer": "left joystick X, or drag left/right",
+    "jump": "action button A",
+    "drift/nitro": "hold action button B",
+    "pause": "on-screen button"
+  },
+  "systems": [
+    "procedural track: a fixed-size pool of segments recycled as the vehicle passes them",
+    "lane-free continuous steering with clamped lateral velocity",
+    "obstacle spawning weighted by distance so difficulty ramps without a level file",
+    "pickup collection with a combo window and a nitro meter fed by pickups",
+    "speed-based camera FOV kick and motion streaks"
+  ],
+  "engineNotes": {
+    "pooling": "Nothing is spawned at runtime except pickups and obstacles, and even those come from pre-placed prototype objects that are deactivated rather than destroyed.  Per-frame allocation is what causes the periodic hitch that ruins a runner.",
+    "track": "The track is 14 recycled segments of 24 units.  Total live geometry stays constant regardless of distance travelled, so memory is flat over an infinite run.",
+    "determinism": "Obstacle layout uses a seeded PRNG so a run can be reproduced from its seed, which is what makes a leaderboard honest without any server."
+  },
+  "assets": [
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_cone.obj",
+      "as": "tree_cone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_largeA.obj",
+      "as": "rock_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log_large.obj",
+      "as": "log_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bush.obj",
+      "as": "bush.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_center_wood.obj",
+      "as": "bridge.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockHalf_rock.obj",
+      "as": "cliff_half.obj"
+    },
+    {
+      "pack": "spritestack_cars",
+      "path": "BlueCar.png",
+      "as": "car_player.png",
+      "anim": {
+        "columns": 9,
+        "rows": 1,
+        "frames": 9
+      },
+      "clips": {
+        "car_idle": {
+          "frames": [
+            0
+          ],
+          "fps": 1,
+          "loop": true
+        },
+        "car_drive": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "fps": 14,
+          "loop": true
+        },
+        "car_jump": {
+          "frames": [
+            3,
+            4
+          ],
+          "fps": 10,
+          "loop": false
+        },
+        "car_crash": {
+          "frames": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "fps": 12,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "all_cars",
+      "path": "car_005.png",
+      "as": "car_traffic.png"
+    },
+    {
+      "pack": "all_cars",
+      "path": "car_009.png",
+      "as": "car_traffic2.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-goblet.png",
+      "as": "pickup_fuel.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-crown.png",
+      "as": "pickup_coin.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_button-bag.png",
+      "as": "ui_panel.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_foodbar.png",
+      "as": "ui_nitrobar.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_02.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_02.png",
+      "as": "fx_glow.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_pickup.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_crash.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-b.ogg",
+      "as": "sfx_nitro.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_nearmiss.ogg"
+    }
+  ]
+}

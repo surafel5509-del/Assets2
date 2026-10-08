@@ -1,0 +1,816 @@
+{
+  "name": "Main",
+  "gravityX": 0.0,
+  "gravityY": 0.0,
+  "gravityZ": 0.0,
+  "gravity3D": -9.8,
+  "ambient": "#FF707080",
+  "fogColor": "#FF000000",
+  "fogStart": 0.0,
+  "fogEnd": 0.0,
+  "fog": false,
+  "nextId": 31,
+  "objects": [
+    {
+      "id": 1,
+      "name": "Main Camera",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 1.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Camera",
+          "enabled": true,
+          "Size": 6.0,
+          "Background": "#FF0E1116",
+          "Follow Target": "",
+          "Follow Smoothing": 5.0,
+          "Post FX": "None",
+          "FX Intensity": 1.0,
+          "FX Shader": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "StageBackground",
+      "tag": "Untagged",
+      "active": true,
+      "order": -100,
+      "x": 0.0,
+      "y": 1.2,
+      "rotation": 0.0,
+      "scaleX": 14.0,
+      "scaleY": 8.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFB8C0CC",
+          "Texture": "stage_bg.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "StageFloor",
+      "tag": "Untagged",
+      "active": true,
+      "order": -90,
+      "x": 0.0,
+      "y": -0.55,
+      "rotation": 0.0,
+      "scaleX": 14.0,
+      "scaleY": 0.6,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF2A2E36",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "RoundManager",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "RoundManager.js",
+          "Params": "roundsToWin=2, roundTime=60, koSlowSeconds=1.4"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "ComboSystem",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "ComboSystem.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "CharacterSelect",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "CharacterSelect.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "HealthBars",
+      "tag": "UI",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "HealthBarUI.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "HitboxDebug",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "HitboxDebug.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Fighter_P1",
+      "tag": "Fighter",
+      "active": false,
+      "order": 10,
+      "x": -2.6,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.6,
+      "scaleY": 2.6,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "soldier_idle.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "soldier_idle.anim",
+          "Play On Start": true,
+          "Speed": 1.0
+        },
+        {
+          "type": "Rigidbody2D",
+          "enabled": true,
+          "Body Type": "Dynamic",
+          "Mass": 1.0,
+          "Friction": 0.95,
+          "Bounciness": 0.0,
+          "Gravity Scale": 0.0,
+          "Drag": 8.0
+        },
+        {
+          "type": "Collider2D",
+          "enabled": true,
+          "Shape": "Box",
+          "Width": 0.55,
+          "Height": 0.9,
+          "Is Trigger": false,
+          "Offset X": 0.0,
+          "Offset Y": 0.0
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Fighter.js",
+          "Params": "maxHealth=100, walkSpeed=2.6, jumpForce=7.5, facing=1, skin=soldier, states=idle|walk|block|hurt|jump|attack1|attack2|death"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Fighter_P2",
+      "tag": "Fighter",
+      "active": false,
+      "order": 10,
+      "x": 2.6,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.6,
+      "scaleY": 2.6,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "slime_idle.png",
+          "Flip X": true,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "slime_idle.anim",
+          "Play On Start": true,
+          "Speed": 1.0
+        },
+        {
+          "type": "Rigidbody2D",
+          "enabled": true,
+          "Body Type": "Dynamic",
+          "Mass": 1.0,
+          "Friction": 0.95,
+          "Bounciness": 0.0,
+          "Gravity Scale": 0.0,
+          "Drag": 8.0
+        },
+        {
+          "type": "Collider2D",
+          "enabled": true,
+          "Shape": "Box",
+          "Width": 0.55,
+          "Height": 0.9,
+          "Is Trigger": false,
+          "Offset X": 0.0,
+          "Offset Y": 0.0
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Fighter.js",
+          "Params": "maxHealth=82, walkSpeed=3.4, jumpForce=8.6, facing=-1, skin=slime, states=idle|walk|block|hurt|attack1|attack2|death"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "ImpactFX",
+      "tag": "FX",
+      "active": false,
+      "order": 40,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "ParticleEmitter",
+          "enabled": true,
+          "Emitting": false,
+          "Rate": 0.0,
+          "Lifetime": 0.3,
+          "Speed": 5.0,
+          "Direction": 0.0,
+          "Spread": 360.0,
+          "Start Size": 0.4,
+          "End Size": 0.0,
+          "Start Color": "#FFFFD24A",
+          "End Color": "#00FF6020",
+          "Gravity": 0.0,
+          "Max Particles": 60,
+          "Additive Blend": true,
+          "Texture": "fx_spark.png"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "DebugBox",
+      "tag": "Debug",
+      "active": false,
+      "order": 200,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#664CC26A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "HealthBackP1",
+      "tag": "UI",
+      "active": true,
+      "order": 98,
+      "x": -3.3,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 6.0,
+      "scaleY": 0.45,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF22252B",
+          "Texture": "ui_bar_back.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "HealthGhostP1",
+      "tag": "UI",
+      "active": true,
+      "order": 99,
+      "x": -6.3,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.34,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFF0C0",
+          "Texture": "ui_bar_fill.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "HealthFillP1",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": -6.3,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.34,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF4CC26A",
+          "Texture": "ui_bar_health.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "HealthBackP2",
+      "tag": "UI",
+      "active": true,
+      "order": 98,
+      "x": 3.3,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 6.0,
+      "scaleY": 0.45,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF22252B",
+          "Texture": "ui_bar_back.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "HealthGhostP2",
+      "tag": "UI",
+      "active": true,
+      "order": 99,
+      "x": 6.3,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.34,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFF0C0",
+          "Texture": "ui_bar_fill.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "HealthFillP2",
+      "tag": "UI",
+      "active": true,
+      "order": 100,
+      "x": 6.3,
+      "y": 2.5,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 0.34,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF4CC26A",
+          "Texture": "ui_bar_health.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "NameP1",
+      "tag": "UI",
+      "active": true,
+      "order": 101,
+      "x": -6.3,
+      "y": 2.05,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "SOLDIER",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FFFFFFFF",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "NameP2",
+      "tag": "UI",
+      "active": true,
+      "order": 101,
+      "x": 6.3,
+      "y": 2.05,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "SLIME",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FFFFFFFF",
+          "Align": "Right",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "TimerText",
+      "tag": "UI",
+      "active": true,
+      "order": 102,
+      "x": 0.0,
+      "y": 2.45,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "60",
+          "Screen Space UI": false,
+          "Size": 0.9,
+          "Color": "#FFFFD24A",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "BannerText",
+      "tag": "UI",
+      "active": false,
+      "order": 110,
+      "x": 0.0,
+      "y": 0.6,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "ROUND 1",
+          "Screen Space UI": false,
+          "Size": 1.2,
+          "Color": "#FFFFFFFF",
+          "Align": "Center",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "ComboText",
+      "tag": "UI",
+      "active": false,
+      "order": 108,
+      "x": -4.6,
+      "y": 1.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "2 HIT COMBO",
+          "Screen Space UI": false,
+          "Size": 0.55,
+          "Color": "#FFFFD24A",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "HitboxButton",
+      "tag": "UI",
+      "active": true,
+      "order": 105,
+      "x": 6.0,
+      "y": -2.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "HITBOX",
+          "Screen Space UI": false,
+          "Size": 0.35,
+          "Color": "#FF9AA0A6",
+          "Align": "Center",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "SelectPanel",
+      "tag": "UI",
+      "active": true,
+      "order": 150,
+      "x": 0.0,
+      "y": 0.0,
+      "rotation": 0.0,
+      "scaleX": 14.0,
+      "scaleY": 7.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#F5101319",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "SelectPortrait",
+      "tag": "UI",
+      "active": true,
+      "order": 151,
+      "x": -2.2,
+      "y": 0.4,
+      "rotation": 0.0,
+      "scaleX": 2.6,
+      "scaleY": 2.6,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "soldier_idle.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "SelectName",
+      "tag": "UI",
+      "active": true,
+      "order": 152,
+      "x": 2.4,
+      "y": 1.6,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "P1  SOLDIER",
+          "Screen Space UI": false,
+          "Size": 0.7,
+          "Color": "#FFFFD24A",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "SelectBlurb",
+      "tag": "UI",
+      "active": true,
+      "order": 152,
+      "x": 2.4,
+      "y": 0.9,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "Sword and shield.",
+          "Screen Space UI": false,
+          "Size": 0.34,
+          "Color": "#FFB8BEC8",
+          "Align": "Left",
+          "Bold": false
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "ChosenP1",
+      "tag": "UI",
+      "active": true,
+      "order": 152,
+      "x": 2.4,
+      "y": -0.4,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "P1  - - -",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FF6A6E76",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "ChosenP2",
+      "tag": "UI",
+      "active": true,
+      "order": 152,
+      "x": 2.4,
+      "y": -0.9,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "P2  - - -",
+          "Screen Space UI": false,
+          "Size": 0.4,
+          "Color": "#FF6A6E76",
+          "Align": "Left",
+          "Bold": true
+        }
+      ]
+    }
+  ]
+}

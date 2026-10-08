@@ -1,0 +1,501 @@
+{
+  "id": "03_action_3d",
+  "title": "Hollow Ridge",
+  "genre": "3D Action-Adventure",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "ThirdPersonCamera.js",
+    "CharacterController3D.js",
+    "EnemyAI3D.js",
+    "InteractionSystem.js",
+    "Combat3D.js",
+    "LightingRig.js",
+    "AdventureHUD.js"
+  ],
+  "controls": {
+    "move": "left joystick, camera-relative",
+    "look": "right-side drag orbits the camera",
+    "attack": "action button A",
+    "interact": "action button B (context prompt)",
+    "jump": "swipe up on the left joystick"
+  },
+  "systems": [
+    "camera-relative movement: input is rotated by the camera yaw so 'up' always means away from the camera",
+    "orbit camera with collision pull-in, pitch clamps and target smoothing",
+    "character controller with gravity, ground snapping, coyote time and jump buffering",
+    "enemy AI: patrol spline, hearing radius, line-of-sight raycast, pursuit and attack",
+    "environmental interaction: levers, chests and a day/night light rig",
+    "3D combat with a spherical sweep and stagger windows"
+  ],
+  "engineNotes": {
+    "models": "MeshRenderer loads .obj (AssetKind.MODEL = [\"obj\"]).  Every Kenney Nature Kit model ships in DAE/FBX/GLTF/OBJ/STL; this game references the OBJ path and the store reports the rest in altFormats.",
+    "characters": "The Nature Kit has no rigged characters, so characters are billboarded sprites over 3D geometry -- a documented trade-off, not a missing asset.  The hero uses the FreeCharactersAnimationsAssetPack 96x96 sheets (all grid-verified).  The Memao 384x1968 sheet was tried first and rejected: two of its columns have sprites bleeding across row boundaries, so it has no admissible uniform grid and the store correctly declines to guess one.",
+    "shadows": "Dynamic lighting uses the engine's directional Light plus a projected blob shadow sprite, because cascaded shadow maps belong to the Vulkan backend (see docs/02-graphics.md), not the GLES2 runtime this scene runs on today."
+  },
+  "assets": [
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_default.obj",
+      "as": "tree_default.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_cone.obj",
+      "as": "tree_cone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_blocks.obj",
+      "as": "tree_blocks.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_block_rock.obj",
+      "as": "cliff_rock.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockHalf_rock.obj",
+      "as": "cliff_half.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_largeA.obj",
+      "as": "rock_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/grass_large.obj",
+      "as": "grass_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bush.obj",
+      "as": "bush.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bushDetailed.obj",
+      "as": "bush_detailed.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log_large.obj",
+      "as": "log_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/campfire_logs.obj",
+      "as": "campfire.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/mushroom_redGroup.obj",
+      "as": "mushrooms.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/flower_purpleA.obj",
+      "as": "flower.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tent_smallOpen.obj",
+      "as": "tent.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_center_wood.obj",
+      "as": "bridge.obj"
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Idle-Sheet.png",
+      "as": "hero_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 8,
+        "loop": true
+      },
+      "clips": {
+        "hero_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Walk-Sheet.png",
+      "as": "hero_walk.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 12,
+        "loop": true
+      },
+      "clips": {
+        "hero_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Attack1-Sheet.png",
+      "as": "hero_attack.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 18,
+        "loop": false
+      },
+      "clips": {
+        "hero_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 18,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Jump_Fall-Sheet.png",
+      "as": "hero_jump.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 10,
+        "loop": false
+      },
+      "clips": {
+        "hero_jump": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Hurt-Sheet.png",
+      "as": "hero_hurt.png",
+      "anim": {
+        "columns": 4,
+        "rows": 1,
+        "frames": 4,
+        "fps": 12,
+        "loop": false
+      },
+      "clips": {
+        "hero_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 12,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Death-Sheet.png",
+      "as": "hero_death.png",
+      "anim": {
+        "columns": 10,
+        "rows": 1,
+        "frames": 10,
+        "fps": 14,
+        "loop": false
+      },
+      "clips": {
+        "hero_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 14,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Idle-Sheet.png",
+      "as": "guard_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 8,
+        "loop": true
+      },
+      "clips": {
+        "guard_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Walk-Sheet.png",
+      "as": "guard_walk.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 12,
+        "loop": true
+      },
+      "clips": {
+        "guard_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Attack1-Sheet.png",
+      "as": "guard_attack.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 18,
+        "loop": false
+      },
+      "clips": {
+        "guard_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 18,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Human_Soldier_Sword_Shield/With_Shadows/Human_Soldier_Sword_Shield_Death-Sheet.png",
+      "as": "guard_death.png",
+      "anim": {
+        "columns": 10,
+        "rows": 1,
+        "frames": 10,
+        "fps": 14,
+        "loop": false
+      },
+      "clips": {
+        "guard_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 14,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Idle-Sheet.png",
+      "as": "creature_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 8,
+        "loop": true
+      },
+      "clips": {
+        "creature_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "freecharactersanimationsassetpack",
+      "path": "SpriteSheets(96x96)/Monster_Slime/With_Shadows/Monster_Slime_Attack1-Sheet.png",
+      "as": "creature_attack.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 18,
+        "loop": false
+      },
+      "clips": {
+        "creature_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 18,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-sword.png",
+      "as": "icon_sword.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-chest.png",
+      "as": "icon_chest.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-goblet.png",
+      "as": "icon_potion.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-chatbubble.png",
+      "as": "icon_prompt.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_foodbar.png",
+      "as": "ui_healthbar.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/fire_01.png",
+      "as": "fx_fire.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_03.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_03.png",
+      "as": "fx_shadow.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_hit.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_swing.ogg"
+    }
+  ]
+}

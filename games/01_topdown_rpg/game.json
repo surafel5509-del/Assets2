@@ -1,0 +1,637 @@
+{
+  "id": "01_topdown_rpg",
+  "title": "Emberfall - A Top-Down Adventure",
+  "genre": "2D Top-Down RPG / Adventure",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "GameManager.js",
+    "PlayerController.js",
+    "EnemyAI.js",
+    "Combat.js",
+    "InventoryUI.js",
+    "NpcDialogue.js",
+    "TilemapBuilder.js"
+  ],
+  "controls": {
+    "move": "virtual joystick (8-direction)",
+    "attack": "action button A",
+    "interact": "action button B",
+    "inventory": "tap the bag icon / keyboard I"
+  },
+  "systems": [
+    "8-direction movement on a 4-direction sprite sheet (see README: sprite directions)",
+    "tilemap built at runtime from a tileset atlas + a byte-coded map",
+    "finite-state enemy AI: patrol / chase / attack / hurt / die",
+    "melee combat with directional arcs, invulnerability frames and knockback",
+    "inventory + equipment HUD driven by the imported icon set",
+    "dialogue system with branching NPC pages"
+  ],
+  "spriteDirections": {
+    "note": "blonde_man.png is 32x32 in a 4x8 grid. Rows 0-3 are the walk cycle for down/left/right/up (col 0 and col 3 are the same stance frame). Rows 4-7 repeat those four directions as a 2-frame action cycle. Verified by hashing all 32 cells: 20 are unique and (0,0)==(0,3)==(4,0)==(4,2).",
+    "walkRows": {
+      "down": 0,
+      "left": 1,
+      "right": 2,
+      "up": 3
+    },
+    "actionRows": {
+      "down": 4,
+      "left": 5,
+      "right": 6,
+      "up": 7
+    }
+  },
+  "assets": [
+    {
+      "pack": "rpg_top_down_character_asset_pack_free",
+      "path": "RPG Top Down Characters - Free Version/Blonde Man/blonde_man.png",
+      "as": "player.png",
+      "anim": {
+        "frameW": 32,
+        "frameH": 32,
+        "columns": 4,
+        "rows": 8,
+        "frames": 32
+      },
+      "clips": {
+        "walk_down": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 8,
+          "loop": true
+        },
+        "walk_left": {
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 8,
+          "loop": true
+        },
+        "walk_right": {
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "fps": 8,
+          "loop": true
+        },
+        "walk_up": {
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "fps": 8,
+          "loop": true
+        },
+        "act_down": {
+          "frames": [
+            16,
+            17,
+            18,
+            19
+          ],
+          "fps": 12,
+          "loop": false
+        },
+        "act_left": {
+          "frames": [
+            20,
+            21,
+            22,
+            23
+          ],
+          "fps": 12,
+          "loop": false
+        },
+        "act_right": {
+          "frames": [
+            24,
+            25,
+            26,
+            27
+          ],
+          "fps": 12,
+          "loop": false
+        },
+        "act_up": {
+          "frames": [
+            28,
+            29,
+            30,
+            31
+          ],
+          "fps": 12,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "rpg_top_down_character_asset_pack_free",
+      "path": "RPG Top Down Characters - Free Version/Blonde Man/blonde_man_shadow.png",
+      "as": "player_shadow.png",
+      "anim": {
+        "columns": 4,
+        "rows": 8,
+        "frames": 32
+      }
+    },
+    {
+      "pack": "rpg_top_down_character_asset_pack_free",
+      "path": "RPG Top Down Characters - Free Version/Blue Haired Woman/blue_haired_woman.png",
+      "as": "npc_villager.png",
+      "anim": {
+        "columns": 4,
+        "rows": 8,
+        "frames": 32
+      }
+    },
+    {
+      "pack": "legacy_fantasy_debug_map",
+      "path": "Assets/Tiles.png",
+      "as": "tileset_overworld.png",
+      "clips": {
+        "tile_0": {
+          "frames": [
+            27
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_1": {
+          "frames": [
+            28
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_2": {
+          "frames": [
+            29
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_3": {
+          "frames": [
+            56
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_4": {
+          "frames": [
+            57
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_5": {
+          "frames": [
+            84
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_6": {
+          "frames": [
+            85
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_7": {
+          "frames": [
+            112
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_8": {
+          "frames": [
+            113
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "tile_9": {
+          "frames": [
+            140
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      },
+      "tileset": {
+        "columns": 26,
+        "rows": 29,
+        "tileSize": 16
+      }
+    },
+    {
+      "pack": "final",
+      "path": "Tiles.png",
+      "as": "tileset_ruins.png",
+      "tileset": {
+        "tileSize": 16,
+        "columns": 22,
+        "rows": 24
+      }
+    },
+    {
+      "pack": "final",
+      "path": "Background_0.png",
+      "as": "bg_far.png"
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_idle.png",
+      "as": "skeleton_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 6,
+        "loop": true
+      },
+      "clips": {
+        "skeleton_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 6,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_movement.png",
+      "as": "skeleton_walk.png",
+      "anim": {
+        "columns": 10,
+        "rows": 1,
+        "frames": 10,
+        "fps": 10,
+        "loop": true
+      },
+      "clips": {
+        "skeleton_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 10,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_attack.png",
+      "as": "skeleton_attack.png",
+      "anim": {
+        "columns": 9,
+        "rows": 1,
+        "frames": 9,
+        "fps": 14,
+        "loop": false
+      },
+      "clips": {
+        "skeleton_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "fps": 14,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_take_damage.png",
+      "as": "skeleton_hurt.png",
+      "anim": {
+        "columns": 5,
+        "rows": 1,
+        "frames": 5,
+        "fps": 14,
+        "loop": false
+      },
+      "clips": {
+        "skeleton_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "fps": 14,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_death.png",
+      "as": "skeleton_death.png",
+      "anim": {
+        "columns": 17,
+        "rows": 1,
+        "frames": 17,
+        "fps": 16,
+        "loop": false
+      },
+      "clips": {
+        "skeleton_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "fps": 16,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_idle.png",
+      "as": "vampire_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6,
+        "fps": 6,
+        "loop": true
+      },
+      "clips": {
+        "vampire_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 6,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_movement.png",
+      "as": "vampire_walk.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8,
+        "fps": 10,
+        "loop": true
+      },
+      "clips": {
+        "vampire_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 10,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_attack.png",
+      "as": "vampire_attack.png",
+      "anim": {
+        "columns": 16,
+        "rows": 1,
+        "frames": 16,
+        "fps": 16,
+        "loop": false
+      },
+      "clips": {
+        "vampire_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "fps": 16,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_death.png",
+      "as": "vampire_death.png",
+      "anim": {
+        "columns": 14,
+        "rows": 1,
+        "frames": 14,
+        "fps": 16,
+        "loop": false
+      },
+      "clips": {
+        "vampire_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fps": 16,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-sword.png",
+      "as": "icon_sword.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-shield.png",
+      "as": "icon_shield.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-helmet.png",
+      "as": "icon_helmet.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-pouch.png",
+      "as": "icon_pouch.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-food.png",
+      "as": "icon_food.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-redbook.png",
+      "as": "icon_book.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-goblet.png",
+      "as": "icon_potion.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-chest.png",
+      "as": "icon_chest.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-crown.png",
+      "as": "icon_crown.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-chatbubble.png",
+      "as": "icon_chat.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_button-bag.png",
+      "as": "icon_bag.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_foodbar.png",
+      "as": "ui_healthbar.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragon9SlicesA.png",
+      "as": "ui_panel_9slice.png",
+      "nineSlice": {
+        "border": 16
+      }
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragonHeaderA.png",
+      "as": "ui_header.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/fire_01.png",
+      "as": "fx_fire.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_02.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_02.png",
+      "as": "fx_slash.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_hit.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_step.ogg"
+    }
+  ]
+}
