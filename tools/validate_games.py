@@ -202,6 +202,58 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
 JS_CALL_RE = re.compile(r"""audio\.play\(\s*['"]([^'"]+)['"]""")
 
 
+# Keys that describe intent for a human reader and are deliberately not consumed
+# by the engine.  Anything not listed here and not read by the Kotlin is a gap:
+# either the feature is missing or the key is dead, and both should be a decision
+# rather than an accident.  `nineSlice` and `controls` are here because they are
+# honest descriptions of what the games intend -- but see the notes below.
+DESCRIPTIVE_KEYS = {
+    # Read by the validator itself, as constraints rather than configuration.
+    "networking", "ai_assist",
+    # Human-readable metadata surfaced in the game browser.
+    "engineNotes", "systems", "spriteDirections", "frameData",
+    # Documented control scheme.  GameControlsView draws a fixed joystick + A/B
+    # layout; this map describes it, it does not configure it.
+    "controls",
+    # Declared per asset.  NOT IMPLEMENTED: the engine has no nine-slice path, so
+    # these textures are drawn as ordinary scaled sprites and their borders
+    # stretch.  Kept so the intent survives until the renderer grows one.
+    "nineSlice",
+}
+
+
+def check_game_json_keys(game, rep, gid):
+    """Every key in game.json must be consumed by the engine or declared descriptive."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    kt = ""
+    for rel in ("app/src/main/java/com/sengine/project/GameLibrary.kt",
+                "app/src/main/java/com/sengine/project/AssetStore.kt",
+                "app/src/main/java/com/sengine/ui/ProjectsActivity.kt"):
+        f = os.path.join(root, rel)
+        if os.path.exists(f):
+            kt += open(f, encoding="utf-8").read()
+
+    for key in game:
+        if key == "assets":
+            continue
+        consumed = f'"{key}"' in kt
+        rep.ok(consumed or key in DESCRIPTIVE_KEYS,
+               f"{gid}: game.json key '{key}' is not read by the engine and is not "
+               f"declared descriptive -- dead configuration")
+
+    # Per-asset keys, same rule.
+    seen = set()
+    for a in game.get("assets", []):
+        for key in a:
+            if key in seen:
+                continue
+            seen.add(key)
+            consumed = f'"{key}"' in kt
+            rep.ok(consumed or key in DESCRIPTIVE_KEYS,
+                   f"{gid}: asset key '{key}' is not read by the engine and is not "
+                   f"declared descriptive -- dead configuration")
+
+
 def declared_clips(game):
     """Every clip name GameLibrary materialises as '<name>.anim'.
 
@@ -309,6 +361,8 @@ def validate(repo, only=None):
         n_assets = len(game.get("assets", []))
         n_packs = len({a.get("pack") for a in game.get("assets", [])})
         print(f"   assets: {n_assets} from {n_packs} store packs ({len(declared_audio)} audio)")
+
+        check_game_json_keys(game, rep, gid)
 
         declared_scripts = set(game.get("scripts", []))
         scenes_dir = os.path.join(gd, "scenes")

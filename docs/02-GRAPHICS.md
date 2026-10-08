@@ -158,10 +158,19 @@ GPU backends get written against, not a working renderer.
 | Post FX | yes | **yes (10 effects)** | not implemented |
 | Particles | yes | **yes** | not implemented |
 | Instancing | yes | **no** | not implemented |
+| Nine-slice UI sprites | yes | **no** (stretched) | not implemented |
 
 So the shading maths is ahead of the renderer that would use it. That is a
 deliberate order — the maths is the part that is expensive to get right and cheap to
 verify, while a GL backend cannot be exercised at all without a device.
+
+Four assets declare `nineSlice` in their `game.json` — the RPG's panel and the
+fighter's three health-bar textures. Nothing reads that key: the engine has no
+nine-slice path, so those textures are drawn as ordinary scaled sprites and their
+borders stretch. The `DialogueBox` is the visible case, scaled 12×2 from a panel
+drawn for roughly 1×1. `validate_games.py` now requires every `game.json` key to
+be either consumed by the engine or explicitly listed as descriptive, so this is a
+recorded decision rather than a key that quietly does nothing.
 
 `Light.kind` in the Kotlin runtime still distinguishes only `Directional` and
 `Point`. The `LightKind::Spot` enum value and its cone falloff exist and are tested
