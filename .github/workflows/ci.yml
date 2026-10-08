@@ -141,13 +141,30 @@ jobs:
       - name: List built APKs
         run: find app/build/outputs -name '*.apk' -exec ls -lh {} \;
 
+      # The artifact cannot be inspected from outside the runner, so the results
+      # are republished as annotations -- otherwise "the store was packaged" is an
+      # assumption rather than something anyone can check.
       - name: Verify the store and games were packaged
         run: |
+          set -e
           apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
-          echo "inspecting $apk"
-          echo "store entries: $(unzip -l "$apk" | grep -c 'assets/store/')"
-          echo "game entries:  $(unzip -l "$apk" | grep -c 'assets/games/')"
-          unzip -l "$apk" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
+          listing=$(unzip -l "$apk")
+          store=$(printf '%s\n' "$listing" | grep -c 'assets/store/' || true)
+          games=$(printf '%s\n' "$listing" | grep -c 'assets/games/' || true)
+          packs=$(printf '%s\n' "$listing" | grep -c 'assets/store/.*\.zip' || true)
+          size=$(stat -c%s "$apk")
+          echo "::notice file=apk::$apk is $size bytes with $store store entries ($packs pack ZIPs) and $games game entries"
+          for f in assets/store/store_manifest.json assets/store/pack_map.txt assets/games/index.json; do
+            if printf '%s\n' "$listing" | grep -q "$f"; then
+              echo "::notice file=apk::present: $f"
+            else
+              echo "::error file=apk::MISSING from the APK: $f"
+            fi
+          done
+          # A debug APK with no store ZIPs staged would build fine and ship empty.
+          [ "$packs" -gt 20 ] || { echo "::error file=apk::only $packs pack ZIPs staged, expected 24"; exit 1; }
+          [ "$games" -gt 10 ] || { echo "::error file=apk::only $games game entries staged"; exit 1; }
+          printf '%s\n' "$listing" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
 
       - uses: actions/upload-artifact@v4
         with:
