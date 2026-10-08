@@ -124,7 +124,7 @@ Two layers, because they catch different things.
 
 **Static — `tools/validate_games.py`.** Runs `node --check` on every declared
 script and cross-references every `audio.play("x")` and every literal
-`self.play("clip")` against what `game.json` declares. 2 608 checks, 0 errors.
+`self.play("clip")` against what `game.json` declares. 3 132 checks, 0 errors.
 
 **Runtime — `tools/run_games.js`.** Implements the API surface from `Api.kt` and
 the prelude from `ScriptSystem.kt` closely enough to actually *execute* every
@@ -252,8 +252,39 @@ there while the value it was meant to set never changes. Five were dead:
                 Removed rather than left as decoration.
 
 The validator now rejects any Script param the attached script never references,
-taking the static suite to 2 608 checks. Verified by re-adding `tileSize` and
+taking the static suite to 3 132 checks. Verified by re-adding `tileSize` and
 confirming it fails.
+
+### Scene and asset invariants
+
+Four more guards, each added after an audit of all four games came back clean —
+the guard is the deliverable, not the audit:
+
+  duplicate names     `scene.find()` returns the first match, so a duplicated
+                      object name does not error; the second object simply becomes
+                      unaddressable.
+
+  collider extents    A `Width`/`Height`/`Depth` of zero or less can never
+                      generate a contact. Reads like a tuning value, behaves like
+                      a missing object.
+
+  rigidbody mass      `Mass` is a divisor in the solver. Zero or negative is a
+                      typo that surfaces as a NaN, far from the scene that caused
+                      it.
+
+  clip frame indices  `cellUv` turns an index into UVs with `u0=col/c`,
+                      `vTop=row/r`. An index past the end does not raise — it
+                      yields UVs outside the texture, which sample as clamped edge
+                      art, so the sprite silently shows the wrong frame.
+
+The frame check is worth noting for how it almost shipped wrong. The first version
+read `game["clips"]`, which no `game.json` has — clips live at
+`assets[i].clips.<name>.frames`, indexed into the grid at `assets[i].anim` or
+`assets[i].tileset`, exactly as `GameLibrary` picks it. A check pointed at an
+empty key passes forever without ever running, and the only thing that exposed it
+was watching the check count: 2 789 before, 3 132 after the retarget, the
+difference being the 343 frame indices it now actually reads. All 343 are in
+range.
 
 ### Tags and spawn prototypes
 

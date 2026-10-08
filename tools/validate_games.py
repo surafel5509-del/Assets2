@@ -27,6 +27,7 @@ Exit code 0 means every game is consistent with the store and the engine.
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import os
 import re
@@ -148,6 +149,42 @@ def component_props():
 
 
 COMPONENT_PROPS = None
+
+
+def check_clip_frames(game, rep, gid):
+    """Clip frame indices must fall inside the grid of the asset they belong to.
+
+    AnimationClip.cellUv computes u0=col/c, vTop=row/r from the frame index.  An
+    index past the end of the sheet does not raise -- it produces UVs outside the
+    texture, which the GPU samples as whatever is at the clamped edge, so the
+    sprite silently shows the wrong art.
+
+    Clips live at assets[i].clips.<name>.frames, and the grid they index into is
+    assets[i].anim or assets[i].tileset, exactly as GameLibrary picks it
+    (`anim ?: tileset`).  Checking a top-level game["clips"] instead finds nothing
+    in any game -- no game.json has that key -- which is a check that passes
+    forever without ever running.
+    """
+    for a in game.get("assets", []) or []:
+        clips = a.get("clips") or {}
+        if not clips:
+            continue
+        label = f"{gid}/{a.get('as', '?')}"
+        grid = a.get("anim") or a.get("tileset")
+        if not grid or "columns" not in grid:
+            rep.ok(False, f"{label}: declares {len(clips)} clips but has no "
+                          f"`anim` or `tileset` grid to index into")
+            continue
+        try:
+            cols = int(grid["columns"]); rows = int(grid["rows"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        cap = cols * rows
+        for cname, clip in clips.items():
+            for fr in clip.get("frames", []) or []:
+                rep.ok(isinstance(fr, int) and 0 <= fr < cap,
+                       f"{label}/{cname}: frame index {fr} is outside the "
+                       f"{cols}x{rows}={cap}-cell grid -- cellUv samples off-sheet")
 
 
 def check_scene_names(game_dir, rep, gid):
@@ -370,6 +407,40 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
                 rep.ok(re.search(r"(?<![.\w])" + re.escape(key) + r"(?![\w])", code) is not None,
                        f"{where}: param '{key}' is never referenced by the script -- dead value")
 
+    # Object names must be unique.  scene.find() returns the first match, so a
+    # duplicate does not error -- it silently resolves to whichever object the
+    # loader reached first and the other one becomes unaddressable.
+    name_counts = collections.Counter(o.get("name") for o in objects)
+    for n, count in sorted(name_counts.items()):
+        rep.ok(count == 1,
+               f"{gid}/{name}: object name '{n}' appears {count} times -- "
+               f"scene.find() silently resolves to the first and the rest are "
+               f"unaddressable")
+
+    # A collider with a non-positive extent can never generate a contact, and a
+    # non-positive mass divides by zero in the solver.  Both are typos that read
+    # like tuning.
+    for o in objects:
+        where = f"{gid}/{name}: {o.get('name', '?')}"
+        for c in o.get("components", []):
+            t = c.get("type")
+            if t in ("Collider2D", "Collider3D"):
+                axes = ("Width", "Height") if t == "Collider2D" else ("Width", "Height", "Depth")
+                for ax in axes:
+                    try:
+                        v = float(c.get(ax, 1))
+                    except (TypeError, ValueError):
+                        continue
+                    rep.ok(v > 0, f"{where}: {t}.{ax}={c.get(ax)} is non-positive -- "
+                                  f"the collider can never generate a contact")
+            elif t == "Rigidbody2D":
+                try:
+                    m = float(c.get("Mass", 1))
+                except (TypeError, ValueError):
+                    continue
+                rep.ok(m > 0, f"{where}: Rigidbody2D.Mass={c.get('Mass')} is "
+                              f"non-positive -- the solver divides by it")
+
     # Parent references must resolve.
     for o in objects:
         p = o.get("parent")
@@ -555,6 +626,7 @@ def validate(repo, only=None):
         print(f"   scenes: {', '.join(f.replace('.scene.json', '') for f in scene_files)}")
 
         check_scripts(gd, game, rep, gid, declared_scripts, declared_audio)
+        check_clip_frames(game, rep, gid)
         check_send_targets(gd, rep, gid)
         check_scene_names(gd, rep, gid)
         print(f"   scripts: {len(declared_scripts)} declared")
