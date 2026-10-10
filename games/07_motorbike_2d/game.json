@@ -1,0 +1,34 @@
+{
+  "id": "07_motorbike_2d",
+  "title": "Dirt Rush",
+  "genre": "2D side-scrolling motorbike",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "BikeRide.js",
+    "Fx.js"
+  ],
+  "controls": {
+    "steer/lean": "left stick (X in air, Y to gas/brake)",
+    "gas": "action button A or stick up",
+    "jump": "action button B"
+  },
+  "systems": [
+    "physics: custom 2D (gravity, slope-follow)",
+    "ui: scene text + fuel bar",
+    "camera: 2D orthographic follow"
+  ],
+  "engineNotes": {
+    "notes": [
+      "Terrain is a sum-of-sines height function; the scene holds matching ground blocks.",
+      "Bike physics: gravity, landing, slope-following rotation, and crash on flipped landing.",
+      "Wheels are child objects that spin with speed."
+    ]
+  },
+  "assets": []
+}

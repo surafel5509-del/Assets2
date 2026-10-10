@@ -44,8 +44,11 @@ class Engine(val project: Project, initialScene: Scene) {
     val animation = com.sengine.engine.anim.AnimationSystem(project)
     val scripts = ScriptSystem(this)
     val audio = AudioSystem(project)
+    val overlays = com.sengine.engine.overlay.OverlayManager(project)
     val gameView = View2D()
 
+    /** Scales the game clock: 0 freezes gameplay, 0.5 is slow motion. Set by scripts through `time.scale`. */
+    @Volatile var timeScale = 1f
     var time = 0.0; private set
     var frame = 0L; private set
     @Volatile var fps = 0f; private set
@@ -108,6 +111,7 @@ class Engine(val project: Project, initialScene: Scene) {
 
     // ---------------------------------------------------------------- play mode
     private fun startPlay() {
+        overlays.loadControls()
         snapshot = SceneSerializer.toJson(scene).toString()
         snapshotScene = scene.name
         time = 0.0; frame = 0
@@ -140,6 +144,7 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     private fun stopPlay() {
+        overlays.reset()
         endScene()
         val snap = snapshot
         if (snap != null) scene = SceneSerializer.fromJson(JSONObject(snap))
@@ -168,7 +173,7 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     private fun runFrame(dt0: Float) {
-        val dt = dt0.coerceAtMost(0.1f)
+        val dt = dt0.coerceAtMost(0.1f) * timeScale
         time += dt; frame++
         scene.updateTransforms()
         updateGameView()

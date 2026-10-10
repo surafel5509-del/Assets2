@@ -12,6 +12,37 @@ class AudioSystem(private val project: Project) {
     private val ids = HashMap<String, Int>()
     private val streams = ArrayList<Int>()
     private var tone: ToneGenerator? = null
+    private var music: android.media.MediaPlayer? = null
+    private var musicName = ""
+
+    /** The track currently looping, or "" when silent. */
+    val currentMusic get() = musicName
+
+    /** Starts a looping music track, replacing any track already playing. Music is streamed, not decoded into memory. */
+    fun playMusic(name: String, volume: Float = 0.6f) {
+        if (name == musicName && music?.isPlaying == true) return
+        stopMusic()
+        val f = project.resolveAsset(name) ?: return
+        try {
+            music = android.media.MediaPlayer().apply {
+                setDataSource(f.absolutePath)
+                isLooping = true
+                setVolume(volume, volume)
+                prepare()
+                start()
+            }
+            musicName = name
+        } catch (_: Exception) {
+            stopMusic()
+        }
+    }
+
+    fun stopMusic() {
+        try { music?.stop() } catch (_: Throwable) {}
+        try { music?.release() } catch (_: Throwable) {}
+        music = null
+        musicName = ""
+    }
 
     fun start() {
         stop()
@@ -57,6 +88,7 @@ class AudioSystem(private val project: Project) {
 
     fun stop() {
         stopAll()
+        stopMusic()
         try { pool?.release() } catch (_: Throwable) {}
         pool = null
         ids.clear()

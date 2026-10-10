@@ -1,0 +1,37 @@
+{
+  "id": "08_zombie_topdown",
+  "title": "Dead Blocks",
+  "genre": "Top-down zombie survival",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "TopDownPlayer.js",
+    "Bullet.js",
+    "Zombie.js",
+    "ZombieDirector.js",
+    "Fx.js"
+  ],
+  "controls": {
+    "move": "left stick",
+    "fire": "action button A (hold, auto-aims)",
+    "restart": "action button A on game over"
+  },
+  "systems": [
+    "physics: script-driven (circle tests)",
+    "ui: scene text + health bar",
+    "particles: pooled gore bursts with self-destroying copies"
+  ],
+  "engineNotes": {
+    "notes": [
+      "Top-down camera follows the Player; crates block movement via circle tests.",
+      "Auto-aim picks the nearest zombie each time the fire cooldown ends.",
+      "Zombies spawn on a ring just outside the view and chase the player."
+    ]
+  },
+  "assets": []
+}

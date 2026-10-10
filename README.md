@@ -1,129 +1,112 @@
 # S Engine
 
-**S Engine** is a 2D game engine **and** full visual editor that runs entirely on an Android phone or tablet – think "a small Unity in your pocket". Create a project, build scenes with a hierarchy / inspector / gizmos, write JavaScript behaviours in the built-in code editor, press **Play** to test immediately, then run your game full-screen.
+A fully offline, mobile-first Android game engine and editor: native C++ core,
+Kotlin editor UI, JavaScript gameplay scripting, an offline asset store built from
+real asset packs, and four complete games.
 
-> Written from scratch in Kotlin. OpenGL ES 2.0 renderer, custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
+**No networking. No AI features. No cloud.** Every asset ships inside the APK, and a
+game exported from the editor runs with no connectivity.
 
----
+## Start here
 
-## Features
+**[docs/00-ARCHITECTURE.md](docs/00-ARCHITECTURE.md)** — the blueprint: constraints,
+layering, frame data flow, and what is verified versus not.
 
-| Area | What you get |
-|---|---|
-| **Project manager** | Create from templates, open, play, rename, duplicate, delete, export / import projects as `.zip` |
-| **Scene editor** | Viewport with grid, pan (drag) & pinch-zoom, tap-to-select, **Move / Rotate / Scale gizmos** with axis handles, snapping, frame selected |
-| **Hierarchy** | Parent/child tree, collapse, visibility toggle, rename / duplicate / delete / reorder / create child / unparent |
-| **Inspector** | Edit name, tag, sorting order, parent, transform (drag labels to scrub values), every component property, color picker, asset pickers, add / remove / reorder / reset components |
-| **Undo / Redo** | Snapshot-based history for every edit |
-| **Play mode** | Play / Pause / Step frame inside the editor; scene is restored when you stop (like Unity) |
-| **Rendering** | Squares, circles, triangles, textured sprites (PNG/JPG/WebP) with flip, text, particles, sorting order, camera background |
-| **Physics 2D** | Dynamic / Kinematic / Static rigidbodies, box & circle colliders, gravity, bounciness, friction, drag, triggers, collision & trigger callbacks, `grounded` detection |
-| **Scripting** | JavaScript (ES6 subset via Rhino) with `start`, `update(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging |
-| **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference |
-| **Assets** | Import images and sounds from the device, create scripts, preview / assign / attach from the Assets panel |
-| **Audio** | `AudioSource` component + `audio.play()` / `audio.beep()` |
-| **Input** | On-screen joystick + A/B buttons, touch position / taps in world space, hardware keyboard & gamepad (WASD / arrows / Space / Enter) |
-| **Scenes** | Multiple scenes per project, start scene, `scene.load("Level2")` |
-| **Player** | Full-screen runtime ("Build & Run") with landscape / portrait setting |
+Then, in the order the system should be built:
 
-### Built-in components
-`SpriteRenderer`, `TextRenderer`, `Camera` (size, background, follow target with smoothing), `Rigidbody2D`, `Collider2D`, `Script`, `ParticleEmitter`, `AudioSource`.
+| | Document | |
+|---|---|---|
+| 1 | [01-NATIVE-CORE.md](docs/01-NATIVE-CORE.md) | C++ core: memory, ECS, scene graph, math, RHI, JNI seam |
+| 2 | [02-GRAPHICS.md](docs/02-GRAPHICS.md) | Rendering: GLES today, PBR/shadows as the plan |
+| 3 | [03-EDITOR.md](docs/03-EDITOR.md) | Editor panels, animation editor, Blueprint graph |
+| 4 | [04-SCRIPTING.md](docs/04-SCRIPTING.md) | JavaScript runtime and the scripting API |
+| 5 | [05-ASSET-STORE.md](docs/05-ASSET-STORE.md) | ZIP ingest, sprite-sheet detection, licensing |
+| 6 | [06-BUILD-AND-PROFILING.md](docs/06-BUILD-AND-PROFILING.md) | In-app APK export, runtime profiler |
+| 7 | [07-GAMES.md](docs/07-GAMES.md) | The four games and what the validator caught |
+| | [LIBRARIES.md](docs/LIBRARIES.md) | Every dependency and why |
+| | [DIRECTORY-STRUCTURE.md](docs/DIRECTORY-STRUCTURE.md) | Full annotated tree |
 
-### Templates
-* **Empty 2D** – camera + square
-* **Platformer Demo** – run, jump, moving platform, coins with particle bursts, score UI
-* **Space Shooter** – spawning enemies, bullets, explosions, score, game over
-* **Physics Sandbox** – tap to drop bouncy balls and crates onto a pyramid
+## The four games
 
----
+| | Game | Genre | Detail |
+|---|---|---|---|
+| 1 | **Emberfall** | 2D top-down RPG / adventure | [games/01_topdown_rpg](games/01_topdown_rpg/README.md) |
+| 2 | **Blade & Bulwark** | 2D fighting | [games/02_fighting_2d](games/02_fighting_2d/README.md) |
+| 3 | **Hollow Ridge** | 3D action-adventure | [games/03_action_3d](games/03_action_3d/README.md) |
+| 4 | **Neon Overdrive** | 3D endless runner | [games/04_runner_3d](games/04_runner_3d/README.md) |
 
-## Scripting example
+They are data, not code — `game.json`, scene JSON and ES5 scripts — materialised
+into a project by `GameLibrary`, with art imported from the asset store.
 
-```js
-// Player.js  – params on the Script component: "speed=6, jump=11"
-var coins = 0;
-
-function update(dt) {
-    self.vx = input.axisX * speed;              // joystick / A-D keys
-    if (input.aDown && self.grounded) {         // A button / Space
-        self.vy = jump;
-        audio.beep();
-    }
-    if (self.y < -12) scene.reload();
-}
-
-function onTrigger(other) {
-    if (other.tag == "Coin") {
-        coins++;
-        var fx = scene.spawn("CoinFX", other.worldX, other.worldY);
-        fx.burst(24);
-        after(1.5, function () { fx.destroy(); });
-        other.destroy();
-        scene.find("ScoreText").text = "Coins: " + coins;
-    }
-}
-```
-
-### API summary
-
-* **Lifecycle:** `start()`, `update(dt)`, `onCollision(other)`, `onTrigger(other)`, `onTriggerExit(other)`, `onTap()`, `onDestroy()`, `onStop()`
-* **self / transform:** `name tag active order x y rotation scaleX scaleY worldX worldY vx vy grounded color visible flipX text size`, `setPosition() move() rotate() addForce() setVelocity() destroy() child() parent distanceTo() overlaps() send() burst() setEmitting() setTexture() hasComponent() setComponentEnabled()`
-* **input:** `axisX axisY a b aDown bDown touching tapped touchX touchY`
-* **scene:** `find(name) findAll(tag) count(tag) spawn(name, x, y) load(name) reload() camera gravityX gravityY`
-* **time:** `time.time time.frame time.fps` — **audio:** `play(file) beep() stopAll()`
-* **helpers:** `log() warn() error() after(sec, fn) every(sec, fn) random() randomInt() clamp() lerp()`
-
-Inactive objects make great **prefab templates** – `scene.spawn("Enemy", x, y)` clones them and activates the copy.
-
----
-
-## Download
-
-Every push is built by GitHub Actions. Grab the APK from:
-
-* **Releases → "S Engine – latest build"** → `SEngine.apk`, or
-* **Actions → latest "Build S Engine APK" run → Artifacts → `SEngine-debug-apk`**
-
-Enable "Install unknown apps" for your browser / file manager, then open the APK.
-
-## Building
-
-Requirements: JDK 17 and the Android SDK (API 34). Android Studio Hedgehog or newer works out of the box.
+## Building and checking
 
 ```bash
-./gradlew assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
+# C++ core: host build + test suite (no NDK required)
+cd native && make
+#   → 219 checks, 0 failures — RESULT: PASS
+
+# Regenerate the asset-store catalogue from Assets/*.zip
+# Pillow is required, not optional: without it every sprite grid is a guess, and
+# the generator now refuses to overwrite the 154 pixel-verified grids rather than
+# silently downgrade them.  Use --force if you really mean it.
+python3 tools/build_asset_store.py
+
+# Validate all four games against the store manifest and the engine
+python3 tools/validate_games.py
+#   → 3 132 checks, 0 errors — RESULT: PASS
+
+# Actually execute every game script headlessly (240 frames each)
+node tools/run_games.js
+#   → RESULT: PASS
 ```
 
-Every push is also built by GitHub Actions (`.github/workflows/android.yml`); download the APK from the run's **Artifacts** section.
+The Android build (`./gradlew assembleDebug`) needs a JDK and the Android SDK; the
+native Android build needs the NDK and `cmake`. Neither exists in the sandbox this
+was developed in, so **CI does the Android build** — see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). Every push and pull request
+compiles the Kotlin, runs the unit tests, builds debug *and* release APKs, and
+uploads them as an artifact. Pushing a `v*` tag additionally attaches the release
+APK to a GitHub Release via
+[`.github/workflows/release.yml`](.github/workflows/release.yml).
 
-Minimum Android version: 8.0 (API 26). Requires OpenGL ES 2.0.
+## Verification status — read this
 
-## Project layout
+| Layer | Status |
+|---|---|
+| Native C++ core | **Verified.** `make` → 219 checks, 0 failures |
+| Asset store generation | **Verified.** 25 packs, 5 008 files, 154 sprite sheets |
+| Games vs. store vs. engine | **Verified.** 3 132 checks, 0 errors |
+| Game scripts, executed | **Verified.** `run_games.js` — 27 scripts × 240 frames, 89 checks |
+| Kotlin / Gradle | **Verified in CI.** 60 files compile; unit tests pass; debug + release APKs build |
+| APK packaging | **Verified in CI.** 25 pack ZIPs, 40 game entries, `index.json` present |
+| In-app APK export | **Verified in CI.** Exports a signed standalone game APK; `apksigner` verifies it, `aapt2` confirms the rewritten package, label and version |
+| Native Android build | **Not built** — no NDK, no `cmake`; the C++ core builds on the host only |
+| The four games on a device | **Not played** — no Android runtime here |
 
-```
-app/src/main/java/com/sengine/
-├── engine/
-│   ├── Engine.kt            main loop, play/pause/stop, camera follow, particles
-│   ├── Input.kt, AudioSystem.kt
-│   ├── core/                GameObject, Component, Prop system, components, Scene + JSON serializer
-│   ├── math/Affine.kt       2D transforms
-│   ├── physics/             impulse-based 2D physics
-│   ├── render/              GLES2 renderer, textures/text, editor grid & gizmos
-│   └── script/              Rhino JavaScript runtime + script API
-├── project/                 project storage, zip import/export, templates
-└── ui/                      Projects screen, Editor (hierarchy, inspector, viewport, assets, console),
-                             Script editor, full-screen Player, joystick, color picker
-```
+The Kotlin is compiled and unit-tested, but only on CI — this sandbox has no JDK,
+so nothing here can build it. That distinction matters: a green local run says
+nothing about the Android layer, which is why
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) exists and why its build
+errors are republished as annotations.
 
-Projects are stored in app-private storage as plain JSON scenes plus an `assets/` folder:
+The game scripts *are* executed locally — by
+`tools/run_games.js`, which reimplements the `Api.kt` surface closely enough to
+run them frame by frame, and which found 20 real bugs that a syntax check had
+passed. Several of them silently removed whole features: the inventory could be
+closed but never reopened, two games shipped with no enemies, and the runner's
+systems could not find each other. That is stronger than "internally consistent",
+and still not the same claim as "they work on a phone": the harness models the
+engine, it is not the engine. The details are in
+[docs/00-ARCHITECTURE.md §5](docs/00-ARCHITECTURE.md#5-verification).
 
-```
-<project>/project.json
-<project>/scenes/Main.scene.json
-<project>/assets/Player.js, hero.png, jump.wav …
-```
+Editor features that were requested but are **not implemented** — terrain editor,
+Timeline, skeletal animation, node-based particle editor, drag-and-drop UI builder —
+are listed explicitly in [docs/03-EDITOR.md §7](docs/03-EDITOR.md#7-features-that-do-not-exist).
 
-## License
+## Asset licensing
 
-MIT
+24 of the 25 asset packs are bundled. `Super Pixel Objects Sample` is indexed but
+**not** bundled: its licence excludes game-making tools, and this is one.
+`FreeCharactersAnimationsAssetPack` forbids redistribution yet is used by three of
+the four games — a tension flagged in
+[docs/05-ASSET-STORE.md §5](docs/05-ASSET-STORE.md#5-licensing) rather than buried.

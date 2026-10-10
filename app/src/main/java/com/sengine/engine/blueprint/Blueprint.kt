@@ -171,6 +171,37 @@ object BlueprintNodes {
         NodeDef("Reload", "Restart Scene", "Game", true, O, code = "scene.reload();"),
         NodeDef("Log", "Print Log", "Game", true, O, listOf(ParamDef("message", "\"Hello\"")), code = "log({message});"),
         NodeDef("Code", "Run JavaScript", "Game", true, O, listOf(ParamDef("code", "self.scaleX = 1 + Math.sin(time.time)")), code = "{code};"),
+
+        // ---------------- more events: control actions, UI taps, script events
+        NodeDef("OnAction", "On Input Action", "Events", false, O, listOf(ParamDef("name", "jump", true)),
+            "Runs on the frame the named control action (from the Controls editor) is pressed"),
+        NodeDef("OnUiTap", "On UI Tap", "Events", false, O, listOf(ParamDef("id", "play", true)),
+            "A UI screen element with this id was tapped"),
+        NodeDef("OnEvent", "On Event", "Events", false, O, listOf(ParamDef("name", "levelDone", true)),
+            "Received an event sent by Emit Event; 'arg' is its data"),
+
+        // ---------------- game, UI, storage and audio actions
+        NodeDef("SetTimeScale", "Set Time Scale", "Game", true, O, listOf(ParamDef("scale", "0")),
+            "0 pauses gameplay, 0.5 is slow motion, 1 is normal", code = "time.setScale({scale});"),
+        NodeDef("EmitEvent", "Emit Event", "Game", true, O, listOf(ParamDef("name", "levelDone", true), ParamDef("value", "null")),
+            code = "events.emit({name}, {value});"),
+        NodeDef("PlayMusic", "Play Music", "Game", true, O, listOf(ParamDef("file", "theme.ogg", true)),
+            "Loops a music track until stopped", code = "audio.playMusic({file});"),
+        NodeDef("StopMusic", "Stop Music", "Game", true, O, code = "audio.stopMusic();"),
+        NodeDef("OpenUI", "Open UI Screen", "UI", true, O, listOf(ParamDef("screen", "Pause", true)), code = "ui.open({screen});"),
+        NodeDef("CloseUI", "Close UI Screen", "UI", true, O, listOf(ParamDef("screen", "Pause", true)), code = "ui.close({screen});"),
+        NodeDef("SetUIText", "Set UI Text", "UI", true, O, listOf(ParamDef("id", "score", true), ParamDef("text", "\"Score: \" + vars.score")),
+            code = "ui.setText({id}, {text});"),
+        NodeDef("SetUIValue", "Set UI Value (0-1)", "UI", true, O, listOf(ParamDef("id", "health", true), ParamDef("value", "1")),
+            "Sets a bar, slider or toggle", code = "ui.setValue({id}, {value});"),
+        NodeDef("StorageSet", "Save Value", "Storage", true, O, listOf(ParamDef("key", "best", true), ParamDef("value", "vars.score")),
+            "Stores a value in memory; write it with Write Save Slot", code = "storage.set({key}, {value});"),
+        NodeDef("StorageSave", "Write Save Slot", "Storage", true, O, listOf(ParamDef("slot", "slot1", true)),
+            "Writes all stored values to saves/<slot>.json in the project", code = "storage.slot({slot}); storage.save();"),
+        NodeDef("Tween", "Tween Property", "Movement", true, O,
+            listOf(ParamDef("prop", "scaleX", true), ParamDef("to", "1.5"), ParamDef("seconds", "0.3"), ParamDef("easing", "easeOutBack", true)),
+            "Animates a property smoothly; easings: linear, easeIn, easeOut, easeInOut, easeOutBack",
+            code = "tween(self, {prop}, {to}, {seconds}, {easing});"),
     )
 
     val byType: Map<String, NodeDef> = all.associateBy { it.type }
@@ -204,6 +235,9 @@ object BlueprintCompiler {
                 "OnButtonB" -> update.append("  if (input.bDown) {\n").append(body).append("  }\n")
                 "OnTouch" -> update.append("  if (input.tapped) {\n").append(body).append("  }\n")
                 "OnTimer" -> start.append("  every(${expr(n.param("seconds"))}, function () {\n").append(body).append("  });\n")
+                "OnAction" -> update.append("  if (input.actionPressed(").append(lit(n.param("name"))).append(")) {\n").append(body).append("  }\n")
+                "OnUiTap" -> update.append("  if (input.actionPressed(").append(lit("ui." + n.param("id"))).append(")) {\n").append(body).append("  }\n")
+                "OnEvent" -> start.append("  events.on(").append(lit(n.param("name"))).append(", function (arg) {\n").append(body).append("  });\n")
                 "OnTap" -> handler("onTap()").append(body)
                 "OnCollision" -> handler("onCollision(other)").append(body)
                 "OnTrigger" -> handler("onTrigger(other)").append(body)

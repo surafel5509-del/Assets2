@@ -1,0 +1,2220 @@
+{
+  "name": "Main",
+  "gravityX": 0.0,
+  "gravityY": 0.0,
+  "gravityZ": 0.0,
+  "gravity3D": 0.0,
+  "ambient": "#FFFFFFFF",
+  "fog": false,
+  "fogColor": "#FF000000",
+  "fogStart": 0.0,
+  "fogEnd": 1.0,
+  "nextId": 74,
+  "objects": [
+    {
+      "id": 1,
+      "name": "Main Camera",
+      "tag": "Untagged",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "Camera",
+          "enabled": true,
+          "Size": 9.0,
+          "Background": "#FF1A2A1F",
+          "Follow Target": "Player",
+          "Follow Smoothing": 6.0,
+          "Post FX": "None",
+          "FX Intensity": 1.0,
+          "FX Shader": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Floor",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 70.0,
+      "scaleY": 70.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF2B3A2E",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Patch00",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -6.662841360236801,
+      "y": -15.07972556661339,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.8733527455342736,
+      "scaleY": 2.4566394891549406,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Patch01",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -18.701943438408428,
+      "y": 23.174672347271922,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.8624391058059953,
+      "scaleY": 2.589178280751579,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Patch02",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 4.36458541601219,
+      "y": 10.647428809654961,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.970749710097202,
+      "scaleY": 3.2938702201032566,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Patch03",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 2.971330638975111,
+      "y": -6.521532418504719,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.0842573146853125,
+      "scaleY": 3.3066384506589426,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Patch04",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 12.97095557110152,
+      "y": 4.279965702611051,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.4230691925300896,
+      "scaleY": 3.8068895727689114,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Patch05",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 15.747735783070063,
+      "y": 9.048534452015609,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.3681615195537242,
+      "scaleY": 2.694045347535731,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Patch06",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 19.000688977738385,
+      "y": -3.3939073895435783,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.0023712257848594,
+      "scaleY": 3.988553026097134,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Patch07",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -19.31723243554495,
+      "y": -19.609236785185544,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.403144276184184,
+      "scaleY": 2.1075405166168286,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Patch08",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 12.497501625549148,
+      "y": -18.61939634069253,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.293054745121915,
+      "scaleY": 3.6889554022670317,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Patch09",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 8.660691251660836,
+      "y": 6.763312583357774,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.4119246999022375,
+      "scaleY": 2.794891054171655,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Patch10",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -24.668047854975995,
+      "y": 15.921600885050864,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.247696885677191,
+      "scaleY": 2.9039817568455035,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Patch11",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -26.15165144037116,
+      "y": 20.54593515234305,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.9145444242666505,
+      "scaleY": 3.823387499384517,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Patch12",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 19.098568686474017,
+      "y": -15.911092608629334,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.052711035926542,
+      "scaleY": 3.7780769010024047,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Patch13",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 12.669327170934665,
+      "y": 13.011046488660469,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.1891487541221943,
+      "scaleY": 2.954985646358347,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Patch14",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -20.999787814219033,
+      "y": 9.517328985319416,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.115853776041851,
+      "scaleY": 3.605872151018337,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Patch15",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -21.06901564056746,
+      "y": 23.140407860584254,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.346346204159606,
+      "scaleY": 3.593534250805349,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Patch16",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 10.575684684860143,
+      "y": 26.880276098501632,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.369164773594224,
+      "scaleY": 3.9119674513960008,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Patch17",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -25.00234616601867,
+      "y": -10.203187371657961,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.716558571933618,
+      "scaleY": 3.045829527309576,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Patch18",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 19.405531787975747,
+      "y": -11.120687437285834,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.7466292785735344,
+      "scaleY": 3.277794442439869,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Patch19",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -5.197296431630125,
+      "y": 9.147027468406677,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.3545346784568864,
+      "scaleY": 3.4738163989815103,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Patch20",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -0.3771853437122914,
+      "y": -5.889830135534822,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.2115177559344534,
+      "scaleY": 2.815402934705026,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Patch21",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -26.78677251332159,
+      "y": -20.442840603287895,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.965834765270402,
+      "scaleY": 2.694530238958448,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Patch22",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -2.328634761564132,
+      "y": 12.779885876947546,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.1003419683331117,
+      "scaleY": 3.853947592038211,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Patch23",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 2.228085887232325,
+      "y": 21.29974318145141,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.626366354204138,
+      "scaleY": 2.3102191328811044,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF24322A",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "Patch24",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": 8.686647191419723,
+      "y": -9.975252435546746,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.1301891916771156,
+      "scaleY": 2.67524255003935,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF334738",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Patch25",
+      "tag": "Floor",
+      "active": true,
+      "order": 0,
+      "x": -20.22652610242099,
+      "y": -24.319116889630234,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 3.9963055237425404,
+      "scaleY": 2.186513305329019,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF3A4B3B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "Crate00",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -23.995304354456238,
+      "y": 10.203664777126747,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 85.87792506553131,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "Crate01",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -18.515472487441226,
+      "y": -1.948322748887449,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 17.44414744211236,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "name": "Crate02",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 8.925631734123883,
+      "y": 15.233466126075307,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 27.969008068801575,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "Crate03",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -25.003830382733916,
+      "y": -3.515780374525111,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 73.24976629831862,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "name": "Crate04",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -6.636516597311839,
+      "y": 18.319008925924358,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 34.23523551117693,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "Crate05",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 2.4431630231322927,
+      "y": 13.276475589258233,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 58.75418168844252,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "name": "Crate06",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -3.428456779683824,
+      "y": -16.838218577196145,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 30.075983034278096,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "name": "Crate07",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 18.24551309332122,
+      "y": 16.65143932757298,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 64.17865251305554,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "name": "Crate08",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -6.455369144824658,
+      "y": -21.02135809993736,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 2.551797375462553,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "name": "Crate09",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 14.159651548536822,
+      "y": 5.055279782909352,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 74.5314535389637,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "name": "Crate10",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -6.399890338602333,
+      "y": -23.456173433945114,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 6.611421593860607,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "Crate11",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -22.8170447222575,
+      "y": 22.978987926194534,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 26.278070388898012,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "name": "Crate12",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 17.633106474710686,
+      "y": -10.599691254537348,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 71.0961098812485,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "Crate13",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 20.215118289041044,
+      "y": 1.1571418674524594,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 46.28977363692936,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "Crate14",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -20.641883079796777,
+      "y": 18.495776223436053,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 89.25495225906731,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "Crate15",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 4.387607261593271,
+      "y": 22.50493748327399,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 39.68744293961704,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "Crate16",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 9.32108729462356,
+      "y": -21.106867164899747,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 47.813575648879755,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "name": "Crate17",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 6.382878480746562,
+      "y": 14.918078792478966,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 86.41098632993035,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "Crate18",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 20.74348886025387,
+      "y": -8.77370058618872,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 48.869175782368266,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "name": "Crate19",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 1.5023538062999364,
+      "y": 10.46006750179113,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 77.32254709730883,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "Crate20",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -17.325447659421126,
+      "y": 18.11470502740054,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 24.164344219598963,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "Crate21",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 14.604994391025507,
+      "y": -23.39494307658007,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 5.337078256076001,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "Crate22",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 4.7532335068479625,
+      "y": -6.861289606459504,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 51.21759753065183,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "name": "Crate23",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -16.327584572599413,
+      "y": 5.432978925542962,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 85.40729356564897,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "name": "Crate24",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 24.397071120545817,
+      "y": 2.702430832819058,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 9.342851579094042,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "name": "Crate25",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -20.108302865592258,
+      "y": -0.26373810494649064,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 33.83798292713209,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "name": "Crate26",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 14.514884873374825,
+      "y": 23.671899577988235,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 41.10963067092543,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "name": "Crate27",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 11.189261872825448,
+      "y": -23.850163246696688,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 55.26946409080093,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "name": "Crate28",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": 24.26085702759074,
+      "y": 5.296787412688641,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 11.038130514891135,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "name": "Crate29",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -21.65029863549546,
+      "y": -19.38784994529054,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 11.449195883236726,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "name": "Crate30",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -21.51615460647119,
+      "y": 8.569785639778885,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 49.802352280108906,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "name": "Crate31",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -17.986564950252266,
+      "y": 15.988394468957196,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 34.09030364267784,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "name": "Crate32",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -2.960014085983129,
+      "y": -24.02535116954519,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 51.96495258251136,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "name": "Crate33",
+      "tag": "Wall",
+      "active": true,
+      "order": 0,
+      "x": -25.86898772791539,
+      "y": 20.983572789692595,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 28.279919230145712,
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF7A5A38",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "name": "Player",
+      "tag": "Player",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.8,
+      "scaleY": 0.8,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FF4FC3F7",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "TopDownPlayer.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "name": "Director",
+      "tag": "Director",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "ZombieDirector.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "name": "Zombie",
+      "tag": "Zombie",
+      "active": false,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.9,
+      "scaleY": 0.9,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FF6DBE45",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Zombie.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "name": "Bullet",
+      "tag": "Bullet",
+      "active": false,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.22,
+      "scaleY": 0.22,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Circle",
+          "Color": "#FFFFE35C",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Bullet.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "name": "Gore",
+      "tag": "Template",
+      "active": false,
+      "order": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "ParticleEmitter",
+          "enabled": true,
+          "Emitting": false,
+          "Rate": 0.0,
+          "Lifetime": 0.7,
+          "Speed": 4.5,
+          "Direction": 90.0,
+          "Spread": 180.0,
+          "Start Size": 0.25,
+          "End Size": 0.0,
+          "Start Color": "#FFB0202A",
+          "End Color": "#00B0202A",
+          "Gravity": -6.0,
+          "Max Particles": 80,
+          "Additive Blend": true,
+          "Texture": ""
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Fx.js",
+          "Params": ""
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "name": "HealthFrame",
+      "tag": "HUD",
+      "active": true,
+      "order": 0,
+      "x": -6.2,
+      "y": 3.8,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 4.2,
+      "scaleY": 0.42,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FF1B1B1B",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "name": "HealthBar",
+      "tag": "HUD",
+      "active": true,
+      "order": 0,
+      "x": -8.1,
+      "y": 3.8,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 4.0,
+      "scaleY": 0.3,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFE5484D",
+          "Texture": "",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "name": "HUD_Wave",
+      "tag": "HUD",
+      "active": true,
+      "order": 0,
+      "x": 7.8,
+      "y": 4.1,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "WAVE 1",
+          "Size": 0.5,
+          "Color": "#FFFFFFFF",
+          "Align": "Right",
+          "Bold": true,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 71,
+      "name": "HUD_Score",
+      "tag": "HUD",
+      "active": true,
+      "order": 0,
+      "x": 7.8,
+      "y": 3.5,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "SCORE 0",
+          "Size": 0.45,
+          "Color": "#FFFFE35C",
+          "Align": "Right",
+          "Bold": true,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "name": "HUD_Msg",
+      "tag": "HUD",
+      "active": true,
+      "order": 0,
+      "x": 0.0,
+      "y": 1.8,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "",
+          "Size": 0.7,
+          "Color": "#FFFFFFFF",
+          "Align": "Center",
+          "Bold": true,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "name": "HUD_Hint",
+      "tag": "HUD",
+      "active": true,
+      "order": 0,
+      "x": -7.8,
+      "y": -4.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.0,
+      "scaleY": 1.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "TextRenderer",
+          "enabled": true,
+          "Text": "Move: left stick   Hold A: auto-aim fire",
+          "Size": 0.38,
+          "Color": "#BBFFFFFF",
+          "Align": "Left",
+          "Bold": true,
+          "Screen Space UI": true
+        }
+      ]
+    }
+  ]
+}

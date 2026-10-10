@@ -1,0 +1,35 @@
+{
+  "id": "06_open_world_3d",
+  "title": "Skyline Drift",
+  "genre": "3D open-world driving",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "CarDrive.js",
+    "World.js",
+    "Fx.js"
+  ],
+  "controls": {
+    "drive": "left stick steers",
+    "accelerate": "action button A",
+    "brake/reverse": "action button B"
+  },
+  "systems": [
+    "physics: arcade (speed-based steering)",
+    "ui: scene text HUD",
+    "performance: distance culling, timer-based LOD, pooled burst FX"
+  ],
+  "engineNotes": {
+    "notes": [
+      "Open map of 200 x 200 units with 170 trees and 70 rocks.",
+      "World.js culls far props on a 0.25 s timer to keep draw calls bounded.",
+      "Coins spin in a single manager update instead of one script per coin."
+    ]
+  },
+  "assets": []
+}
