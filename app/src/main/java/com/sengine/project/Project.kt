@@ -25,7 +25,7 @@ class Project(val dir: File) {
     var created = System.currentTimeMillis()
     var orientation = 0 // 0 landscape, 1 portrait
 
-    /** Name of the `Controls/*.ctrl.json` layout used in play mode. Empty = the built-in joystick and A/B buttons. */
+    /** Name of the `Controls/<name>.ctrl.json` layout used in play mode. Empty = the built-in joystick and A/B buttons. */
     var controlsLayout = ""
 
     init {

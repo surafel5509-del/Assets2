@@ -31,8 +31,8 @@ import com.sengine.studio.Argb
 import org.json.JSONObject
 
 /**
- * Visual editor for control layouts (`Controls/*.ctrl.json`) and UI screens
- * (`UI/*.ui.json`). Drag to move, drag the corner handle to resize, and edit
+ * Visual editor for control layouts (`Controls/<name>.ctrl.json`) and UI screens
+ * (`UI/<name>.ui.json`). Drag to move, drag the corner handle to resize, and edit
  * exact values in the inspector. Every change is one undo step.
  */
 class OverlayEditorActivity : AppCompatActivity() {
