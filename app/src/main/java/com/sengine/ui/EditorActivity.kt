@@ -800,6 +800,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.SHADER -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Use shader on ${sel.name}") }
             AssetKind.ANIMATION -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Play on ${sel.name}") }
             AssetKind.MODEL -> { pm.menu.add("Create 3D Model Object"); if (sel != null) pm.menu.add("Use model on ${sel.name}") }
+            AssetKind.UI, AssetKind.CONTROLS -> { pm.menu.add("Edit") }
             null -> {}
         }
         if (name.endsWith(".sprite") || name.endsWith(".ui.json") || name.endsWith(".ctrl.json")) pm.menu.add("Edit")

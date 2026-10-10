@@ -329,11 +329,11 @@ class OverlayEditorActivity : AppCompatActivity() {
 
         val flags = hbox().apply { gravity = Gravity.CENTER_VERTICAL }
         flags.addView(CheckBox(this@OverlayEditorActivity).apply {
-            text = "Visible"; setTextColor(C.TEXT); isChecked = el.visible
+            setText("Visible"); setTextColor(C.TEXT); isChecked = el.visible
             setOnCheckedChangeListener { _, on -> if (on != el.visible) { el.visible = on; commit() } }
         }, lp(0, -2, 1f))
         flags.addView(CheckBox(this@OverlayEditorActivity).apply {
-            text = "Locked"; setTextColor(C.TEXT); isChecked = el.locked
+            setText("Locked"); setTextColor(C.TEXT); isChecked = el.locked
             setOnCheckedChangeListener { _, on -> if (on != el.locked) { el.locked = on; commit() } }
         }, lp(0, -2, 1f))
         inspector.addView(flags, lp(-1, -2))
