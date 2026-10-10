@@ -44,14 +44,23 @@ object AssetFolders {
     val UI = Folder("UI", "UI Screens", "Screen layouts from the UI Builder (.ui.json)")
     val CONTROLS = Folder("Controls", "Game Controls", "On-screen control layouts (.ctrl.json)")
     val DATA = Folder("Data", "Data", "Game data: JSON, CSV, text")
+    val FONTS = Folder("Fonts", "Fonts", "Typefaces: ttf, otf, woff, woff2")
+    val ARCHIVES = Folder("Archives", "Archives", "Stored archives: zip, rar, 7z")
 
     /** Every folder, in the order the tree shows them. */
     val ALL: List<Folder> = listOf(
         SCRIPTS, BLUEPRINTS, SFX, MUSIC, SPRITES, STUDIO,
-        ANIMATIONS, SHADERS, MODELS, UI, CONTROLS, DATA,
+        ANIMATIONS, SHADERS, MODELS, UI, CONTROLS, FONTS, ARCHIVES, DATA,
     )
 
-    private val IMAGE = setOf("png", "jpg", "jpeg", "webp", "bmp")
+    private val IMAGE = setOf("png", "jpg", "jpeg", "webp", "bmp", "gif", "svg")
+    private val MODEL = setOf("obj", "fbx", "gltf", "glb", "dae", "stl", "blend")
+    private val FONT = setOf("ttf", "otf", "woff", "woff2")
+    private val ARCHIVE = setOf("zip", "rar", "7z")
+
+    /** Every extension the importer accepts. Anything else is skipped with a reason. */
+    val SUPPORTED_EXTENSIONS: Set<String> = IMAGE + MODEL + FONT + ARCHIVE +
+        setOf("wav", "ogg", "mp3", "m4a", "json", "csv", "txt", "js", "bp", "glsl", "anim", "sprite")
     private val SOUND = setOf("wav", "ogg", "mp3", "m4a")
     private val MUSIC_HINTS = listOf("music", "theme", "bgm", "song", "track", "ambience", "ambient")
 
@@ -69,7 +78,9 @@ object AssetFolders {
             base.endsWith(".anim") -> ANIMATIONS.path
             base.endsWith(".glsl") -> SHADERS.path
             base.endsWith(".sprite") -> STUDIO.path
-            base.endsWith(".obj") -> MODELS.path
+            base.substringAfterLast('.') in MODEL -> MODELS.path
+            base.substringAfterLast('.') in FONT -> FONTS.path
+            base.substringAfterLast('.') in ARCHIVE -> ARCHIVES.path
             base.endsWith(".json") || base.endsWith(".csv") || base.endsWith(".txt") -> DATA.path
             base.substringAfterLast('.') in SOUND -> {
                 val stem = base.substringBeforeLast('.')
