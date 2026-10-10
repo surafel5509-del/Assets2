@@ -72,12 +72,18 @@ function update(dt) {
         playClip("jump");
     }
 
-    // --- facing: turn toward travel direction, but only while moving
+    // --- facing. The hero is a 2D sprite on a quad, so it is billboarded: the
+    // quad always faces the camera (camera sits at target - (sin yaw, cos yaw)*d,
+    // so the quad normal must point along (-sin yaw, -cos yaw), i.e. yaw + 180).
+    // Left and right are shown by mirroring, never by spinning the quad.
+    // `facing` still tracks the travel direction for the attack arc.
     if (mag > 0.15 && !attacking) {
         var want = Math.atan2(wx, wz) * 180 / Math.PI;
         facing = approachAngle(facing, want, turnSpeed * 60 * dt);
-        self.rotY = facing;
     }
+    self.rotY = camYaw + 180;
+    if (ix > 0.15) self.flipX = false;
+    else if (ix < -0.15) self.flipX = true;
 
     animate(mag, sprint);
 
