@@ -56,13 +56,39 @@ const DT = 1 / 60;
 // engine would reject -- which is worse than no harness, because it passes.  So
 // the lists are checked against the Kotlin source on every run.
 // ---------------------------------------------------------------------------
+// The harness mirrors ScriptSystem.PRELUDE by hand. Every global it offers must
+// exist in the real prelude, or a script could pass here and fail in the engine.
+function checkPreludeDrift() {
+    const sysPath = path.join(repo, 'app/src/main/java/com/sengine/engine/script/ScriptSystem.kt');
+    if (!fs.existsSync(sysPath)) { console.log('  (ScriptSystem.kt not found; skipping prelude check)'); return; }
+    const src = fs.readFileSync(sysPath, 'utf8');
+    const m = src.match(/const val PRELUDE = """([\s\S]*?)"""/);
+    if (!m) { fail('could not locate PRELUDE in ScriptSystem.kt'); return; }
+    const engineNames = new Set([...m[1].matchAll(/function\s+(\w+)\s*\(/g)].map(x => x[1]));
+    if (/var\s+events\s*=/.test(m[1])) engineNames.add('events');
+    const harnessNames = ['log', 'warn', 'error', 'random', 'randomInt', 'clamp', 'lerp', 'sign', 'smoothstep',
+        'damp', 'approach', 'dist2d', 'angleTo', 'pick', 'shuffle', 'after', 'every', 'cancelTimer', 'tween',
+        'cancelTween', 'events'];
+    let drift = 0;
+    for (const n of harnessNames) {
+        if (!engineNames.has(n) && !(n === 'events' && engineNames.has('events'))) {
+            fail(`harness drift: prelude global '${n}' is modelled here but ScriptSystem.PRELUDE does not define it`);
+            drift++;
+        }
+    }
+    console.log(`  PRELUDE drift check: ${drift === 0 ? 'in sync' : drift + ' mismatch(es)'} (${harnessNames.length} globals)`);
+}
+
 function checkApiDrift() {
     const apiPath = path.join(repo, 'app/src/main/java/com/sengine/engine/script/Api.kt');
     if (!fs.existsSync(apiPath)) {
         console.log('  (Api.kt not found; skipping drift check)');
         return;
     }
-    const src = fs.readFileSync(apiPath, 'utf8');
+    // SUi and SStorage live in ApiExtras.kt; search both files for class bodies.
+    const extrasPath = path.join(repo, 'app/src/main/java/com/sengine/engine/script/ApiExtras.kt');
+    const src = fs.readFileSync(apiPath, 'utf8') +
+        (fs.existsSync(extrasPath) ? '\n' + fs.readFileSync(extrasPath, 'utf8') : '');
 
     function kotlinMembers(cls) {
         const m = src.match(new RegExp('class ' + cls + '\\b[\\s\\S]*?\\n}'));
@@ -87,9 +113,15 @@ function checkApiDrift() {
     }
 
     let drift = 0;
+    // Methods modelled by the ui and storage mocks above (uiApi / storageApi).
+    const UI_METHODS = ['open', 'close', 'isOpen', 'setText', 'getText', 'setValue', 'getValue',
+                        'show', 'hide', 'isVisible', 'setColor', 'setBackground'];
+    const STORAGE_METHODS = ['slot', 'load', 'save', 'get', 'set', 'has', 'remove', 'clear', 'keyCount'];
     for (const [cls, mset, pset] of [
         ['SObject', SOBJECT_METHODS, SOBJECT_PROPS],
         ['SScene', SCENE_METHODS, SCENE_PROPS],
+        ['SUi', UI_METHODS, []],
+        ['SStorage', STORAGE_METHODS, []],
     ]) {
         const k = kotlinMembers(cls);
         // Only flag members the harness offers but the engine does not have:
@@ -491,6 +523,8 @@ class World {
                 self.objects.push(go);
                 self.byId.set(id, go);
                 self.spawnedCount++;
+                go._isClone = true;
+                if (self.onSpawn) self.onSpawn(go, proto);
                 return self.proxyFor(go);
             },
 
@@ -545,6 +579,35 @@ function parseParams(str) {
     return out;
 }
 
+// Easing curves, identical to the prelude's __easings table in ScriptSystem.kt.
+const EASINGS = {
+    linear: t => t,
+    easeIn: t => t * t,
+    easeOut: t => 1 - (1 - t) * (1 - t),
+    easeInOut: t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+    easeOutBack: t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); },
+};
+
+// The prelude's `events` bus: on / off / emit / count.
+function makeEventBus() {
+    const map = {};
+    return {
+        on(name, fn) { (map[name] = map[name] || []).push(fn); },
+        off(name, fn) {
+            const list = map[name]; if (!list) return;
+            if (fn === undefined) { delete map[name]; return; }
+            const i = list.indexOf(fn); if (i >= 0) list.splice(i, 1);
+        },
+        emit(name, data) {
+            const list = map[name]; if (!list) return 0;
+            const copy = list.slice();
+            for (const fn of copy) fn(data);
+            return copy.length;
+        },
+        count(name) { const list = map[name]; return list ? list.length : 0; },
+    };
+}
+
 function runGame(gameDir) {
     const id = path.basename(gameDir);
     const meta = JSON.parse(fs.readFileSync(path.join(gameDir, 'game.json'), 'utf8'));
@@ -566,11 +629,48 @@ function runGame(gameDir) {
     const input = {
         axisX: 0, axisY: 0, a: false, b: false, aDown: false, bDown: false,
         touching: false, tapped: false, touchX: 0, touchY: 0,
+        actionsHeld: {}, actionsPressed: {},
+        action(name) { return !!this.actionsHeld[name]; },
+        actionPressed(name) { return !!this.actionsPressed[name]; },
+    };
+    world.timeScale = 1;
+    // ui.* and storage.* mirror SUi / SStorage in ApiExtras.kt. Screens are
+    // recorded but not checked against files: the harness has no UI assets.
+    const openScreens = new Set();
+    const uiValues = {};
+    const uiApi = {
+        open(name) { openScreens.add(String(name)); },
+        close(name) { openScreens.delete(String(name)); },
+        isOpen(name) { return openScreens.has(String(name)); },
+        setText(id, t) { uiValues[id] = { ...(uiValues[id] || {}), text: String(t) }; },
+        getText(id) { return (uiValues[id] || {}).text || ''; },
+        setValue(id, v) { uiValues[id] = { ...(uiValues[id] || {}), value: Math.min(1, Math.max(0, Number(v))) }; },
+        getValue(id) { return (uiValues[id] || {}).value || 0; },
+        show(id) { uiValues[id] = { ...(uiValues[id] || {}), visible: true }; },
+        hide(id) { uiValues[id] = { ...(uiValues[id] || {}), visible: false }; },
+        isVisible(id) { return (uiValues[id] || {}).visible !== false; },
+        setColor() {}, setBackground() {},
+    };
+    const store = {};
+    let slotName = 'slot1';
+    const storageApi = {
+        slot(name) { slotName = String(name); },
+        load() { return false; },
+        save() { return true; },
+        get(k, d) { return k in store ? store[k] : d; },
+        set(k, v) { store[k] = v; },
+        has(k) { return k in store; },
+        remove(k) { delete store[k]; },
+        clear() { for (const k of Object.keys(store)) delete store[k]; },
+        get keyCount() { return Object.keys(store).length; },
     };
     const timeApi = {
         get time() { return world.time; },
         get frame() { return world.frame; },
         get fps() { return 60; },
+        get scale() { return world.timeScale; },
+        getScale() { return world.timeScale; },
+        setScale(v) { world.timeScale = Math.min(4, Math.max(0, Number(v))); },
     };
     const audioApi = {
         play(name, vol) {
@@ -581,27 +681,57 @@ function runGame(gameDir) {
             }
             void vol;
         },
+        playMusic(name, vol) {
+            if (typeof name !== 'string') throw new Error('audio.playMusic() expects a name');
+            world.usedAudio.add(name);
+            if (!declaredAudio.has(name)) throw new Error(`audio.playMusic('${name}') -- not a declared audio asset`);
+            void vol;
+        },
+        stopMusic() {},
+        getMusic() { return ''; },
         beep() {},
         stopAll() {},
     };
 
     const timers = [];
+    const tweens = [];
+    let timerIds = 0;
     const prelude = {
         log() {}, warn() {}, error() {},
         random(a, b) { return a === undefined ? 0.5 : a + 0.5 * ((b || 1) - a); },
         randomInt(a, b) { return Math.floor(a + 0.5 * ((b || 0) - a + 1)); },
         clamp(v, a, b) { return Math.max(a, Math.min(b, v)); },
         lerp(a, b, t) { return a + (b - a) * t; },
-        after(sec, fn) { timers.push({ t: world.time + sec, f: fn, every: 0 }); },
-        every(sec, fn) { timers.push({ t: world.time + sec, f: fn, every: sec }); },
+        sign(v) { return v > 0 ? 1 : (v < 0 ? -1 : 0); },
+        smoothstep(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); },
+        damp(current, target, lambda, dt) { return target + (current - target) * Math.exp(-lambda * dt); },
+        approach(current, target, maxDelta) { return current < target ? Math.min(current + maxDelta, target) : Math.max(current - maxDelta, target); },
+        dist2d(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); },
+        angleTo(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI; },
+        pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; },
+        shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; },
+        after(sec, fn) { const id = ++timerIds; timers.push({ id, t: world.time + sec, f: fn, every: 0 }); return id; },
+        every(sec, fn) { const id = ++timerIds; timers.push({ id, t: world.time + sec, f: fn, every: sec }); return id; },
+        cancelTimer(id) { for (let i = timers.length - 1; i >= 0; i--) if (timers[i].id === id) timers.splice(i, 1); },
+        tween(obj, prop, to, sec, ease, done) {
+            const id = ++timerIds;
+            tweens.push({ id, o: obj, p: prop, from: obj[prop], to, dur: Math.max(sec, 0.0001), t: 0,
+                          e: EASINGS[ease || 'easeOut'] || EASINGS.linear, done });
+            return id;
+        },
+        cancelTween(id) { for (let i = tweens.length - 1; i >= 0; i--) if (tweens[i].id === id) tweens.splice(i, 1); },
+        events: makeEventBus(),
         console: { log() {}, warn() {}, error() {} },
         Math, Date, JSON, String, Number, Boolean, Array, Object, isNaN, parseInt, parseFloat,
     };
 
     // --- attach scripts
     const attached = [];
-    for (const go of world.objects) {
-        const def = scene.objects.find(o => o.id === go._id);
+    // Attaches every Script component of `def` to `go`. Used at load time and
+    // for clones made by scene.spawn(), which copy their prototype's components
+    // just as the engine's duplicate() does.
+    function attachScripts(go, def) {
+        go._def = def;
         for (const c of (def.components || [])) {
             if (c.type !== 'Script') continue;
             const file = c.Script;
@@ -611,7 +741,7 @@ function runGame(gameDir) {
 
             const src = fs.readFileSync(p, 'utf8');
             const sandbox = Object.assign({}, prelude, {
-                input, time: timeApi, scene: sceneApi, audio: audioApi,
+                input, time: timeApi, scene: sceneApi, audio: audioApi, ui: uiApi, storage: storageApi,
                 self: null, transform: null,
                 __timers: timers,
             });
@@ -633,6 +763,18 @@ function runGame(gameDir) {
             attached.push({ go, file, sandbox, ctx, started: false, ticks: 0 });
         }
     }
+    for (const go of world.objects) attachScripts(go, scene.objects.find(o => o.id === go._id));
+    world.onSpawn = (go, proto) => {
+        const before = attached.length;
+        attachScripts(go, proto._def);
+        for (let i = before; i < attached.length; i++) {
+            const a = attached[i];
+            if (typeof a.sandbox.start === 'function') {
+                try { a.sandbox.start.apply(a.sandbox.selfRef, []); a.started = true; }
+                catch (e) { fail(`${id}/${a.file}: start() threw on spawn -- ${e.message}`); }
+            }
+        }
+    };
 
     // --- start()
     for (const a of attached) {
@@ -655,6 +797,8 @@ function runGame(gameDir) {
         { axisX: 0, axisY: 0, b: true, bDown: true },
         { axisX: -0.7, axisY: -0.7, touching: true, touchX: 0.6, touchY: 0.2 },
         { axisX: 0, axisY: 0, tapped: true, touching: true, touchX: -0.4, touchY: -0.1 },
+        { axisX: 0, axisY: 0, actionsHeld: { jump: true }, actionsPressed: { jump: true } },
+        { axisX: 0, axisY: 0, actionsHeld: { fire: true }, actionsPressed: { 'ui.play': true } },
     ];
 
     const thrown = new Set();
@@ -664,9 +808,17 @@ function runGame(gameDir) {
         Object.assign(input, {
             axisX: 0, axisY: 0, a: false, b: false, aDown: false, bDown: false,
             touching: false, tapped: false, touchX: 0, touchY: 0,
+            actionsHeld: {}, actionsPressed: {},
         }, preset);
 
-        // timers (the prelude's __tick)
+        // timers and tweens (the prelude's __tick)
+        for (let k = tweens.length - 1; k >= 0; k--) {
+            const tw = tweens[k];
+            tw.t += DT;
+            const u = Math.min(tw.t / tw.dur, 1);
+            tw.o[tw.p] = tw.from + (tw.to - tw.from) * tw.e(u);
+            if (u >= 1) { tweens.splice(k, 1); if (tw.done) tw.done(); }
+        }
         for (let i = timers.length - 1; i >= 0; i--) {
             const t = timers[i];
             if (world.time >= t.t) {
@@ -712,7 +864,7 @@ function runGame(gameDir) {
             go._animTime += DT;      // so isAnimationFinished() eventually returns true
         }
 
-        world.time += DT;
+        world.time += DT * world.timeScale;
     }
 
     // --- post-run assertions
@@ -737,7 +889,10 @@ function runGame(gameDir) {
             fail(`${id}/${a.file}: defines neither start() nor update() -- dead script`);
         }
         if (hasStart) ok(a.started, `${id}/${a.file}: start() was never called`);
-        if (hasUpdate) ok(a.ticks > 0, `${id}/${a.file}: update() was never called`);
+        // Inactive prototypes (scene.spawn templates) are never ticked by design;
+        // only clones and ordinary active objects must run update().
+        const isTemplate = !a.go._isClone && a.go._def && a.go._def.active === false;
+        if (hasUpdate && !isTemplate) ok(a.ticks > 0, `${id}/${a.file}: update() was never called`);
     }
 
     // Textures set at runtime must be declared assets.
@@ -829,6 +984,33 @@ function runGame(gameDir) {
         ok(world.spawnedCount > 0, `${id}: nothing was spawned -- no track, obstacles or pickups`);
     }
 
+    if (id === '05_shooter_lowpoly_3d') {
+        ok(moved('Player'), `${id}: the Player never moved under four seconds of input`);
+        const wave = stateOf('WaveDirector.js', 'wave');
+        ok(typeof wave === 'number' && wave >= 1, `${id}: wave counter is not valid (${wave})`);
+        ok(world.spawnedCount > 0, `${id}: no Grunts or bullets were spawned from templates`);
+    }
+
+    if (id === '06_open_world_3d') {
+        ok(moved('Car'), `${id}: the Car never moved under four seconds of input`);
+        const trees = world.byName.get('Tree000');
+        ok(trees && typeof trees.active === 'boolean', `${id}: tree culling has no target`);
+    }
+
+    if (id === '07_motorbike_2d') {
+        const bike = world.byName.get('Bike');
+        ok(bike && moved('Bike'), `${id}: the Bike never moved under four seconds of input`);
+        ok(world.byName.get('WheelBack') && world.byName.get('WheelFront'),
+           `${id}: the bike's wheel children are missing`);
+    }
+
+    if (id === '08_zombie_topdown') {
+        ok(moved('Player') || world.spawnedCount > 0,
+           `${id}: neither the Player moved nor any zombie spawned`);
+        const wave = stateOf('ZombieDirector.js', 'wave');
+        ok(typeof wave === 'number' && wave >= 1, `${id}: wave counter is not valid (${wave})`);
+    }
+
     return {
         id,
         scripts: attached.length,
@@ -856,6 +1038,7 @@ if (dirs.length === 0) {
     process.exit(2);
 }
 
+checkPreludeDrift();
 checkApiDrift();
 
 console.log(`S Engine headless game harness`);

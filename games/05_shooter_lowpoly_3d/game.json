@@ -1,0 +1,36 @@
+{
+  "id": "05_shooter_lowpoly_3d",
+  "title": "Sector Zero",
+  "genre": "3D low-poly arena shooter",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "ShooterPlayer.js",
+    "Bullet.js",
+    "Grunt.js",
+    "Fx.js",
+    "WaveDirector.js"
+  ],
+  "controls": {
+    "move": "left stick",
+    "fire": "action button A (hold to fire)"
+  },
+  "systems": [
+    "physics: script-driven (circle tests)",
+    "ui: scene text HUD",
+    "particles: pooled burst emitters with self-destroying copies"
+  ],
+  "engineNotes": {
+    "notes": [
+      "Third-person camera follows the Player object with Look At Target.",
+      "Enemies and bullets are cloned from inactive template objects via scene.spawn().",
+      "Waves scale with the wave counter; game-over restarts with scene.reload()."
+    ]
+  },
+  "assets": []
+}

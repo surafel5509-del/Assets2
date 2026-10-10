@@ -285,6 +285,11 @@ class SInput(private val engine: Engine) {
     @JvmField var touchX = 0.0
     @JvmField var touchY = 0.0
 
+    /** True while a named control-layout action (see the Game Controls editor) is held. */
+    fun action(name: String): Boolean = engine.input.action(name)
+    /** True on the frame a named action went down. */
+    fun actionPressed(name: String): Boolean = engine.input.actionPressed(name)
+
     fun sync() {
         val i = engine.input
         axisX = i.axisX.toDouble(); axisY = i.axisY.toDouble()
@@ -298,6 +303,9 @@ class STime(private val engine: Engine) {
     fun getTime(): Double = engine.time
     fun getFrame(): Double = engine.frame.toDouble()
     fun getFps(): Double = engine.fps.toDouble()
+    /** Game-clock speed: 1 = normal, 0 = paused gameplay, 0.25 = slow motion. Timers and tweens follow it. */
+    fun getScale(): Double = engine.timeScale.toDouble()
+    fun setScale(v: Double) { engine.timeScale = v.toFloat().coerceIn(0f, 4f) }
 }
 
 class SAudio(private val engine: Engine) {
@@ -305,6 +313,11 @@ class SAudio(private val engine: Engine) {
     fun play(name: String, volume: Double) = engine.audio.play(name, volume.toFloat())
     fun beep() = engine.audio.beep()
     fun stopAll() = engine.audio.stopAll()
+    /** Starts a looping music track. Replaces the current track. */
+    fun playMusic(name: String) = engine.audio.playMusic(name)
+    fun playMusic(name: String, volume: Double) = engine.audio.playMusic(name, volume.toFloat())
+    fun stopMusic() = engine.audio.stopMusic()
+    fun getMusic(): String = engine.audio.currentMusic
 }
 
 class SConsole(private val engine: Engine) {

@@ -6,12 +6,22 @@ enum class AssetKind(val extensions: List<String>) {
     SOUND(listOf("wav", "ogg", "mp3", "m4a")),
     SHADER(listOf("glsl")),
     ANIMATION(listOf("anim")),
-    MODEL(listOf("obj"));
+    MODEL(listOf("obj")),
+    /** UI Builder screen layouts. Compound suffix, so it is matched on the whole name. */
+    UI(listOf("ui.json")),
+    /** On-screen control layouts. */
+    CONTROLS(listOf("ctrl.json"));
 
     companion object {
+        /**
+         * The kind of an asset from its file name. Compound suffixes such as
+         * ".ui.json" are matched on the whole name, and a path ("UI/hud.ui.json")
+         * is accepted as well as a bare name.
+         */
         fun of(fileName: String): AssetKind? {
-            val ext = fileName.substringAfterLast('.', "").lowercase()
-            return values().firstOrNull { ext in it.extensions }
+            val lower = fileName.substringAfterLast('/').lowercase()
+            for (k in values()) for (ext in k.extensions) if (lower.endsWith(".$ext")) return k
+            return null
         }
     }
 }

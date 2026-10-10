@@ -57,7 +57,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         glView.setOnTouchListener { v, e -> forwardTouch(v, e); true }
         root.addView(glView)
-        root.addView(GameControlsView(this) { engine.input })
+        root.addView(playOverlayView(this, engine))
         fpsText = label("", 11f, 0x99FFFFFF.toInt()).apply { setPadding(dp(10), dp(6), 0, 0) }
         if (!standalone) {
             root.addView(fpsText, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.START))

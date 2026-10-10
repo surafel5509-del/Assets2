@@ -339,12 +339,13 @@ object AssetStore {
 
                 val targetName = project.uniqueAssetName(flatName(entry))
                 val dest = project.assetFile(targetName)
+                dest.parentFile?.mkdirs()
                 src.copyTo(dest, overwrite = true)
                 imported++
 
                 val s = entry.sheet
                 if (s != null && s.cols >= 1 && s.rows >= 1 && s.frames >= 2 && !s.guess) {
-                    val clipName = project.uniqueAssetName(targetName.substringBeforeLast('.') + ".anim")
+                    val clipName = project.uniqueAssetName(targetName.substringBeforeLast('.').substringAfterLast('/') + ".anim")
                     val clip = AnimationClip(
                         texture = targetName,
                         columns = s.cols,

@@ -39,8 +39,7 @@ object AssetLibrary {
     val categories = listOf("All", "Packs", "Textures", "Sprites", "Sprite Sheets", "Sounds", "Shaders", "Scripts", "Blueprints", "3D Models")
 
     private fun png(p: Project, name: String, b: Bitmap) {
-        p.assetsDir.mkdirs()
-        p.assetFile(name).outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        p.assetFile(name).also { it.parentFile?.mkdirs() }.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     private fun tex(title: String, file: String, desc: String, cat: String = "Textures", gen: () -> Bitmap) =
@@ -56,7 +55,7 @@ object AssetLibrary {
         }
 
     private fun sfx(title: String, file: String, desc: String, gen: () -> ByteArray) =
-        Item(title, "Sounds", desc, listOf(file), "♪", sound = gen) { p -> p.assetsDir.mkdirs(); p.assetFile(file).writeBytes(gen()) }
+        Item(title, "Sounds", desc, listOf(file), "♪", sound = gen) { p -> p.writeAssetBytes(file, gen()) }
 
     val items: List<Item> by lazy { buildItems() }
 

@@ -49,6 +49,8 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         put(g, "scene", SScene(engine, this))
         put(g, "audio", SAudio(engine))
         put(g, "console", SConsole(engine))
+        put(g, "ui", SUi(engine))
+        put(g, "storage", SStorage(engine))
         c.evaluateString(g, PRELUDE, "prelude", 1, null)
         compiled.clear()
         for (go in engine.scene.objects.toList()) attach(go)
@@ -172,7 +174,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         val g = global ?: return
         val tick = g.get("__tick", g)
         if (tick is Function) {
-            try { tick.call(cx, g, g, emptyArray()) } catch (e: RhinoException) {
+            try { tick.call(cx, g, g, arrayOf<Any?>(dtArg)) } catch (e: RhinoException) {
                 engine.log(2, "timer: line ${e.lineNumber()} ${e.details()}")
             } catch (e: Exception) { engine.log(2, "timer: ${e.message}") }
         }
@@ -231,6 +233,10 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
     }
 
     companion object {
+        /*
+         * Global helpers available to every script. Plain JavaScript evaluated once per
+         * play session. Keep `$` out of this block: it is a Kotlin raw string.
+         */
         const val PRELUDE = """
 function log() { var s = []; for (var i = 0; i < arguments.length; i++) s.push(String(arguments[i])); console.log(s.join(' ')); }
 function warn(m) { console.warn(String(m)); }
@@ -239,14 +245,66 @@ function random(a, b) { if (a === undefined) return Math.random(); return a + Ma
 function randomInt(a, b) { return Math.floor(random(a, b + 1)); }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
+function sign(v) { return v > 0 ? 1 : (v < 0 ? -1 : 0); }
+function smoothstep(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+function damp(current, target, lambda, dt) { return target + (current - target) * Math.exp(-lambda * dt); }
+function approach(current, target, maxDelta) { if (current < target) return Math.min(current + maxDelta, target); return Math.max(current - maxDelta, target); }
+function dist2d(x1, y1, x2, y2) { var dx = x2 - x1, dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
+function angleTo(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) { for (var i = arr.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; }
+
 var __timers = [];
-function after(sec, fn) { __timers.push({ t: time.time + sec, f: fn, every: 0 }); }
-function every(sec, fn) { __timers.push({ t: time.time + sec, f: fn, every: sec }); }
-function __tick() {
+var __timerId = 0;
+function after(sec, fn) { var id = ++__timerId; __timers.push({ id: id, t: time.time + sec, f: fn, every: 0 }); return id; }
+function every(sec, fn) { var id = ++__timerId; __timers.push({ id: id, t: time.time + sec, f: fn, every: sec }); return id; }
+function cancelTimer(id) { for (var i = __timers.length - 1; i >= 0; i--) if (__timers[i].id === id) __timers.splice(i, 1); }
+
+var __tweens = [];
+var __easings = {
+  linear: function (t) { return t; },
+  easeIn: function (t) { return t * t; },
+  easeOut: function (t) { return 1 - (1 - t) * (1 - t); },
+  easeInOut: function (t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; },
+  easeOutBack: function (t) { var c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+};
+/* tween(object, property, to, seconds, easing?, onDone?) -- eases a numeric property over game time. */
+function tween(obj, prop, to, sec, ease, done) {
+  var id = ++__timerId;
+  __tweens.push({ id: id, o: obj, p: prop, from: obj[prop], to: to, dur: Math.max(sec, 0.0001), t: 0, e: __easings[ease || 'easeOut'] || __easings.linear, done: done });
+  return id;
+}
+function cancelTween(id) { for (var i = __tweens.length - 1; i >= 0; i--) if (__tweens[i].id === id) __tweens.splice(i, 1); }
+
+var __events = {};
+var events = {
+  on: function (name, fn) { (__events[name] = __events[name] || []).push(fn); },
+  off: function (name, fn) {
+    var list = __events[name]; if (!list) return;
+    if (fn === undefined) { delete __events[name]; return; }
+    var i = list.indexOf(fn); if (i >= 0) list.splice(i, 1);
+  },
+  emit: function (name, data) {
+    var list = __events[name]; if (!list) return 0;
+    var copy = list.slice();
+    for (var i = 0; i < copy.length; i++) copy[i](data);
+    return copy.length;
+  },
+  count: function (name) { var list = __events[name]; return list ? list.length : 0; }
+};
+
+function __tick(dt) {
   var now = time.time;
   for (var i = __timers.length - 1; i >= 0; i--) {
     var tm = __timers[i];
     if (now >= tm.t) { if (tm.every > 0) tm.t += tm.every; else __timers.splice(i, 1); tm.f(); }
+  }
+  for (var k = __tweens.length - 1; k >= 0; k--) {
+    var tw = __tweens[k];
+    tw.t += dt;
+    var u = Math.min(tw.t / tw.dur, 1);
+    tw.o[tw.p] = tw.from + (tw.to - tw.from) * tw.e(u);
+    if (u >= 1) { __tweens.splice(k, 1); if (tw.done) tw.done(); }
   }
 }
 """

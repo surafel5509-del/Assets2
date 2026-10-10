@@ -249,6 +249,7 @@ object GameLibrary {
                 val landed = project.assetFile(entry.name)
                 if (landed.exists() && entry.name != target) {
                     val dest = project.assetFile(target)
+                    dest.parentFile?.mkdirs()
                     if (!dest.exists()) landed.renameTo(dest)
                 }
             }

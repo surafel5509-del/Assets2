@@ -49,6 +49,7 @@ import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.render.EditorState
 import com.sengine.engine.render.SceneRenderer
 import com.sengine.engine.render.Tool
+import com.sengine.project.AssetFolders
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
 import com.sengine.project.Templates
@@ -64,7 +65,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private lateinit var controller: ViewportController
     private lateinit var inspector: InspectorPanel
     private lateinit var hierarchy: HierarchyAdapter
-    private lateinit var controls: GameControlsView
+    private lateinit var controls: OverlayView
     private lateinit var toolbar: LinearLayout
     private lateinit var titleText: TextView
     private lateinit var statsText: TextView
@@ -253,7 +254,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         controller = ViewportController(this, engine, state)
         glView.setOnTouchListener(controller)
         vp.addView(glView)
-        controls = GameControlsView(this) { engine.input }
+        controls = playOverlayView(this, engine)
         vp.addView(controls)
         statsText = label("", 11f, 0xCCFFFFFF.toInt()).apply {
             setPadding(dp(8), dp(3), dp(8), dp(3)); background = round(0x88000000.toInt(), dp(4).toFloat())
@@ -342,7 +343,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         stepBtn.alpha = if (m == Engine.Mode.PAUSED) 1f else 0.4f
         toolbar.setBackgroundColor(if (m == Engine.Mode.EDIT) C.HEADER else 0xFF1D2E45.toInt())
         controls.visibility = if (m == Engine.Mode.EDIT) View.GONE else View.VISIBLE
-        controls.reset()
+        controls.refresh()
         if (m == Engine.Mode.EDIT) { refreshHierarchy(); inspector.rebuild() }
         updateTitle()
     }
@@ -374,11 +375,21 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     override fun openScript(name: String) {
+        if (name.endsWith(".sprite") || name.endsWith(".ui.json") || name.endsWith(".ctrl.json")) {
+            startActivity(assetEditorIntent(name)); return
+        }
         when (AssetKind.of(name)) {
             AssetKind.ANIMATION -> openAnimationEditor(name)
             else -> if (name.endsWith(".bp")) startActivity(Intent(this, BlueprintEditorActivity::class.java).putExtra("project", project.name).putExtra("asset", name))
                 else startActivity(Intent(this, ScriptEditorActivity::class.java).putExtra("project", project.name).putExtra("asset", name))
         }
+    }
+
+    /** The dedicated editor for Studio, UI and control-layout assets. */
+    private fun assetEditorIntent(name: String): Intent = when {
+        name.endsWith(".sprite") -> SpriteEditorActivity.openIntent(this, project.name, name)
+        name.endsWith(".ui.json") -> OverlayEditorActivity.intent(this, project.name, OverlayEditorActivity.KIND_UI, name)
+        else -> OverlayEditorActivity.intent(this, project.name, OverlayEditorActivity.KIND_CONTROLS, name)
     }
 
     fun openAnimationEditor(name: String?) {
@@ -570,7 +581,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private fun mainMenu(anchor: View) {
         val pm = PopupMenu(this, anchor)
         val entries = listOf(
-            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Export Project (.zip)",
+            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Sprite Studio",
+            "UI Builder", "Controls Editor", "Shader Library", "Export Project (.zip)",
             (if (state.showProfiler) "Hide" else "Show") + " Profiler",
             (if (state.showGrid) "Hide" else "Show") + " Grid",
             (if (state.showColliders) "Hide" else "Show") + " Colliders",
@@ -588,6 +600,10 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Asset Store" -> startActivity(Intent(this, AssetStoreActivity::class.java).putExtra("project", project.name))
                 t == "Asset Packs" -> startActivity(Intent(this, AssetPacksActivity::class.java).putExtra("project", project.name))
                 t == "Animation Editor" -> openAnimationEditor(null)
+                t == "Sprite Studio" -> startActivity(SpriteEditorActivity.newIntent(this, project.name))
+                t == "UI Builder" -> startActivity(OverlayEditorActivity.intent(this, project.name, OverlayEditorActivity.KIND_UI))
+                t == "Controls Editor" -> startActivity(OverlayEditorActivity.intent(this, project.name, OverlayEditorActivity.KIND_CONTROLS))
+                t == "Shader Library" -> startActivity(Intent(this, ShaderLibraryActivity::class.java).putExtra("project", project.name))
                 t.endsWith("Profiler") -> state.showProfiler = !state.showProfiler
                 t.startsWith("Export") -> { saveScene(silent = true); exportLauncher.launch("${project.name}.zip") }
                 t.endsWith("Grid") -> state.showGrid = !state.showGrid
@@ -679,12 +695,69 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     // ================================================================== assets
+    /** The asset folder the Assets row is showing, e.g. "Sounds/Music". Null shows every asset. */
+    private var folderFilter: String? = null
+
     fun refreshAssets() {
         if (!::assetsRow.isInitialized) return
         assetsRow.removeAllViews()
-        val assets = project.listAssets()
-        if (assets.isEmpty()) assetsRow.addView(label("No assets yet. Create a script or import images / sounds.", 12f, C.DIM).apply { setPadding(dp(8), dp(20), 0, 0) })
+        assetsRow.addView(folderChips(), lp(dp(118), MATCH).margins(0, 0, dp(6), 0))
+        val filter = folderFilter
+        val all = project.listAssets()
+        val assets = if (filter == null) all else all.filter { it.startsWith("$filter/") }
+        if (assets.isEmpty()) assetsRow.addView(label(
+            if (filter == null) "No assets yet. Create a script or import images / sounds."
+            else "Nothing in $filter yet. Import here, or move assets into it.", 12f, C.DIM).apply { setPadding(dp(8), dp(20), 0, 0) })
         for (name in assets) assetsRow.addView(assetCard(name), lp(dp(88), MATCH).margins(dp(3), 0, dp(3), 0))
+    }
+
+    /** Folder chips: every asset branch, any user folders at the top level, and New Folder. */
+    private fun folderChips(): View {
+        val box = vbox()
+        fun chip(text: String, path: String?, onTap: () -> Unit = {}) {
+            val selected = folderFilter == path
+            box.addView(label(text, 11f, if (selected) C.TEXT else C.DIM, selected).apply {
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+                isSingleLine = true
+                background = round(if (selected) C.SEL else C.PANEL2, dp(6).toFloat())
+                setOnClickListener { folderFilter = path; onTap(); refreshAssets() }
+            }, lp(-1, -2).margins(0, 0, 0, dp(3)))
+        }
+        chip("All assets", null)
+        val branches = AssetFolders.ALL.map { it.path }
+        for (f in AssetFolders.ALL) chip(f.label, f.path)
+        for (extra in project.listAssetFolders()) if (!extra.contains('/') && extra !in branches) chip(extra, extra)
+        box.addView(button("+ New folder", C.GREEN, 0xFFFFFFFF.toInt()) { showNewFolderDialog() }.apply { textSize = 11f },
+            lp(-1, -2))
+        return ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(box) }
+    }
+
+    private fun showNewFolderDialog() {
+        val input = field("").apply { hint = "Folder name"; setSingleLine(true); setTextColor(C.TEXT) }
+        val parent = folderFilter
+        MaterialAlertDialogBuilder(this).setTitle("New folder")
+            .setMessage(if (parent == null) "Created at the top level of Assets." else "Created inside $parent.")
+            .setView(vbox().apply { setPadding(dp(16), dp(8), dp(16), dp(8)); addView(input, lp(-1, -2)) })
+            .setPositiveButton("Create") { _, _ ->
+                val name = input.text.toString().trim().replace(Regex("[^A-Za-z0-9 _-]"), "")
+                if (name.isBlank()) return@setPositiveButton toast("Give the folder a name")
+                val path = if (parent == null) name else "$parent/$name"
+                if (project.createFolder(path)) { folderFilter = path; refreshAssets() } else toast("That folder already exists")
+            }
+            .setNegativeButton("Cancel", null).show()
+    }
+
+    private fun showMoveDialog(name: String) {
+        val targets = mutableListOf("Assets (top level)")
+        val paths = mutableListOf("")
+        for (f in AssetFolders.ALL) { targets += f.label + "  (${f.path})"; paths += f.path }
+        for (extra in project.listAssetFolders()) if (extra !in paths) { targets += extra; paths += extra }
+        MaterialAlertDialogBuilder(this).setTitle("Move ${AssetFolders.nameOf(name)} to")
+            .setItems(targets.toTypedArray()) { _, i ->
+                val moved = project.moveAsset(name, paths[i])
+                if (moved == null) toast("Could not move — a file with that name is already there") else toast("Moved to ${paths[i].ifBlank { "top level" }}")
+                refreshAssets()
+            }.show()
     }
 
     private fun assetCard(name: String): View {
@@ -729,11 +802,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.MODEL -> { pm.menu.add("Create 3D Model Object"); if (sel != null) pm.menu.add("Use model on ${sel.name}") }
             null -> {}
         }
+        if (name.endsWith(".sprite") || name.endsWith(".ui.json") || name.endsWith(".ctrl.json")) pm.menu.add("Edit")
+        pm.menu.add("Move to…")
         pm.menu.add("Delete")
         pm.setOnMenuItemClickListener { item ->
             val t = item.title.toString()
             when {
                 t == "Edit" -> openScript(name)
+                t == "Move to…" -> showMoveDialog(name)
                 t == "Preview" -> try {
                     android.media.MediaPlayer().apply {
                         setDataSource(project.assetFile(name).absolutePath); setOnCompletionListener { it.release() }; prepare(); start()
@@ -837,7 +913,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             }
             n = project.uniqueAssetName(n)
             project.assetsDir.mkdirs()
-            contentResolver.openInputStream(uri)!!.use { input -> project.assetFile(n).outputStream().use { input.copyTo(it) } }
+            contentResolver.openInputStream(uri)!!.use { input -> project.assetFile(n).also { it.parentFile?.mkdirs() }.outputStream().use { input.copyTo(it) } }
             refreshAssets()
             showTab(1)
             toast("Imported $n")

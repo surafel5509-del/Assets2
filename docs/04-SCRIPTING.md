@@ -344,3 +344,31 @@ The harness integrates `vx`/`vy` into position each frame the way
 gameplay assertion was then mutation-tested: neutralising the player's velocity
 write makes the harness fail with *"the Player never moved under four seconds of
 input"*. An assertion that cannot fail is not a test.
+
+## Script API additions (current)
+
+These globals and methods were added alongside the UI builder, the storage
+layer, and the prelude helpers. `tools/run_games.js` mirrors them, and its drift
+check reads `Api.kt` and `ApiExtras.kt` to keep the mirror honest.
+
+| Global | Methods |
+|---|---|
+| `ui` | `open`, `close`, `isOpen`, `setText`, `getText`, `setValue`, `getValue`, `show`, `hide`, `isVisible`, `setColor`, `setBackground` |
+| `storage` | `slot`, `load`, `save`, `get`, `set`, `has`, `remove`, `clear`, `keyCount` |
+| `input` | `action(name)` (held), `actionPressed(name)` (this frame), plus the existing `axisX`, `axisY`, `a`, `aDown`, `b`, `bDown` |
+| `time` | `getScale`, `setScale`; `world.timeScale` drives world time |
+| `audio` | `playMusic`, `stopMusic`, `getMusic`, alongside `play` and `beep` |
+
+**Prelude helpers** (available in every script): `sign`, `smoothstep`, `damp`,
+`approach`, `dist2d`, `angleTo`, `pick`, `shuffle`, `after(sec, fn)`,
+`every(sec, fn)`, `cancelTimer(id)`, `tween(obj, prop, to, sec, easing, done)`,
+`cancelTween(id)`, and `events.on/off/emit/count`. Timers and tweens tick in the
+frame loop. Easings: `linear`, `easeIn`, `easeOut`, `easeInOut`, `easeOutBack`.
+
+**Clones.** `scene.spawn(name, x, y[, z])` duplicates an object by name, including
+its components and Script components, and returns it. Keep prototypes inactive
+and tagged with the tag you search for, so `findAll` never returns them.
+
+**Blueprint events.** `On Input Action` (`OnAction`), `On UI Tap` (`OnUiTap`) and
+`On Event` (`OnEvent`, with `arg` as its data) sit in the Events palette category.
+The Game, UI, Storage and Movement categories map onto the calls above.

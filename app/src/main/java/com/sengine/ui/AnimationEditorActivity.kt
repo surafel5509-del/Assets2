@@ -61,6 +61,7 @@ class AnimationEditorActivity : AppCompatActivity() {
         bar.addView(button("←") { onBackPressedDispatcher.onBackPressed() })
         title = label("", 15f, C.TEXT, true).apply { setPadding(dp(10), 0, dp(10), 0); isSingleLine = true }
         bar.addView(title, lp(0, WRAP, 1f))
+        bar.addView(button("Create Sprite", C.GREEN, 0xFFFFFFFF.toInt()) { startActivity(SpriteEditorActivity.newIntent(this, project.dir.name)) }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
         bar.addView(button("Open…") { openDialog() }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
         bar.addView(button("New") { newClip() }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
         bar.addView(button("Save", C.ACCENT, 0xFFFFFFFF.toInt()) { save() }, lp(WRAP, WRAP).margins(dp(3), 0, 0, 0))
