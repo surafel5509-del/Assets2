@@ -202,6 +202,8 @@ class Engine(val project: Project, initialScene: Scene) {
     val ultraEditor = com.sengine.engine.tools.UltraEditorSystem()
     // Ultra Platform
     val ultraPlatform = com.sengine.engine.platform.UltraPlatformSystem()
+    // Ultra Full Control - Most Powerful
+    val ultraFullControl = com.sengine.engine.tools.UltraFullControlSystem()
 
     // Time & Frame
     var time = 0.0; private set
@@ -290,7 +292,7 @@ class Engine(val project: Project, initialScene: Scene) {
         log(0, "Quantum Systems: RayTracing=${config.rayTracing} Nanite=${config.nanite} Lumen=${config.lumen} VT=${config.virtualTexture} Chaos=${config.chaosDestruction} WorldPartition=${config.worldPartition} XR=${config.xrSupport}")
         log(0, "Titan 2D Systems: Renderer2D=${renderer2DSystem.lights.size} Sprites=${spriteSystemV2.sprites.size} Tilemap=${tilemapSystemV2.layers.size} Physics2D=${physics2DV2.bodies.size} Sorting=${sortingSystem.layers.size}")
         log(0, "Most Powerful Tools: FullControl=${fullControlSystem.hierarchy.size} Packages=${packageManagerSystem.packages.size} ProfilerV2=${profilerV2System.frames.size} HotReload=${hotReloadSystem.watchedFiles.size}")
-        log(0, "Ultra Systems: Core Burst=${ultraCore.burstJobs.size} Assemblies=${ultraCore.assemblies.size} SO=${ultraCore.scriptableObjects.size} ${ultraCore.undoRedo.getStats()} | Rendering ${ultraRendering.getStats()} | Physics ${ultraPhysics.getStats()} | Anim ${ultraAnimation.getStats()} | Audio ${ultraAudio.getStats()} | AI ${ultraAI.getStats()} | Net ${ultraNetworking.getStats()} | Platform ${ultraPlatform.getStats()} | Editor ${ultraEditor.getStats()}")
+        log(0, "Ultra Systems: Core Burst=${ultraCore.burstJobs.size} Assemblies=${ultraCore.assemblies.size} SO=${ultraCore.scriptableObjects.size} ${ultraCore.undoRedo.getStats()} | Rendering ${ultraRendering.getStats()} | Physics ${ultraPhysics.getStats()} | Anim ${ultraAnimation.getStats()} | Audio ${ultraAudio.getStats()} | AI ${ultraAI.getStats()} | Net ${ultraNetworking.getStats()} | Platform ${ultraPlatform.getStats()} | Editor ${ultraEditor.getStats()} | FullControl ${ultraFullControl.getStats()}")
     }
 
     // ---------------------------------------------------------------- commands
