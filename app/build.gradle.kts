@@ -11,13 +11,13 @@ android {
         applicationId = "com.sengine.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 610
-        versionName = "6.1.0 Ultimate Edition [Quantum]"
-        buildConfigField("String", "ENGINE_VERSION", "\"6.1.0 Ultimate Edition [Quantum]\"")
-        buildConfigField("int", "ENGINE_API_VERSION", "610")
-        buildConfigField("String", "RENDER_PIPELINE", "\"Universal+RayTracing+Nanite\"")
-        buildConfigField("String", "ENGINE_CODENAME", "\"Quantum\"")
-        buildConfigField("String", "ENGINE_FEATURES", "\"RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG\"")
+        versionCode = 611
+        versionName = "6.1.1 Most Powerful Edition [Titan]"
+        buildConfigField("String", "ENGINE_VERSION", "\"6.1.1 Most Powerful Edition [Titan]\"")
+        buildConfigField("int", "ENGINE_API_VERSION", "611")
+        buildConfigField("String", "RENDER_PIPELINE", "\"Universal+RayTracing+Nanite+2D_URP\"")
+        buildConfigField("String", "ENGINE_CODENAME", "\"Titan\"")
+        buildConfigField("String", "ENGINE_FEATURES", "\"RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG,2D_URP,Tilemap,2D_Physics,2D_Animation,Sorting,FullControl\"")
         ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64")) }
     }
 

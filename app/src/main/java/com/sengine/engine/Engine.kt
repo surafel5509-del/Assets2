@@ -158,6 +158,29 @@ class Engine(val project: Project, initialScene: Scene) {
     val lagCompensation = com.sengine.engine.net.LagCompensationSystem()
     val antiCheatSystem = com.sengine.engine.net.AntiCheatSystem()
 
+    // ==================== Ultimate 6.1.1 Titan - Unity 2D & Most Powerful ====================
+    // 2D Systems
+    val renderer2DSystem = com.sengine.engine.render.`2d`.Renderer2DSystem()
+    val spriteSystemV2 = com.sengine.engine.render.`2d`.SpriteSystemV2()
+    val physics2DV2 = com.sengine.engine.physics.`2d`.Physics2DV2()
+    val tilemapSystemV2 = com.sengine.engine.tilemap.TilemapSystemV2()
+    val spriteAnimationSystem = com.sengine.engine.anim.`2d`.SpriteAnimationSystem()
+    val sortingSystem = com.sengine.engine.render.`2d`.SortingSystem()
+    val lighting2DSystemV2 = com.sengine.engine.render.`2d`.Lighting2DSystemV2()
+    val particleSystem2D = com.sengine.engine.vfx.ParticleSystem2D()
+    val shaderGraph2D = com.sengine.engine.vfx.ShaderGraph2D()
+    val cinemachine2DSystem = com.sengine.engine.cinemachine.Cinemachine2DSystem()
+
+    // Most Powerful Tools
+    val fullControlSystem = com.sengine.engine.core.FullControlSystem()
+    val packageManagerSystem = com.sengine.engine.core.PackageManagerSystem()
+    val hotReloadSystem = com.sengine.engine.core.HotReloadSystem()
+    val profilerV2System = com.sengine.engine.profiling.ProfilerV2System()
+    val memoryControlSystem = com.sengine.engine.profiling.MemoryControlSystem()
+    val graphicsControlSystem = com.sengine.engine.profiling.GraphicsControlSystem()
+    val spriteEditorTools = com.sengine.engine.tools.SpriteEditorTools()
+    val tilemapEditorTools = com.sengine.engine.tools.TilemapEditorTools()
+
     // Time & Frame
     var time = 0.0; private set
     var frame = 0L; private set
@@ -204,9 +227,29 @@ class Engine(val project: Project, initialScene: Scene) {
             foliageSystem.addPrototype("Grass", com.sengine.engine.world.FoliageType.Grass, 200f)
             foliageSystem.addPrototype("Tree", com.sengine.engine.world.FoliageType.Tree, 5f)
         } catch (_: Exception) {}
-        log(0, "S Engine Ultimate Edition v${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH} [${EngineVersion.CODENAME}] Initialized")
-        log(0, "Render Pipeline: ${config.pipeline} | Color Space: ${config.colorSpace} | Quality: ${config.quality.level}")
+        // Initialize Titan 2D & Most Powerful systems
+        try {
+            renderer2DSystem.createGlobalLight(0xFFAAAAAA.toInt(), 0.5f)
+            spriteSystemV2.createAtlas("MainAtlas", 2048, 2048)
+            tilemapSystemV2.createLayer("Ground", 100, 100)
+            tilemapSystemV2.createLayer("Walls", 100, 100)
+            spriteAnimationSystem.createLibrary("MainLibrary")
+            sortingSystem.createLayer("Default", 0, true)
+            lighting2DSystemV2.addLight(0f, 0f, 0xFFFFFFFF.toInt(), 1f, 10f)
+            fullControlSystem.addHierarchyNode("Main Camera")
+            fullControlSystem.addProjectAsset("Assets/Textures", "MainAtlas", "Texture", true)
+            profilerV2System.enabled = true
+            memoryControlSystem.createPool("GameObjectPool", 100)
+            graphicsControlSystem.setQualityLevel(3)
+            spriteEditorTools.createPalette("MainPalette")
+            tilemapEditorTools.createBrush("DefaultBrush", 1)
+            cinemachine2DSystem.createCamera("MainCamera", "Player", 10)
+        } catch (_: Exception) {}
+        log(0, "S Engine Most Powerful Edition v${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH} [${EngineVersion.CODENAME}] Initialized - TITAN")
+        log(0, "Render Pipeline: ${config.pipeline} | Color Space: ${config.colorSpace} | Quality: ${config.quality.level} | 2D URP: Enabled")
         log(0, "Quantum Systems: RayTracing=${config.rayTracing} Nanite=${config.nanite} Lumen=${config.lumen} VT=${config.virtualTexture} Chaos=${config.chaosDestruction} WorldPartition=${config.worldPartition} XR=${config.xrSupport}")
+        log(0, "Titan 2D Systems: Renderer2D=${renderer2DSystem.lights.size} Sprites=${spriteSystemV2.sprites.size} Tilemap=${tilemapSystemV2.layers.size} Physics2D=${physics2DV2.bodies.size} Sorting=${sortingSystem.layers.size}")
+        log(0, "Most Powerful Tools: FullControl=${fullControlSystem.hierarchy.size} Packages=${packageManagerSystem.packages.size} ProfilerV2=${profilerV2System.frames.size} HotReload=${hotReloadSystem.watchedFiles.size}")
     }
 
     // ---------------------------------------------------------------- commands

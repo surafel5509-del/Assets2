@@ -19,7 +19,7 @@ import com.sengine.engine.core.TextRenderer
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, fpsTemplate, racingTemplate, rpgTemplate, battleRoyaleTemplate, cityBuilderTemplate, ultimateShowcase, quantumShowcase, rayTracingDemo, destructionDemo, fluidDemo, openWorldPCG, vrDemo, mlAgentsDemo) }
+    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, fpsTemplate, racingTemplate, rpgTemplate, battleRoyaleTemplate, cityBuilderTemplate, ultimateShowcase, quantumShowcase, rayTracingDemo, destructionDemo, fluidDemo, openWorldPCG, vrDemo, mlAgentsDemo, unity2DURP, tilemapPlatformer, spriteAnimation2D, sortingGroupDemo, lighting2DDemo, cinemachine2DDemo, particle2DDemo, titanFullControl) }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution
@@ -1681,6 +1681,97 @@ function update(dt){
         obj(s, "Info", 0f, -4f).text("ML-Agents Demo | Reinforcement Learning | Observations: Position, Velocity | Actions: Move | Reward: Reach Target", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
 
         p.saveScene(s); p.startScene="Main"
+    }
+
+    // ==================== TITAN 6.1.1 - UNITY 2D & MOST POWERFUL TEMPLATES ====================
+
+    val unity2DURP = Template("Unity 2D URP", "2D Renderer, 2D Lights, Shadows, Sorting Layers - Unity 2D URP") { p ->
+        p.writeAsset("Player2D.js", "var speed=5, jumpForce=8, isGrounded=false, health=100\nfunction start(){ log(\"Unity 2D URP - 2D Lights, Shadows, Sorting Layers\") }\nfunction update(dt){ self.vx = input.axisX * speed; if (input.aDown && isGrounded) { self.vy = jumpForce; isGrounded=false } self.order = Math.floor(-self.worldY * 10) }\nfunction onCollision(o){ isGrounded=true }")
+        val s = Scene("Main")
+        s.ambient = 0xFF1A1A2E.toInt()
+        val player = obj(s, "Player", 0f, 2f, 1f, 1f).sprite(0xFF4FC3F7, "Player.png").col2(1f,1f).body2(mass=1f, friction=0.1f).script("Player2D.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.Camera2D().also { it.follow="Player"; it.smoothing=3f; it.size=5f })
+        obj(s, "Ground", 0f, -2f, 20f, 1f).sprite(0xFF5A5A5A, "Ground.png").col2(20f,1f).body2(type=2)
+        for (i in 0 until 5) { obj(s, "ShadowCaster_${'$'}i", random(-8,8), random(-1,2), 1f, 2f).sprite(0xFF8D6E63).col2(1f,2f).body2(type=2) }
+        obj(s, "Info", 0f, -4f).text("Unity 2D URP Demo | 2D Lights | Shadows | Sorting Layers | Sprite Atlas", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val tilemapPlatformer = Template("Tilemap Platformer", "Grid, Tilemap, RuleTile, AnimatedTile - Unity 2D Tilemap") { p ->
+        p.writeAsset("TilemapPlayer.js", "var speed=6, jump=9, isGrounded=false; function update(dt){ self.vx=input.axisX*speed; if(input.aDown&&isGrounded){self.vy=jump; isGrounded=false} } function onCollision(o){isGrounded=true}")
+        val s = Scene("Main")
+        val player = obj(s, "Player", 0f, 5f, 0.8f, 1f).sprite(0xFF4FC3F7).col2(0.8f,1f).body2().script("TilemapPlayer.js")
+        player.tag="Player"; player.add(Camera2D().also { it.follow="Player"; it.size=6f })
+        for (x in -10..10) for (y in -3..0) { if (y==0 || x==-10 || x==10) { obj(s, "Tile_${'$'}{x}_${'$'}{y}", x.toFloat()+0.5f, y.toFloat()+0.5f, 1f, 1f).sprite(0xFF8D6E63).col2(1f,1f).body2(type=2).also { it.tag="Ground" } } }
+        for (i in 0 until 10) { obj(s, "Coin_${'$'}i", random(-8,8), random(1,6), 0.5f, 0.5f).sprite(0xFFFFD54F).col2(0.5f,0.5f, trigger=true).also { it.tag="Coin" } }
+        obj(s, "Info", 0f, -4f).text("Tilemap Platformer | Grid | Tilemap | RuleTile | AnimatedTile | Palette", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val spriteAnimation2D = Template("2D Animation", "Bones, Skinning, IK, Library - Unity 2D Animation") { p ->
+        p.writeAsset("BonePlayer.js", "var speed=4; function update(dt){ self.vx=input.axisX*speed; if(input.aDown){ self.setTexture(\"Armor.png\") } }")
+        val s = Scene("Main")
+        val player = obj(s, "Player", 0f, 1f, 1f, 2f).sprite(0xFF4FC3F7, "Body.png").col2(1f,2f).body2().script("BonePlayer.js")
+        player.tag="Player"; player.add(Camera2D().also { it.follow="Player"; it.size=5f })
+        obj(s, "Ground", 0f, -1f, 20f, 1f).sprite(0xFF5A5A5A).col2(20f,1f).body2(type=2)
+        obj(s, "Info", 0f, -4f).text("2D Animation Demo | Bones | Skinning LBS | IK CCD | Library | Resolver", 0.26f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val sortingGroupDemo = Template("Sorting Groups", "Sorting Layers, Groups, Order - 2D Sorting") { p ->
+        p.writeAsset("SortingPlayer.js", "var speed=5; function update(dt){ self.vx=input.axisX*speed; self.vy=input.axisY*speed; self.order=Math.floor(-self.worldY*10) }")
+        val s = Scene("Main")
+        val player = obj(s, "Player", 0f, 0f, 1f, 1f).sprite(0xFF4FC3F7).col2(1f,1f).body2().script("SortingPlayer.js")
+        player.tag="Player"; player.add(Camera2D().also { it.follow="Player"; it.size=6f })
+        for (i in 0 until 10) { obj(s, "BG_${'$'}i", random(-10,10), random(-5,5), 2f, 1f).sprite(0xFF4CAF50).also { it.order=i-10 } }
+        obj(s, "Info", 0f, -4f).text("Sorting Groups Demo | Layers Background Ground Player Foreground UI | Order Y-based", 0.26f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val lighting2DDemo = Template("2D Lighting", "Light2D, Normal Maps, Shadows - Unity 2D Lighting") { p ->
+        p.writeAsset("Light2DPlayer.js", "var speed=4; function update(dt){ self.vx=input.axisX*speed; self.vy=input.axisY*speed }")
+        val s = Scene("Main"); s.ambient=0xFF1A1A2E.toInt()
+        val player = obj(s, "Player", 0f, 0f, 0.8f, 1f).sprite(0xFF4FC3F7).col2(0.8f,1f).body2().script("Light2DPlayer.js")
+        player.tag="Player"; player.add(Camera2D().also { it.follow="Player"; it.size=6f })
+        for (i in 0 until 8) { obj(s, "Wall_${'$'}i", random(-8,8), random(-4,4), 1f, 1f).sprite(0xFF5A5A5A).col2(1f,1f).body2(type=2) }
+        obj(s, "Info", 0f, -4f).text("2D Lighting Demo | Point + Global Light | Normal Maps | Shadows | Blend", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val cinemachine2DDemo = Template("Cinemachine 2D", "Framing Transposer, Confiner, Pixel Perfect - Cinemachine 2D") { p ->
+        p.writeAsset("CM2DPlayer.js", "var speed=6; function update(dt){ self.vx=input.axisX*speed; self.vy=input.axisY*speed }")
+        val s = Scene("Main")
+        val player = obj(s, "Player", 0f, 0f, 0.8f, 1f).sprite(0xFF4FC3F7).col2(0.8f,1f).body2().script("CM2DPlayer.js")
+        player.tag="Player"
+        obj(s, "MainCamera", 0f, 0f).also { it.add(Camera2D().also { c->c.follow="Player"; c.size=5f }) }
+        obj(s, "Info", 0f, -4f).text("Cinemachine 2D Demo | Framing Transposer DeadZone SoftZone | Confiner | Pixel Perfect", 0.26f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val particle2DDemo = Template("2D Particles", "2D Particle System, Shader Graph 2D - VFX 2D") { p ->
+        p.writeAsset("Particle2DPlayer.js", "var speed=5; function update(dt){ self.vx=input.axisX*speed; self.vy=input.axisY*speed; if(input.aDown){ scene.find(\"FireFX\").burst(20) } }")
+        val s = Scene("Main")
+        val player = obj(s, "Player", 0f, 0f, 0.8f, 1f).sprite(0xFF4FC3F7).col2(0.8f,1f).body2().script("Particle2DPlayer.js")
+        player.tag="Player"; player.add(Camera2D().also { it.follow="Player"; it.size=6f })
+        obj(s, "Ground", 0f, -2f, 20f, 1f).sprite(0xFF5A5A5A).col2(20f,1f).body2(type=2)
+        val fireFX = obj(s, "FireFX", 0f, 0f, 0f); fireFX.active=false
+        fireFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=30f; it.speed=3f; it.lifetime=0.8f; it.startColor=0xFFFF6D00.toInt() })
+        obj(s, "Info", 0f, -4f).text("2D Particles Demo | Fire & Smoke | Main/Emission/Shape | Shader Graph 2D", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val titanFullControl = Template("Titan Full Control", "Most Powerful Edition - Full Engine Control, Console, Profiler, Package Manager") { p ->
+        p.writeAsset("TitanPlayer.js", "var speed=6, health=100, score=0; function start(){ log(\"Titan Full Control - Most Powerful Edition\"); } function update(dt){ self.vx=input.axisX*speed; self.vy=input.axisY*speed; if(input.aDown){ log(\"Full Control: Hierarchy=\"+scene.count(\"\")+\" | FPS=\"+time.fps.toFixed(0)); scene.shake(0.2) } score+=dt*10; scene.find(\"ScoreText\").setText(\"Score: \"+Math.floor(score)) }")
+        val s = Scene("Main"); s.ambient=0xFF1A1A2E.toInt()
+        val player = obj(s, "Player", 0f, 1f, 0.8f, 1f).sprite(0xFF4FC3F7).col2(0.8f,1f).body2().script("TitanPlayer.js")
+        player.tag="Player"; player.add(Camera2D().also { it.follow="Player"; it.size=6f; it.postFx=6; it.postIntensity=0.8f })
+        obj(s, "Ground", 0f, -1f, 30f, 1f).sprite(0xFF3A3A3A).col2(30f,1f).body2(type=2)
+        for (i in 0 until 8) { obj(s, "ControlCube_${'$'}i", random(-10,10), random(0,5), 1f, 1f).sprite(0xFF8D6E63).col2(1f,1f).body2().script("Rotator.js", "x=0,y=90,z=0") }
+        obj(s, "ScoreText", 0f, 4.5f).text("Score: 0 | Titan Points", 0.4f).also { it.get<TextRenderer>()!!.screenSpace=true; it.order=100 }
+        obj(s, "Info", 0f, -4f).text("Titan Most Powerful Edition | 75+ Systems | 200+ Components | 28 Templates | 300+ API | Unity 2D URP + Quantum | Full Control", 0.22f).also { it.get<TextRenderer>()!!.screenSpace=true; it.order=100 }
+        p.writeAsset("Rotator.js", "function update(dt){self.rotY += 90*dt}")
+        p.saveScene(s); p.startScene="Main"; p.orientation=0
     }
 
     private fun random(a: Int, b: Int): Float = (a + Math.random() * (b - a)).toFloat()

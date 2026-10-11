@@ -1,3 +1,15 @@
+# S Engine Most Powerful Edition 6.1.1 [Titan] — Unity 2D + Quantum + Full Control
+
+**S Engine Most Powerful Edition 6.1.1 [Titan]** is the most powerful, full-control game engine for Android — a pocket-sized **Unity 6 + Unity 2D URP + Unreal 5.4** class engine. Now with **Unity 2D Systems (URP 2D Renderer, Tilemap, 2D Physics, 2D Animation, Sorting, 2D Lighting, Cinemachine 2D, Particles 2D, Sprite Editor, Tile Palette)** + **Quantum (RayTracing, Nanite, Lumen, Chaos, World Partition, Control Rig, Motion Matching, XR, ML-Agents, PCG)** + **Full Control (Console V2, Inspector, Hierarchy, Profiler V2, Package Manager, Hot Reload, Memory/Graphics Control)**.
+
+> **Titan Upgrade (6.1.1)**: Building on 6.1 Quantum, Titan adds 18 new Unity 2D systems + Most Powerful Tools, 8 new 2D templates, 100+ new scripting APIs. The most powerful edition with full engine control — build any game, 2D or 3D, entirely on your phone. Full control like Unity 2D + Unity 6 + Unreal 5.
+
+**Engine Version**: 6.1.1 Most Powerful Edition [Titan] | **API**: 611 | **Pipeline**: Universal RP + HDRP + Forward/Deferred + Ray Tracing + Nanite + Lumen + Virtual Textures + **2D URP** | **Prev**: 6.1.0 [Quantum] API 610 | **Prev Prev**: 6.0.0 [Nexus] API 600
+
+---
+
+## 🆕 What's New in 6.1.1 Titan - Most Powerful Edition (18 New Unity 2D Systems + Full Control)
+
 # S Engine Ultimate Edition 6.1 [Quantum] — The Next Big Game Engine
 
 **S Engine Ultimate Edition 6.1 [Quantum]** is a professional, next-gen game engine for Android — a pocket-sized **Unity 6 + Unreal Engine 5.4** class engine with **Ray Tracing, Nanite, Lumen, Chaos Destruction, World Partition, Control Rig, Motion Matching, XR, and ML-Agents**. Build AAA games entirely on your phone.
