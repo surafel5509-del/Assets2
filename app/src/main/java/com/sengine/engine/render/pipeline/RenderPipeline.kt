@@ -28,16 +28,16 @@ data class RenderPass(val type: RenderPassType, val name: String, val enabled: B
 }
 
 abstract class RenderPipeline(val name: String) {
-    protected val passes = mutableListOf<RenderPass>()
+    protected val _passes = mutableListOf<RenderPass>()
     var isInitialized = false
 
     abstract fun initialize(shaders: ShaderLibrary)
     abstract fun render(scene: Scene, view: View3D, renderer: Renderer3D, width: Int, height: Int)
     open fun cleanup() {}
 
-    fun addPass(pass: RenderPass) { passes.add(pass); passes.sortBy { it.executionOrder } }
-    fun removePass(name: String) { passes.removeIf { it.name == name } }
-    fun getPasses(): List<RenderPass> = passes.toList()
+    fun addPass(pass: RenderPass) { _passes.add(pass); _passes.sortBy { it.executionOrder } }
+    fun removePass(name: String) { _passes.removeIf { it.name == name } }
+    fun getPasses(): List<RenderPass> = _passes.toList()
 }
 
 class ForwardPipeline : RenderPipeline("Forward") {
@@ -46,7 +46,7 @@ class ForwardPipeline : RenderPipeline("Forward") {
     private var transparentPass: RenderPass? = null
 
     override fun initialize(shaders: ShaderLibrary) {
-        passes.clear()
+        _passes.clear()
         addPass(RenderPass(RenderPassType.DepthPrepass, "Depth Prepass", true))
         shadowPass = RenderPass(RenderPassType.ShadowMap, "Shadow Maps", true)
         addPass(shadowPass!!)
@@ -62,7 +62,7 @@ class ForwardPipeline : RenderPipeline("Forward") {
 
     override fun render(scene: Scene, view: View3D, renderer: Renderer3D, width: Int, height: Int) {
         // Forward rendering logic handled by SceneRenderer, but pipeline controls order
-        for (pass in passes.filter { it.enabled }) {
+        for (pass in _passes.filter { it.enabled }) {
             pass.renderFunc?.invoke()
         }
     }
@@ -70,7 +70,7 @@ class ForwardPipeline : RenderPipeline("Forward") {
 
 class DeferredPipeline : RenderPipeline("Deferred") {
     override fun initialize(shaders: ShaderLibrary) {
-        passes.clear()
+        _passes.clear()
         addPass(RenderPass(RenderPassType.DepthPrepass, "Depth Prepass"))
         addPass(RenderPass(RenderPassType.ShadowMap, "Shadow Maps"))
         addPass(RenderPass(RenderPassType.GBuffer, "GBuffer Pass"))
@@ -82,7 +82,7 @@ class DeferredPipeline : RenderPipeline("Deferred") {
     }
 
     override fun render(scene: Scene, view: View3D, renderer: Renderer3D, width: Int, height: Int) {
-        for (pass in passes.filter { it.enabled }) pass.renderFunc?.invoke()
+        for (pass in _passes.filter { it.enabled }) pass.renderFunc?.invoke()
     }
 }
 
@@ -97,7 +97,7 @@ class UniversalPipeline : RenderPipeline("Universal RP") {
     var useDynamicBatching: Boolean = false
 
     override fun initialize(shaders: ShaderLibrary) {
-        passes.clear()
+        _passes.clear()
         addPass(RenderPass(RenderPassType.ShadowMap, "Main Light Shadow", true))
         addPass(RenderPass(RenderPassType.ShadowMap, "Additional Light Shadows", true))
         addPass(RenderPass(RenderPassType.DepthPrepass, "Depth Priming", false))
@@ -111,7 +111,7 @@ class UniversalPipeline : RenderPipeline("Universal RP") {
 
     override fun render(scene: Scene, view: View3D, renderer: Renderer3D, width: Int, height: Int) {
         // URP-specific optimizations
-        for (pass in passes.filter { it.enabled }) pass.renderFunc?.invoke()
+        for (pass in _passes.filter { it.enabled }) pass.renderFunc?.invoke()
     }
 }
 
@@ -125,7 +125,7 @@ class HighDefinitionPipeline : RenderPipeline("High Definition RP") {
     var maxShadowRequests: Int = 128
 
     override fun initialize(shaders: ShaderLibrary) {
-        passes.clear()
+        _passes.clear()
         addPass(RenderPass(RenderPassType.DepthPrepass, "Depth Prepass"))
         addPass(RenderPass(RenderPassType.GBuffer, "GBuffer (HDRP)"))
         addPass(RenderPass(RenderPassType.ShadowMap, "Shadow Atlas"))
@@ -140,7 +140,7 @@ class HighDefinitionPipeline : RenderPipeline("High Definition RP") {
     }
 
     override fun render(scene: Scene, view: View3D, renderer: Renderer3D, width: Int, height: Int) {
-        for (pass in passes.filter { it.enabled }) pass.renderFunc?.invoke()
+        for (pass in _passes.filter { it.enabled }) pass.renderFunc?.invoke()
     }
 }
 
@@ -158,6 +158,8 @@ class PipelineManager {
 
     fun get(name: String): RenderPipeline? = pipelines[name]
     fun all(): List<RenderPipeline> = pipelines.values.toList()
+    @JvmName("setActiveByName")
     fun setActive(name: String) { pipelines[name]?.let { active = it } }
+    @JvmName("setActiveByPipeline")
     fun setActive(pipeline: RenderPipeline) { active = pipeline; pipelines[pipeline.name] = pipeline }
 }

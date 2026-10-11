@@ -98,6 +98,7 @@ class PlayableDirector {
     fun play() { isPlaying = true; currentTime = initialTime }
     fun pause() { isPlaying = false }
     fun stop() { isPlaying = false; currentTime = initialTime }
+    @JvmName("setTimeExplicit")
     fun setTime(t: Float) { currentTime = t.coerceIn(0f, timeline?.duration ?: Float.MAX_VALUE) }
 
     fun update(dt: Float): Map<TimelineTrack, TimelineClip?>? {

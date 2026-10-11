@@ -205,6 +205,7 @@ class WorldTimeSystem {
         temperature = baseTemp + timeFactor + (humidity-0.5f)*5f
     }
 
+    @JvmName("setTimeOfDayExplicit")
     fun setTimeOfDay(hours: Float) { timeOfDay = hours.coerceIn(0f,24f) }
 
     fun setWeather(type: WeatherTypeV2, transitionDuration: Float = 10f) {

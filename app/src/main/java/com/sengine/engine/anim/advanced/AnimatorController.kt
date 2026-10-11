@@ -293,6 +293,7 @@ class AnimatorStateMachine {
     private var normalizedTime: Float = 0f
     private var layerIndex: Int = 0
 
+    @JvmName("setControllerExplicit")
     fun setController(ctrl: AnimatorController) {
         controller = ctrl
         val layer = ctrl.layers.getOrNull(layerIndex) ?: return

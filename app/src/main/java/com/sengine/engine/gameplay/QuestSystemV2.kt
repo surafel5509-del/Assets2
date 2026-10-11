@@ -137,6 +137,7 @@ class QuestSystemV2 {
         }
     }
 
+    @JvmName("getActiveQuestsExplicit")
     fun getActiveQuests(): List<Quest> = activeQuests.mapNotNull { quests[it] }
     fun getTrackedQuests(): List<Quest> = quests.values.filter { it.isTracked && it.status == QuestStatus.Active }
     fun getStats(): String = "Quests:${quests.size} Active:${activeQuests.size} Completed:${completedQuests.size} XP:$totalXP Gold:$totalGold"

@@ -150,6 +150,7 @@ class LightingSystem {
     }
 
     fun getLights(): List<LightData> = lights
+    @JvmName("getMainLightExplicit")
     fun getMainLight(): LightData? = mainLight
     fun getAdditionalLights(): List<LightData> = lights.filter { it !== mainLight }
 
