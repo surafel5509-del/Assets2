@@ -58,6 +58,14 @@ function update(dt) {
         add(SpriteRenderer().also { it.color = color.toInt(); it.shape = shape }); return this
     }
 
+    private fun GameObject.sprite(color: Long, texture: String): GameObject {
+        add(SpriteRenderer().also { it.color = color.toInt(); it.texture = texture }); return this
+    }
+
+    private fun GameObject.sprite(color: Long, texture: String, tiling: Float): GameObject {
+        add(SpriteRenderer().also { it.color = color.toInt(); it.texture = texture }); return this
+    }
+
     private fun GameObject.box(trigger: Boolean = false): GameObject {
         add(Collider2D().also { it.isTrigger = trigger }); return this
     }
@@ -68,6 +76,19 @@ function update(dt) {
 
     private fun GameObject.body(type: Int = 0, friction: Float = 0.4f, bounce: Float = 0f, gravity: Float = 1f): GameObject {
         add(Rigidbody2D().also { it.bodyType = type; it.friction = friction; it.bounciness = bounce; it.gravityScale = gravity }); return this
+    }
+
+    // Titan 2D helpers - col2 and body2 with size params for professional templates
+    private fun GameObject.col2(w: Float, h: Float, trigger: Boolean = false): GameObject {
+        add(Collider2D().also { it.width = w; it.height = h; it.isTrigger = trigger }); return this
+    }
+
+    private fun GameObject.col2(w: Float, h: Float, trigger: Boolean = false, circle: Boolean = false): GameObject {
+        add(Collider2D().also { it.width = w; it.height = h; it.isTrigger = trigger; if (circle) it.shape = 1 }); return this
+    }
+
+    private fun GameObject.body2(type: Int = 0, mass: Float = 1f, friction: Float = 0.4f, bounce: Float = 0f, gravity: Float = 1f): GameObject {
+        add(Rigidbody2D().also { it.bodyType = type; it.mass = mass; it.friction = friction; it.bounciness = bounce; it.gravityScale = gravity }); return this
     }
 
     private fun GameObject.script(name: String, params: String = ""): GameObject {

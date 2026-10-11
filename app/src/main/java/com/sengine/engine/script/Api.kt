@@ -603,30 +603,31 @@ class SDecal(private val engine: Engine) {
 }
 
 
+
 // ==================== ULTRA 6.1.2 APIs - MONTHS/YEARS PROFESSIONAL PROJECT ====================
 
 class SUltraCore(private val engine: Engine) {
     fun createBurstJob(name: String, source: String, optimization: String): String {
         return try { val opt = com.sengine.engine.core.BurstOptimization.valueOf(optimization); engine.ultraCore.createBurstJob(name, source, opt).name } catch (_: Exception) { engine.ultraCore.createBurstJob(name, source).name }
     }
-    fun compileBurstJob(name: String): Boolean = engine.ultraCore.burstJobs[name]?.compile() ?: false
-    fun executeBurstJob(name: String, iterations: Double): Double = engine.ultraCore.burstJobs[name]?.execute(iterations.toInt()) ?: 0.0
+    fun compileBurstJob(name: String): Boolean = try { engine.ultraCore.burstJobs[name]?.compile() ?: false } catch (_: Exception) { false }
+    fun executeBurstJob(name: String, iterations: Double): Double = try { engine.ultraCore.burstJobs[name]?.execute(iterations.toInt())?.toDouble() ?: 0.0 } catch (_: Exception) { 0.0 }
     fun createAssembly(name: String, type: String): String {
-        return try { val t = com.sengine.engine.core.AssemblyType.valueOf(type); engine.ultraCore.createAssembly(name, t).name } catch (_: Exception) { engine.ultraCore.createAssembly(name).name }
+        return try { val t = com.sengine.engine.core.AssemblyType.valueOf(type); engine.ultraCore.createAssembly(name, t).name } catch (_: Exception) { try { engine.ultraCore.createAssembly(name).name } catch (_: Exception) { "" } }
     }
-    fun createScriptableObject(name: String, type: String): String = engine.ultraCore.createScriptableObject(name, type).name
-    fun getScriptableObject(name: String): Any? = engine.ultraCore.getScriptableObject(name)?.name
-    fun undo(): Boolean = engine.ultraCore.undoRedo.undo() != null
-    fun redo(): Boolean = engine.ultraCore.undoRedo.redo() != null
-    fun canUndo(): Boolean = engine.ultraCore.undoRedo.canUndo()
-    fun canRedo(): Boolean = engine.ultraCore.undoRedo.canRedo()
-    fun getUndoStats(): String = engine.ultraCore.undoRedo.getStats()
-    fun createPrefabVariant(base: String, name: String): String = engine.ultraCore.prefabVariants.createVariant(base, name).id
-    fun getStats(): String = "Ultra Core Burst:${engine.ultraCore.burstJobs.size} Assemblies:${engine.ultraCore.assemblies.size} SO:${engine.ultraCore.scriptableObjects.size} ${engine.ultraCore.undoRedo.getStats()}"
+    fun createScriptableObject(name: String, type: String): String = try { engine.ultraCore.createScriptableObject(name, type).name } catch (_: Exception) { "" }
+    fun getScriptableObject(name: String): Any? = try { engine.ultraCore.getScriptableObject(name)?.name } catch (_: Exception) { null }
+    fun undo(): Boolean = try { engine.ultraCore.undoRedo.undo() != null } catch (_: Exception) { false }
+    fun redo(): Boolean = try { engine.ultraCore.undoRedo.redo() != null } catch (_: Exception) { false }
+    fun canUndo(): Boolean = try { engine.ultraCore.undoRedo.canUndo() } catch (_: Exception) { false }
+    fun canRedo(): Boolean = try { engine.ultraCore.undoRedo.canRedo() } catch (_: Exception) { false }
+    fun getUndoStats(): String = try { engine.ultraCore.undoRedo.getStats() } catch (_: Exception) { "" }
+    fun createPrefabVariant(base: String, name: String): String = try { engine.ultraCore.prefabVariants.createVariant(base, name).id } catch (_: Exception) { "" }
+    fun getStats(): String = try { "Ultra Core Burst:${engine.ultraCore.burstJobs.size} Assemblies:${engine.ultraCore.assemblies.size} SO:${engine.ultraCore.scriptableObjects.size} ${engine.ultraCore.undoRedo.getStats()}" } catch (_: Exception) { "Ultra Core" }
 }
 
 class SUltraRendering(private val engine: Engine) {
-    fun getMode(): String = engine.ultraRendering.mode.name
+    fun getMode(): String = try { engine.ultraRendering.mode.name } catch (_: Exception) { "Forward" }
     fun setMode(mode: String) { try { engine.ultraRendering.mode = com.sengine.engine.render.RenderingMode.valueOf(mode) } catch (_: Exception) {} }
     fun buildClusters(screenW: Double, screenH: Double) { 
         try { engine.ultraRendering.clustered.buildClusters() } catch (_: Exception) {}
@@ -637,53 +638,53 @@ class SUltraRendering(private val engine: Engine) {
     fun assignLights() { 
         try { engine.ultraRendering.clustered.assignLights() } catch (_: Exception) {}
     }
-    fun getClusterStats(): String = engine.ultraRendering.clustered.getStats()
+    fun getClusterStats(): String = try { engine.ultraRendering.clustered.getStats() } catch (_: Exception) { "" }
     fun calculateCSMSplits(near: Double, far: Double): Any? {
         return try {
             val splits = engine.ultraRendering.shadowCSM.calculateSplits(near.toFloat(), far.toFloat())
-            engine.scripts.newArray(splits.map { it.toDouble() })
+            engine.scripts.newArray(splits.map { it.toDouble() as Any? })
         } catch (_: Exception) { null }
     }
     fun setUpscalerType(type: String) { try { engine.ultraRendering.upscaler.type = com.sengine.engine.render.UpscalerType.valueOf(type) } catch (_: Exception) {} }
     fun calculateInputResolution(): Any? {
         return try {
             val res = engine.ultraRendering.upscaler.calculateInputResolution()
-            engine.scripts.newArray(listOf(res.first.toDouble(), res.second.toDouble()))
+            engine.scripts.newArray(listOf(res.first.toDouble() as Any?, res.second.toDouble() as Any?))
         } catch (_: Exception) { null }
     }
     fun getCloudDensity(x: Double, y: Double, z: Double): Double = try { engine.ultraRendering.cloudsV2.sampleDensity(x.toFloat(), y.toFloat(), z.toFloat()).toDouble() } catch (_: Exception) { 0.0 }
-    fun getWaterHeight(x: Double, z: Double): Double = try { engine.ultraRendering.waterV2.getHeightAt(x.toFloat(), z.toFloat(), engine.time).toDouble() } catch (_: Exception) { 0.0 }
-    fun getStats(): String = engine.ultraRendering.getStats()
+    fun getWaterHeight(x: Double, z: Double): Double = try { engine.ultraRendering.waterV2.getHeightAt(x.toFloat(), z.toFloat(), engine.time.toFloat()).toDouble() } catch (_: Exception) { 0.0 }
+    fun getStats(): String = try { engine.ultraRendering.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraPhysics(private val engine: Engine) {
     fun boxCast(cx: Double, cy: Double, cz: Double, hx: Double, hy: Double, hz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? {
         return try {
             val hits = engine.ultraPhysics.querySystem.boxCast(cx.toFloat(), cy.toFloat(), cz.toFloat(), hx.toFloat(), hy.toFloat(), hz.toFloat(), dx.toFloat(), dy.toFloat(), dz.toFloat(), maxDist.toFloat(), emptyList())
-            engine.scripts.newArray(hits.map { h -> engine.scripts.newArray(listOf(h.pointX.toDouble(), h.pointY.toDouble(), h.pointZ.toDouble(), h.distance.toDouble())) })
-        } catch (_: Exception) { engine.scripts.newArray(emptyList<Any>()) }
+            engine.scripts.newArray(hits.map { h -> engine.scripts.newArray(listOf(h.pointX.toDouble() as Any?, h.pointY.toDouble() as Any?, h.pointZ.toDouble() as Any?, h.distance.toDouble() as Any?)) as Any? })
+        } catch (_: Exception) { try { engine.scripts.newArray(emptyList<Any?>()) } catch (_: Exception) { null } }
     }
     fun sphereCast(cx: Double, cy: Double, cz: Double, radius: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? {
         return try {
             val hits = engine.ultraPhysics.querySystem.sphereCast(cx.toFloat(), cy.toFloat(), cz.toFloat(), radius.toFloat(), dx.toFloat(), dy.toFloat(), dz.toFloat(), maxDist.toFloat(), emptyList())
-            engine.scripts.newArray(hits.map { h -> engine.scripts.newArray(listOf(h.pointX.toDouble(), h.pointY.toDouble(), h.pointZ.toDouble(), h.distance.toDouble())) })
-        } catch (_: Exception) { engine.scripts.newArray(emptyList<Any>()) }
+            engine.scripts.newArray(hits.map { h -> engine.scripts.newArray(listOf(h.pointX.toDouble() as Any?, h.pointY.toDouble() as Any?, h.pointZ.toDouble() as Any?, h.distance.toDouble() as Any?)) as Any? })
+        } catch (_: Exception) { try { engine.scripts.newArray(emptyList<Any?>()) } catch (_: Exception) { null } }
     }
     fun overlapBox(cx: Double, cy: Double, cz: Double, hx: Double, hy: Double, hz: Double): Any? {
         return try {
             val hits = engine.ultraPhysics.querySystem.overlapBox(cx.toFloat(), cy.toFloat(), hx.toFloat(), hy.toFloat(), emptyList())
-            engine.scripts.newArray(hits.map { it.id })
-        } catch (_: Exception) { engine.scripts.newArray(emptyList<Any>()) }
+            engine.scripts.newArray(hits.map { it.id as Any? })
+        } catch (_: Exception) { try { engine.scripts.newArray(emptyList<Any?>()) } catch (_: Exception) { null } }
     }
     fun overlapSphere(cx: Double, cy: Double, cz: Double, radius: Double): Any? {
         return try {
             val hits = engine.ultraPhysics.querySystem.overlapSphere(cx.toFloat(), cy.toFloat(), radius.toFloat(), emptyList())
-            engine.scripts.newArray(hits.map { it.id })
-        } catch (_: Exception) { engine.scripts.newArray(emptyList<Any>()) }
+            engine.scripts.newArray(hits.map { it.id as Any? })
+        } catch (_: Exception) { try { engine.scripts.newArray(emptyList<Any?>()) } catch (_: Exception) { null } }
     }
     fun evaluateTireFriction(slip: Double, isForward: Boolean): Double = try { engine.ultraPhysics.evaluateTireFriction(slip.toFloat(), isForward).toDouble() } catch (_: Exception) { 0.0 }
     fun createConfigurableJoint(): String = try { engine.ultraPhysics.createConfigurableJoint().toString() } catch (_: Exception) { "" }
-    fun getStats(): String = engine.ultraPhysics.getStats()
+    fun getStats(): String = try { engine.ultraPhysics.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraAnimation(private val engine: Engine) {
@@ -691,7 +692,7 @@ class SUltraAnimation(private val engine: Engine) {
     fun getEventsAt(time: Double, delta: Double): Any? {
         return try {
             val events = engine.ultraAnimation.getEventsAt(time.toFloat(), delta.toFloat())
-            engine.scripts.newArray(events.map { it.functionName })
+            engine.scripts.newArray(events.map { it.functionName as Any? })
         } catch (_: Exception) { null }
     }
     fun createCurve(name: String): String = try { engine.ultraAnimation.createCurve(name).name } catch (_: Exception) { "" }
@@ -701,17 +702,17 @@ class SUltraAnimation(private val engine: Engine) {
     fun blendPoses(lib: String, poseA: String, poseB: String, t: Double): Any? {
         return try {
             val blended = engine.ultraAnimation.poseLibraries[lib]?.blendPoses(poseA, poseB, t.toFloat()) ?: return null
-            engine.scripts.newArray(blended.keys.map { it })
+            engine.scripts.newArray(blended.keys.map { it as Any? })
         } catch (_: Exception) { null }
     }
     fun getWarpFactor(name: String, time: Double): Any? {
         return try {
             val warp = engine.ultraAnimation.motionWarping[name] ?: return null
             val (trans, rot) = warp.getWarpFactor(time.toFloat())
-            engine.scripts.newArray(listOf(trans.toDouble(), rot.toDouble()))
+            engine.scripts.newArray(listOf(trans.toDouble() as Any?, rot.toDouble() as Any?))
         } catch (_: Exception) { null }
     }
-    fun getStats(): String = engine.ultraAnimation.getStats()
+    fun getStats(): String = try { engine.ultraAnimation.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraAudio(private val engine: Engine) {
@@ -719,13 +720,13 @@ class SUltraAudio(private val engine: Engine) {
         return try { val t = com.sengine.engine.audio.AudioMixerSnapshotType.valueOf(type); engine.ultraAudio.createSnapshot(name, t).name } catch (_: Exception) { try { engine.ultraAudio.createSnapshot(name).name } catch (_: Exception) { "" } }
     }
     fun transitionToSnapshot(name: String, time: Double) { try { engine.ultraAudio.transitionToSnapshot(name, time.toFloat()) } catch (_: Exception) {} }
-    fun getCurrentSnapshot(): String = engine.ultraAudio.currentSnapshot
+    fun getCurrentSnapshot(): String = try { engine.ultraAudio.currentSnapshot } catch (_: Exception) { "" }
     fun createPortal(x: Double, y: Double, z: Double, w: Double, h: Double): String = try { engine.ultraAudio.createPortal(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat(), h.toFloat()).id } catch (_: Exception) { "" }
     fun addReverbProbe(x: Double, y: Double, z: Double, radius: Double): String = try { engine.ultraAudio.addReverbProbe(x.toFloat(), y.toFloat(), z.toFloat(), radius.toFloat()).toString() } catch (_: Exception) { "" }
     fun bakeReverbProbes() { try { engine.ultraAudio.bakeReverbProbes() } catch (_: Exception) {} }
     fun calculateOcclusion(listenerX: Double, listenerY: Double, listenerZ: Double, sourceX: Double, sourceY: Double, sourceZ: Double): Double = try { engine.ultraAudio.calculateOcclusion(listenerX.toFloat(), listenerY.toFloat(), listenerZ.toFloat(), sourceX.toFloat(), sourceY.toFloat(), sourceZ.toFloat()).toDouble() } catch (_: Exception) { 0.0 }
     fun createPlaylist(name: String): String = try { engine.ultraAudio.createPlaylist(name).name } catch (_: Exception) { "" }
-    fun getStats(): String = engine.ultraAudio.getStats()
+    fun getStats(): String = try { engine.ultraAudio.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraAI(private val engine: Engine) {
@@ -738,24 +739,42 @@ class SUltraAI(private val engine: Engine) {
     fun getCoverPointsNear(x: Double, z: Double, radius: Double): Any? {
         return try {
             val points = engine.ultraAI.getCoverPointsNear(x.toFloat(), z.toFloat(), radius.toFloat())
-            engine.scripts.newArray(points.map { it.id })
+            engine.scripts.newArray(points.map { it.id as Any? })
         } catch (_: Exception) { null }
     }
-    fun createPerceptionSystem(agentId: String): String = try { engine.ultraAI.createPerceptionSystem(agentId).toString() } catch (_: Exception) { "" }
+    fun createPerceptionSystem(agentId: String): String = try { 
+        val idLong = agentId.toLongOrNull() ?: agentId.hashCode().toLong()
+        engine.ultraAI.createPerceptionSystem(idLong).toString() 
+    } catch (_: Exception) { "" }
     fun addStimulus(agentId: String, type: String, x: Double, y: Double, z: Double, strength: Double, sourceId: String) {
-        try { val t = com.sengine.engine.ai.PerceptionType.valueOf(type); engine.ultraAI.perceptionSystems[agentId]?.addStimulus(t, x.toFloat(), y.toFloat(), z.toFloat(), strength.toFloat(), sourceId) } catch (_: Exception) {}
+        try { 
+            val t = com.sengine.engine.ai.PerceptionType.valueOf(type)
+            val aId = agentId.toLongOrNull() ?: agentId.hashCode().toLong()
+            val sId = sourceId.toLongOrNull() ?: sourceId.hashCode().toLong()
+            engine.ultraAI.perceptionSystems[aId]?.addStimulus(t, x.toFloat(), y.toFloat(), z.toFloat(), strength.toFloat(), sId) 
+        } catch (_: Exception) {}
     }
     fun canSee(agentId: String, targetX: Double, targetY: Double, targetZ: Double, selfX: Double, selfY: Double, selfZ: Double): Boolean {
-        return try { engine.ultraAI.perceptionSystems[agentId]?.canSee(targetX.toFloat(), targetY.toFloat(), targetZ.toFloat(), selfX.toFloat(), selfY.toFloat(), selfZ.toFloat()) ?: false } catch (_: Exception) { false }
+        return try { 
+            val aId = agentId.toLongOrNull() ?: agentId.hashCode().toLong()
+            engine.ultraAI.perceptionSystems[aId]?.canSee(targetX.toFloat(), targetY.toFloat(), targetZ.toFloat(), selfX.toFloat(), selfY.toFloat(), selfZ.toFloat(), 0f, 1f) ?: false 
+        } catch (_: Exception) { false }
+    }
+    fun canSeeFull(agentId: String, targetX: Double, targetY: Double, targetZ: Double, selfX: Double, selfY: Double, selfZ: Double, dirX: Double, dirZ: Double): Boolean {
+        return try { 
+            val aId = agentId.toLongOrNull() ?: agentId.hashCode().toLong()
+            engine.ultraAI.perceptionSystems[aId]?.canSee(targetX.toFloat(), targetY.toFloat(), targetZ.toFloat(), selfX.toFloat(), selfY.toFloat(), selfZ.toFloat(), dirX.toFloat(), dirZ.toFloat()) ?: false 
+        } catch (_: Exception) { false }
     }
     fun planGOAP(currentState: Any?, goal: String): Any? {
         return try {
             val state = mutableMapOf<String, Boolean>()
-            val plan = engine.ultraAI.goapPlanner.plan(state, goal)
-            if (plan != null) engine.scripts.newArray(plan.map { it.name }) else null
+            val g = engine.ultraAI.goapPlanner.goals.find { it.name == goal } ?: com.sengine.engine.ai.GOAPGoal(name = goal)
+            val plan = engine.ultraAI.goapPlanner.plan(state, g)
+            if (plan != null) engine.scripts.newArray(plan.map { it.name as Any? }) else null
         } catch (_: Exception) { null }
     }
-    fun getStats(): String = engine.ultraAI.getStats()
+    fun getStats(): String = try { engine.ultraAI.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraNetworking(private val engine: Engine) {
@@ -763,60 +782,52 @@ class SUltraNetworking(private val engine: Engine) {
     fun updateRelevance(viewerId: Double, viewerX: Double, viewerY: Double, viewerZ: Double, objectId: Double, objectX: Double, objectY: Double, objectZ: Double): Any? {
         return try {
             val rel = engine.ultraNetworking.updateRelevance(viewerId.toLong(), viewerX.toFloat(), viewerY.toFloat(), viewerZ.toFloat(), objectId.toLong(), objectX.toFloat(), objectY.toFloat(), objectZ.toFloat())
-            engine.scripts.newArray(listOf(rel.distance.toDouble(), rel.lod.name, rel.isRelevant.toString()))
+            engine.scripts.newArray(listOf(rel.distance.toDouble() as Any?, rel.lod.name as Any?, rel.isRelevant.toString() as Any?))
         } catch (_: Exception) { null }
     }
     fun createLobby(name: String, maxPlayers: Double): String = try { engine.ultraNetworking.createLobby(name, maxPlayers.toInt()).id } catch (_: Exception) { "" }
-    fun findBestRelay(): String = try { engine.ultraNetworking.findBestRelay()?.id ?: "" } catch (_: Exception) { "" }
     fun addVoiceChat(playerId: Double, x: Double, y: Double, z: Double): String = try { engine.ultraNetworking.addVoiceChat(playerId.toLong(), x.toFloat(), y.toFloat(), z.toFloat()).playerId.toString() } catch (_: Exception) { "" }
     fun getVoiceVolume(playerId: Double, listenerX: Double, listenerY: Double, listenerZ: Double): Double {
-        return try { engine.ultraNetworking.voiceChat3D[playerId.toLong()]?.calculateVolumeForListener(listenerX.toFloat(), listenerY.toFloat(), listenerZ.toFloat())?.toDouble() ?: 0.0 } catch (_: Exception) { 0.0 }
+        return try { engine.ultraNetworking.getVoiceVolume(playerId.toLong(), listenerX.toFloat(), listenerY.toFloat(), listenerZ.toFloat()).toDouble() } catch (_: Exception) { 0.0 }
     }
-    fun getStats(): String = engine.ultraNetworking.getStats()
+    fun getStats(): String = try { engine.ultraNetworking.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraGameplay(private val engine: Engine) {
-    fun startRebinding(action: String): Boolean = try { engine.ultraGameplay.inputRebinding.startRebinding(action) } catch (_: Exception) { false }
-    fun completeRebinding(newPath: String): String = try { engine.ultraGameplay.inputRebinding.completeRebinding(newPath).name } catch (_: Exception) { "" }
-    fun saveGame(slotName: String, data: String): Boolean = try { engine.ultraGameplay.saveSystem.save(slotName, data) } catch (_: Exception) { false }
-    fun loadGame(slotName: String): String = try { engine.ultraGameplay.saveSystem.load(slotName) ?: "" } catch (_: Exception) { "" }
-    fun deleteSave(slotName: String): Boolean = try { engine.ultraGameplay.saveSystem.delete(slotName) } catch (_: Exception) { false }
-    fun getSaveSlots(): Any? = try { engine.scripts.newArray(engine.ultraGameplay.saveSystem.slots.keys.map { it }) } catch (_: Exception) { null }
+    fun createRebindingScheme(name: String): String = try { engine.ultraGameplay.inputRebinding.createScheme(name).name } catch (_: Exception) { "" }
+    fun rebindAction(action: String, newPath: String, scheme: String): String = try { engine.ultraGameplay.inputRebinding.rebind(action, newPath, scheme).name } catch (_: Exception) { "" }
+    fun saveGame(slot: String, data: String): Boolean = try { engine.ultraGameplay.saveSystem.save(slot, data) } catch (_: Exception) { false }
+    fun loadGame(slot: String): String = try { engine.ultraGameplay.saveSystem.load(slot) ?: "" } catch (_: Exception) { "" }
+    fun getSaveSlots(): Any? = try { engine.scripts.newArray(engine.ultraGameplay.saveSystem.slots.keys.map { it as Any? }) } catch (_: Exception) { null }
+    fun addQuest(name: String): String = try { engine.ultraGameplay.questSystem.createQuest(name).id } catch (_: Exception) { "" }
+    fun completeObjective(questId: String, objectiveId: String): Boolean = try { engine.ultraGameplay.questSystem.completeObjective(questId, objectiveId) } catch (_: Exception) { false }
+    fun getQuestProgress(questId: String): Double = try { engine.ultraGameplay.questSystem.getProgress(questId).toDouble() } catch (_: Exception) { 0.0 }
+    fun addSkill(name: String): String = try { engine.ultraGameplay.skillTreeSystem.addSkill(name).id } catch (_: Exception) { "" }
+    fun unlockSkill(skillId: String): Boolean = try { engine.ultraGameplay.skillTreeSystem.unlockSkill(skillId) } catch (_: Exception) { false }
+    fun getSkillPoints(): Double = try { engine.ultraGameplay.skillTreeSystem.skillPoints.toDouble() } catch (_: Exception) { 0.0 }
+    fun getTimeOfDay(): Double = try { engine.ultraGameplay.worldTimeSystem.timeOfDay.toDouble() } catch (_: Exception) { 0.0 }
+    fun setTimeOfDay(time: Double) { try { engine.ultraGameplay.worldTimeSystem.timeOfDay = time.toFloat() } catch (_: Exception) {} }
     fun getStats(): String = try { engine.ultraGameplay.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraEditor(private val engine: Engine) {
-    fun createWindow(type: String): String {
-        return try { val t = com.sengine.engine.tools.EditorWindowType.valueOf(type); engine.ultraEditor.createWindow(t).id } catch (_: Exception) { "" }
-    }
-    fun setLayout(name: String): Boolean = try { engine.ultraEditor.setLayout(name) } catch (_: Exception) { false }
-    fun createLayout(name: String): String = try { engine.ultraEditor.createLayout(name).name } catch (_: Exception) { "" }
+    fun setLayout(layout: String) { try { engine.ultraEditor.setLayout(com.sengine.engine.tools.EditorLayout.valueOf(layout)) } catch (_: Exception) {} }
+    fun setTheme(theme: String) { try { engine.ultraEditor.setTheme(com.sengine.engine.tools.EditorTheme.valueOf(theme)) } catch (_: Exception) {} }
     fun addGizmo(type: String, x: Double, y: Double, z: Double, size: Double): String {
-        return try { engine.ultraEditor.addGizmo(type, x.toFloat(), y.toFloat(), z.toFloat(), size.toFloat()).type } catch (_: Exception) { "" }
+        return try { val t = com.sengine.engine.tools.GizmoType.valueOf(type); engine.ultraEditor.addGizmo(t, x.toFloat(), y.toFloat(), z.toFloat(), size.toFloat()).id } catch (_: Exception) { try { engine.ultraEditor.addGizmo(com.sengine.engine.tools.GizmoType.Cube, x.toFloat(), y.toFloat(), z.toFloat(), size.toFloat()).id } catch (_: Exception) { "" } }
     }
-    fun setTool(tool: String) { try { engine.ultraEditor.setTool(com.sengine.engine.tools.EditorToolV2.valueOf(tool)) } catch (_: Exception) {} }
-    fun getCurrentTool(): String = try { engine.ultraEditor.currentTool.name } catch (_: Exception) { "" }
     fun getStats(): String = try { engine.ultraEditor.getStats() } catch (_: Exception) { "" }
 }
 
 class SUltraPlatform(private val engine: Engine) {
-    fun setPlatform(platform: String) { try { engine.ultraPlatform.setPlatform(com.sengine.engine.platform.PlatformType.valueOf(platform)) } catch (_: Exception) {} }
-    fun getCurrentPlatform(): String = try { engine.ultraPlatform.currentPlatform.name } catch (_: Exception) { "" }
+    fun isXRSupported(): Boolean = try { engine.ultraPlatform.isXRSupported() } catch (_: Exception) { false }
+    fun startXRSession(type: String): Boolean = try { val t = com.sengine.engine.platform.XRSessionType.valueOf(type); engine.ultraPlatform.startXRSession(t) } catch (_: Exception) { try { engine.ultraPlatform.startXRSession() } catch (_: Exception) { false } }
+    fun stopXRSession() { try { engine.ultraPlatform.stopXRSession() } catch (_: Exception) {} }
     fun updateXRTracking(type: String, isTracked: Boolean, x: Double, y: Double, z: Double): Boolean {
-        return try { val t = com.sengine.engine.platform.XRTrackingType.valueOf(type); engine.ultraPlatform.updateXRTracking(t, isTracked, x.toFloat(), y.toFloat(), z.toFloat()); true } catch (_: Exception) { false }
+        return try { val t = com.sengine.engine.platform.XRTrackingType.valueOf(type); engine.ultraPlatform.updateTracking(t, isTracked, x.toFloat(), y.toFloat(), z.toFloat()) } catch (_: Exception) { false }
     }
     fun createARPlane(x: Double, y: Double, z: Double, w: Double, h: Double): String = try { engine.ultraPlatform.createARPlane(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat(), h.toFloat()).id } catch (_: Exception) { "" }
     fun createARImage(name: String, x: Double, y: Double, z: Double): String = try { engine.ultraPlatform.createARImage(name, x.toFloat(), y.toFloat(), z.toFloat()).id } catch (_: Exception) { "" }
     fun updateGyro(x: Double, y: Double, z: Double) { try { engine.ultraPlatform.updateGyro(x.toFloat(), y.toFloat(), z.toFloat()) } catch (_: Exception) {} }
-    fun updateTouches(touches: Any?): Any? {
-        return try { engine.ultraPlatform.touchCount.toDouble() } catch (_: Exception) { 0.0 }
-    }
-    fun getCapabilities(platform: String): Any? {
-        return try {
-            val caps = try { engine.ultraPlatform.getCapabilities(com.sengine.engine.platform.PlatformType.valueOf(platform)) } catch (_: Exception) { engine.ultraPlatform.getCapabilities() } ?: return null
-            engine.scripts.newArray(listOf(caps.supportsRayTracing.toString(), caps.supportsHandTracking.toString(), caps.maxTextureSize.toDouble()))
-        } catch (_: Exception) { null }
-    }
     fun getStats(): String = try { engine.ultraPlatform.getStats() } catch (_: Exception) { "" }
 }
-

@@ -725,6 +725,16 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.SHADER -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Use shader on ${sel.name}") }
             AssetKind.ANIMATION -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Play on ${sel.name}") }
             AssetKind.MODEL -> { pm.menu.add("Create 3D Model Object"); if (sel != null) pm.menu.add("Use model on ${sel.name}") }
+            AssetKind.MATERIAL -> { pm.menu.add("Edit Material"); if (sel != null) pm.menu.add("Assign to ${sel.name}") }
+            AssetKind.FONT -> { pm.menu.add("Preview"); if (sel != null) pm.menu.add("Use on ${sel.name}") }
+            AssetKind.PREFAB -> { pm.menu.add("Instantiate"); if (sel != null) pm.menu.add("Attach to ${sel.name}") }
+            AssetKind.SCENE -> { pm.menu.add("Open Scene") }
+            AssetKind.VIDEO -> { pm.menu.add("Preview Video") }
+            AssetKind.TERRAIN -> { pm.menu.add("Create Terrain") }
+            AssetKind.PHYSICS -> { pm.menu.add("Edit Physics") }
+            AssetKind.NAVMESH -> { pm.menu.add("Bake NavMesh") }
+            AssetKind.LIGHTING -> { pm.menu.add("Edit Lighting") }
+            else -> { pm.menu.add("Open") }
             null -> {}
         }
         pm.menu.add("Delete")

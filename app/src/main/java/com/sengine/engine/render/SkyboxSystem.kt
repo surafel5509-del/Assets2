@@ -99,7 +99,7 @@ class FogSystem {
     var volumetricSliceDistributionUniformity: Float = 0.5f
 }
 
-class WaterSystem {
+open class WaterSystem {
     var enabled: Boolean = false
     var waterColor: Int = 0xFF0A4A6A.toInt()
     var depthColor: Int = 0xFF001E2F.toInt()

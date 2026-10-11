@@ -95,7 +95,7 @@ class WorldPartitionSystem {
             var minX=Float.MAX_VALUE; var minZ=Float.MAX_VALUE; var maxX=-Float.MAX_VALUE; var maxZ=-Float.MAX_VALUE
             for (dx in 0 until clusterSize) for (dz in 0 until clusterSize) {
                 val key = cellKey(cx+dx, cz+dz)
-                cells[key]?.let { cellList.add(Pair(cx+dx, cz+dz)); minX=minOf(minX, cell.boundsMin[0]); minZ=minOf(minZ, cell.boundsMin[2]); maxX=maxOf(maxX, cell.boundsMax[0]); maxZ=maxOf(maxZ, cell.boundsMax[2]) }
+                cells[key]?.let { c -> cellList.add(Pair(cx+dx, cz+dz)); minX=minOf(minX, c.boundsMin[0]); minZ=minOf(minZ, c.boundsMin[2]); maxX=maxOf(maxX, c.boundsMax[0]); maxZ=maxOf(maxZ, c.boundsMax[2]) }
             }
             if (cellList.isNotEmpty()) {
                 hlodClusters.add(HLODCluster(id=clusterId++, level=HLODLevel.LOD1, cells=cellList, x=(minX+maxX)*0.5f, z=(minZ+maxZ)*0.5f, boundsMin=floatArrayOf(minX,0f,minZ), boundsMax=floatArrayOf(maxX,100f,maxZ), meshId="HLOD_${clusterId}"))

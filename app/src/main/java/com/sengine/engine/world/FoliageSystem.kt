@@ -95,10 +95,10 @@ class FoliageSystem {
         time+=dt
         // Wind animation - update wind phase
         for (inst in instances) {
-            // Simple wind sway
-            val wind = sin(time*windSpeed*prototypes.getOrNull(inst.prototypeIndex)?.windFrequency?:1f + inst.windPhase) * (prototypes.getOrNull(inst.prototypeIndex)?.windStrength?:0.5f)
-            // Apply wind to position slightly
-            // inst.x+=wind*dt*0.1f - but we don't modify base pos, shader does
+            val proto = prototypes.getOrNull(inst.prototypeIndex)
+            val freq = proto?.windFrequency ?: 1f
+            val strength = proto?.windStrength ?: 0.5f
+            val wind = sin(time*windSpeed*freq + inst.windPhase) * strength
         }
     }
 
