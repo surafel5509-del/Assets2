@@ -13,6 +13,8 @@ on:
 permissions:
   contents: write
   actions: read
+  issues: write
+  gists: write
 
 jobs:
   build:
@@ -72,17 +74,17 @@ jobs:
           tail -n 1000 gradle-build.log >> build-failure-summary.log
           echo "" >> build-failure-summary.log
           echo "=== Errors ===" >> build-failure-summary.log
-          grep -i -A5 -B5 "error\|FAILED\|Unresolved\|Cannot\|e:" gradle-build.log | tail -n 1000 >> build-failure-summary.log || true
+          grep -i -A5 -B5 "error\|FAILED\|Unresolved\|Cannot" gradle-build.log | tail -n 1000 >> build-failure-summary.log || true
           cat build-failure-summary.log
           echo "### Build Failure - S Engine Ultra 6.1.2" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "Run ID: $GITHUB_RUN_ID" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat build-failure-summary.log >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           if [ $BUILD_EXIT -ne 0 ]; then
-            echo "::error::Gradle build failed with exit $BUILD_EXIT"
+            echo "Gradle build failed with exit $BUILD_EXIT"
             exit $BUILD_EXIT
           fi
 
@@ -120,17 +122,20 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Create Gist with failure log for debugging
+      - name: Create Gist with failure log
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           echo "Creating Gist with build failure log..."
-          # Prepare JSON payload with log truncated to 100KB
-          LOG_CONTENT=$(cat build-failure-summary.log | head -c 90000)
-          # Escape for JSON using python
-          python3 << PY > gist_payload.json
+          python3 << 'PY'
           import json, os
+          run_id = os.environ.get('RUN_ID', 'unknown')
+          ref_name = os.environ.get('REF_NAME', 'unknown')
+          repo = os.environ.get('REPO', 'unknown')
           log_path = "build-failure-summary.log"
           try:
               with open(log_path, 'r') as f:
@@ -138,63 +143,20 @@ jobs:
           except:
               content = "Failed to read log"
           payload = {
-              "description": "S Engine Ultra 6.1.2 Build Failure Log - Run ${{ github.run_id }}",
+              "description": f"S Engine Ultra 6.1.2 Build Failure Log - Run {run_id} - {ref_name}",
               "public": False,
               "files": {
                   "build-failure-summary.log": {"content": content},
-                  "README.md": {"content": "Build failure for S Engine 6.1.2 Ultra Edition\nRun ID: ${{ github.run_id }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\n"}
+                  "README.md": {"content": f"Build failure for S Engine 6.1.2 Ultra Edition\nRun ID: {run_id}\nBranch: {ref_name}\nRepo: {repo}\n"}
               }
           }
-          print(json.dumps(payload))
+          with open('gist_payload.json', 'w') as out:
+              json.dump(payload, out)
+          print("Gist payload created")
           PY
-          cat gist_payload.json | head -c 500
-          echo ""
-          # Try to create gist via API
           curl -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" --data @gist_payload.json https://api.github.com/gists > gist_response.json || echo "Gist creation failed"
-          cat gist_response.json | head -c 1000
+          cat gist_response.json | head -c 2000
           echo ""
-          # Also try to create issue with log
-          echo "Trying to create issue with log..."
-          python3 << PY > issue_payload.json
-          import json
-          log_path = "build-failure-summary.log"
-          try:
-              with open(log_path, 'r') as f:
-                  content = f.read()[:60000]
-          except:
-              content = "Failed to read log"
-          body = f"Build failure for S Engine 6.1.2 Ultra\nRun ID: ${{{{ github.run_id }}}}\nBranch: ${{{{ github.ref }}}}\nCommit: ${{{{ github.sha }}}}\n\n```\n{content[:50000]}\n```\n"
-          payload = {
-              "title": "Build Failure Log - Run ${{ github.run_id }} - Ultra 6.1.2",
-              "body": body,
-              "labels": ["bug", "ci"]
-          }
-          print(json.dumps(payload))
-          PY
-          curl -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" --data @issue_payload.json https://api.github.com/repos/${{ github.repository }}/issues > issue_response.json || echo "Issue creation failed"
-          cat issue_response.json | head -c 1000
-
-      - name: Commit failure log to repo for debugging [skip ci]
-        if: failure()
-        run: |
-          echo "Committing failure log for debugging"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin ${{ github.ref_name }} || echo "Pull rebase failed, continuing"
-          echo "# Build Failure Log - Run ${{ github.run_id }}" > BUILD_FAILURE_LOG.md
-          echo "" >> BUILD_FAILURE_LOG.md
-          echo "Branch: ${{ github.ref }}" >> BUILD_FAILURE_LOG.md
-          echo "Commit: ${{ github.sha }}" >> BUILD_FAILURE_LOG.md
-          echo "Run ID: ${{ github.run_id }}" >> BUILD_FAILURE_LOG.md
-          echo "Date: $(date)" >> BUILD_FAILURE_LOG.md
-          echo "" >> BUILD_FAILURE_LOG.md
-          echo '```' >> BUILD_FAILURE_LOG.md
-          cat build-failure-summary.log >> BUILD_FAILURE_LOG.md
-          echo '```' >> BUILD_FAILURE_LOG.md
-          git add BUILD_FAILURE_LOG.md
-          git commit -m "CI: Add build failure log for run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:${{ github.ref_name }} || echo "Push failed"
-          git push --force-with-lease origin HEAD:${{ github.ref_name }} || echo "Push failed even with force"
 
       - name: Show Engine Version and APK Info
         if: always()
