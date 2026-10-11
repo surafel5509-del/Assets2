@@ -10,7 +10,11 @@ class BurstJobComponent : Component() {
     var jobName: String = "TransformJob"
     var optimization: String = "O3"
     var isCompiled: Boolean = false
-    override fun clone() = BurstJobComponent().also { it.jobName=jobName; it.optimization=optimization; it.isCompiled=isCompiled }
+    override fun props() = listOf(
+        Prop.S("JobName", { jobName }, { jobName = it }),
+        Prop.S("Optimization", { optimization }, { optimization = it }),
+        Prop.B("IsCompiled", { isCompiled }, { isCompiled = it })
+    )
 }
 
 class AssemblyDefinitionComponent : Component() {
@@ -19,15 +23,11 @@ class AssemblyDefinitionComponent : Component() {
     var assemblyType: String = "Runtime"
     var allowUnsafeCode: Boolean = false
     var autoReferenced: Boolean = true
-    override fun clone() = AssemblyDefinitionComponent().also { it.assemblyName=assemblyName; it.assemblyType=assemblyType; it.allowUnsafeCode=allowUnsafeCode; it.autoReferenced=autoReferenced }
-}
-
-class ScriptableObjectComponent : Component() {
-    override val type = "ScriptableObject"
-    var soName: String = "GameConfig"
-    var soType: String = "GameConfig"
-    var guid: String = ""
-    override fun clone() = ScriptableObjectComponent().also { it.soName=soName; it.soType=soType; it.guid=guid }
+    override fun props() = listOf(
+        Prop.S("AssemblyName", { assemblyName }, { assemblyName = it }),
+        Prop.S("AssemblyType", { assemblyType }, { assemblyType = it }),
+        Prop.B("AllowUnsafeCode", { allowUnsafeCode }, { allowUnsafeCode = it })
+    )
 }
 
 class ClusteredRenderingComponent : Component() {
@@ -36,7 +36,12 @@ class ClusteredRenderingComponent : Component() {
     var clusterCountY: Int = 9
     var clusterCountZ: Int = 24
     var mode: String = "Clustered"
-    override fun clone() = ClusteredRenderingComponent().also { it.clusterCountX=clusterCountX; it.clusterCountY=clusterCountY; it.clusterCountZ=clusterCountZ; it.mode=mode }
+    override fun props() = listOf(
+        Prop.I("ClusterCountX", { clusterCountX }, { clusterCountX = it }),
+        Prop.I("ClusterCountY", { clusterCountY }, { clusterCountY = it }),
+        Prop.I("ClusterCountZ", { clusterCountZ }, { clusterCountZ = it }),
+        Prop.S("Mode", { mode }, { mode = it })
+    )
 }
 
 class ShadowCSMComponent : Component() {
@@ -47,7 +52,12 @@ class ShadowCSMComponent : Component() {
     var pcssEnabled: Boolean = true
     var vsmEnabled: Boolean = false
     var contactShadows: Boolean = false
-    override fun clone() = ShadowCSMComponent().also { it.cascadeCount=cascadeCount; it.lambda=lambda; it.shadowDistance=shadowDistance; it.pcssEnabled=pcssEnabled; it.vsmEnabled=vsmEnabled; it.contactShadows=contactShadows }
+    override fun props() = listOf(
+        Prop.I("CascadeCount", { cascadeCount }, { cascadeCount = it }),
+        Prop.F("Lambda", { lambda }, { lambda = it }),
+        Prop.F("ShadowDistance", { shadowDistance }, { shadowDistance = it }),
+        Prop.B("PCSSEnabled", { pcssEnabled }, { pcssEnabled = it })
+    )
 }
 
 class UpscalerComponent : Component() {
@@ -56,7 +66,11 @@ class UpscalerComponent : Component() {
     var qualityMode: String = "Quality"
     var renderScale: Float = 0.67f
     var sharpness: Float = 0.5f
-    override fun clone() = UpscalerComponent().also { it.upscalerType=upscalerType; it.qualityMode=qualityMode; it.renderScale=renderScale; it.sharpness=sharpness }
+    override fun props() = listOf(
+        Prop.S("UpscalerType", { upscalerType }, { upscalerType = it }),
+        Prop.S("QualityMode", { qualityMode }, { qualityMode = it }),
+        Prop.F("RenderScale", { renderScale }, { renderScale = it })
+    )
 }
 
 class VolumetricCloudsV2Component : Component() {
@@ -67,7 +81,12 @@ class VolumetricCloudsV2Component : Component() {
     var bottomAltitude: Float = 1500f
     var topAltitude: Float = 4000f
     var raymarchSteps: Int = 64
-    override fun clone() = VolumetricCloudsV2Component().also { it.quality=quality; it.coverage=coverage; it.density=density; it.bottomAltitude=bottomAltitude; it.topAltitude=topAltitude; it.raymarchSteps=raymarchSteps }
+    override fun props() = listOf(
+        Prop.S("Quality", { quality }, { quality = it }),
+        Prop.F("Coverage", { coverage }, { coverage = it }),
+        Prop.F("Density", { density }, { density = it }),
+        Prop.I("RaymarchSteps", { raymarchSteps }, { raymarchSteps = it })
+    )
 }
 
 class WaterV2Component : Component() {
@@ -80,7 +99,12 @@ class WaterV2Component : Component() {
     var hasRefraction: Boolean = true
     var hasReflection: Boolean = true
     var underwaterFog: Boolean = true
-    override fun clone() = WaterV2Component().also { it.width=width; it.height=height; it.waveScale=waveScale; it.waveSpeed=waveSpeed; it.foamThreshold=foamThreshold; it.hasRefraction=hasRefraction; it.hasReflection=hasReflection; it.underwaterFog=underwaterFog }
+    override fun props() = listOf(
+        Prop.F("Width", { width }, { width = it }),
+        Prop.F("Height", { height }, { height = it }),
+        Prop.F("WaveScale", { waveScale }, { waveScale = it }),
+        Prop.F("WaveSpeed", { waveSpeed }, { waveSpeed = it })
+    )
 }
 
 class PhysicsQueryComponent : Component() {
@@ -88,7 +112,10 @@ class PhysicsQueryComponent : Component() {
     var queryType: String = "BoxCast"
     var maxHits: Int = 32
     var queryTriggerInteraction: String = "UseGlobal"
-    override fun clone() = PhysicsQueryComponent().also { it.queryType=queryType; it.maxHits=maxHits; it.queryTriggerInteraction=queryTriggerInteraction }
+    override fun props() = listOf(
+        Prop.S("QueryType", { queryType }, { queryType = it }),
+        Prop.I("MaxHits", { maxHits }, { maxHits = it })
+    )
 }
 
 class ConfigurableJointComponent : Component() {
@@ -100,7 +127,12 @@ class ConfigurableJointComponent : Component() {
     var angularYMotion: String = "Locked"
     var angularZMotion: String = "Locked"
     var projectionMode: String = "None"
-    override fun clone() = ConfigurableJointComponent().also { it.xMotion=xMotion; it.yMotion=yMotion; it.zMotion=zMotion; it.angularXMotion=angularXMotion; it.angularYMotion=angularYMotion; it.angularZMotion=angularZMotion; it.projectionMode=projectionMode }
+    override fun props() = listOf(
+        Prop.S("XMotion", { xMotion }, { xMotion = it }),
+        Prop.S("YMotion", { yMotion }, { yMotion = it }),
+        Prop.S("ZMotion", { zMotion }, { zMotion = it }),
+        Prop.S("ProjectionMode", { projectionMode }, { projectionMode = it })
+    )
 }
 
 class TireFrictionComponent : Component() {
@@ -110,7 +142,11 @@ class TireFrictionComponent : Component() {
     var sidewaysStiffness: Float = 1f
     var extremumSlip: Float = 0.4f
     var asymptoteSlip: Float = 0.8f
-    override fun clone() = TireFrictionComponent().also { it.frictionModel=frictionModel; it.forwardStiffness=forwardStiffness; it.sidewaysStiffness=sidewaysStiffness; it.extremumSlip=extremumSlip; it.asymptoteSlip=asymptoteSlip }
+    override fun props() = listOf(
+        Prop.S("FrictionModel", { frictionModel }, { frictionModel = it }),
+        Prop.F("ForwardStiffness", { forwardStiffness }, { forwardStiffness = it }),
+        Prop.F("SidewaysStiffness", { sidewaysStiffness }, { sidewaysStiffness = it })
+    )
 }
 
 class AnimationEventComponent : Component() {
@@ -120,7 +156,11 @@ class AnimationEventComponent : Component() {
     var floatParam: Float = 0f
     var stringParam: String = ""
     var intParam: Int = 0
-    override fun clone() = AnimationEventComponent().also { it.functionName=functionName; it.time=time; it.floatParam=floatParam; it.stringParam=stringParam; it.intParam=intParam }
+    override fun props() = listOf(
+        Prop.S("FunctionName", { functionName }, { functionName = it }),
+        Prop.F("Time", { time }, { time = it }),
+        Prop.F("FloatParam", { floatParam }, { floatParam = it })
+    )
 }
 
 class BlendShapeComponent : Component() {
@@ -128,7 +168,11 @@ class BlendShapeComponent : Component() {
     var blendShapeName: String = "Smile"
     var weight: Float = 0f
     var mode: String = "Normalized"
-    override fun clone() = BlendShapeComponent().also { it.blendShapeName=blendShapeName; it.weight=weight; it.mode=mode }
+    override fun props() = listOf(
+        Prop.S("BlendShapeName", { blendShapeName }, { blendShapeName = it }),
+        Prop.F("Weight", { weight }, { weight = it }),
+        Prop.S("Mode", { mode }, { mode = it })
+    )
 }
 
 class PoseLibraryComponent : Component() {
@@ -136,7 +180,11 @@ class PoseLibraryComponent : Component() {
     var libraryName: String = "HumanoidPoses"
     var currentPose: String = "Idle"
     var blendTime: Float = 0.2f
-    override fun clone() = PoseLibraryComponent().also { it.libraryName=libraryName; it.currentPose=currentPose; it.blendTime=blendTime }
+    override fun props() = listOf(
+        Prop.S("LibraryName", { libraryName }, { libraryName = it }),
+        Prop.S("CurrentPose", { currentPose }, { currentPose = it }),
+        Prop.F("BlendTime", { blendTime }, { blendTime = it })
+    )
 }
 
 class MotionWarpingV2Component : Component() {
@@ -145,7 +193,12 @@ class MotionWarpingV2Component : Component() {
     var warpTranslation: Boolean = true
     var warpRotation: Boolean = true
     var targetX: Float = 0f; var targetY: Float = 0f; var targetZ: Float = 0f
-    override fun clone() = MotionWarpingV2Component().also { it.warpName=warpName; it.warpTranslation=warpTranslation; it.warpRotation=warpRotation; it.targetX=targetX; it.targetY=targetY; it.targetZ=targetZ }
+    override fun props() = listOf(
+        Prop.S("WarpName", { warpName }, { warpName = it }),
+        Prop.B("WarpTranslation", { warpTranslation }, { warpTranslation = it }),
+        Prop.B("WarpRotation", { warpRotation }, { warpRotation = it }),
+        Prop.F("TargetX", { targetX }, { targetX = it })
+    )
 }
 
 class AudioMixerSnapshotComponent : Component() {
@@ -153,7 +206,11 @@ class AudioMixerSnapshotComponent : Component() {
     var snapshotName: String = "Default"
     var snapshotType: String = "Default"
     var transitionTime: Float = 0.5f
-    override fun clone() = AudioMixerSnapshotComponent().also { it.snapshotName=snapshotName; it.snapshotType=snapshotType; it.transitionTime=transitionTime }
+    override fun props() = listOf(
+        Prop.S("SnapshotName", { snapshotName }, { snapshotName = it }),
+        Prop.S("SnapshotType", { snapshotType }, { snapshotType = it }),
+        Prop.F("TransitionTime", { transitionTime }, { transitionTime = it })
+    )
 }
 
 class AudioPortalComponent : Component() {
@@ -163,7 +220,12 @@ class AudioPortalComponent : Component() {
     var height: Float = 2f
     var isOpen: Boolean = true
     var occlusionFactor: Float = 0.5f
-    override fun clone() = AudioPortalComponent().also { it.portalId=portalId; it.width=width; it.height=height; it.isOpen=isOpen; it.occlusionFactor=occlusionFactor }
+    override fun props() = listOf(
+        Prop.S("PortalId", { portalId }, { portalId = it }),
+        Prop.F("Width", { width }, { width = it }),
+        Prop.F("Height", { height }, { height = it }),
+        Prop.B("IsOpen", { isOpen }, { isOpen = it })
+    )
 }
 
 class ReverbProbeComponent : Component() {
@@ -171,24 +233,21 @@ class ReverbProbeComponent : Component() {
     var radius: Float = 10f
     var reverbPreset: String = "Room"
     var baked: Boolean = false
-    override fun clone() = ReverbProbeComponent().also { it.radius=radius; it.reverbPreset=reverbPreset; it.baked=baked }
+    override fun props() = listOf(
+        Prop.F("Radius", { radius }, { radius = it }),
+        Prop.S("ReverbPreset", { reverbPreset }, { reverbPreset = it }),
+        Prop.B("Baked", { baked }, { baked = it })
+    )
 }
 
 class NavMeshAreaComponent : Component() {
     override val type = "NavMeshArea"
     var areaType: String = "Walkable"
     var cost: Float = 1f
-    override fun clone() = NavMeshAreaComponent().also { it.areaType=areaType; it.cost=cost }
-}
-
-class OffMeshLinkComponent : Component() {
-    override val type = "OffMeshLink"
-    var linkType: String = "JumpAcross"
-    var startX: Float = 0f; var startY: Float = 0f; var startZ: Float = 0f
-    var endX: Float = 5f; var endY: Float = 0f; var endZ: Float = 0f
-    var bidirectional: Boolean = true
-    var costOverride: Float = -1f
-    override fun clone() = OffMeshLinkComponent().also { it.linkType=linkType; it.startX=startX; it.startY=startY; it.startZ=startZ; it.endX=endX; it.endY=endY; it.endZ=endZ; it.bidirectional=bidirectional; it.costOverride=costOverride }
+    override fun props() = listOf(
+        Prop.S("AreaType", { areaType }, { areaType = it }),
+        Prop.F("Cost", { cost }, { cost = it })
+    )
 }
 
 class PerceptionComponent : Component() {
@@ -197,7 +256,11 @@ class PerceptionComponent : Component() {
     var sightAngle: Float = 90f
     var hearingRange: Float = 10f
     var sightHeight: Float = 1.6f
-    override fun clone() = PerceptionComponent().also { it.sightRange=sightRange; it.sightAngle=sightAngle; it.hearingRange=hearingRange; it.sightHeight=sightHeight }
+    override fun props() = listOf(
+        Prop.F("SightRange", { sightRange }, { sightRange = it }),
+        Prop.F("SightAngle", { sightAngle }, { sightAngle = it }),
+        Prop.F("HearingRange", { hearingRange }, { hearingRange = it })
+    )
 }
 
 class CoverPointComponent : Component() {
@@ -206,7 +269,12 @@ class CoverPointComponent : Component() {
     var dirX: Float = 0f; var dirZ: Float = 1f
     var quality: Float = 1f
     var isOccupied: Boolean = false
-    override fun clone() = CoverPointComponent().also { it.coverType=coverType; it.dirX=dirX; it.dirZ=dirZ; it.quality=quality; it.isOccupied=isOccupied }
+    override fun props() = listOf(
+        Prop.S("CoverType", { coverType }, { coverType = it }),
+        Prop.F("DirX", { dirX }, { dirX = it }),
+        Prop.F("DirZ", { dirZ }, { dirZ = it }),
+        Prop.B("IsOccupied", { isOccupied }, { isOccupied = it })
+    )
 }
 
 class GOAPComponent : Component() {
@@ -214,7 +282,11 @@ class GOAPComponent : Component() {
     var currentGoal: String = "KillEnemy"
     var isPlanning: Boolean = false
     var planLength: Int = 0
-    override fun clone() = GOAPComponent().also { it.currentGoal=currentGoal; it.isPlanning=isPlanning; it.planLength=planLength }
+    override fun props() = listOf(
+        Prop.S("CurrentGoal", { currentGoal }, { currentGoal = it }),
+        Prop.B("IsPlanning", { isPlanning }, { isPlanning = it }),
+        Prop.I("PlanLength", { planLength }, { planLength = it })
+    )
 }
 
 class InterestManagementComponent : Component() {
@@ -224,7 +296,11 @@ class InterestManagementComponent : Component() {
     var lodHigh: Float = 10f
     var lodMedium: Float = 30f
     var lodLow: Float = 100f
-    override fun clone() = InterestManagementComponent().also { it.mode=mode; it.cullingDistance=cullingDistance; it.lodHigh=lodHigh; it.lodMedium=lodMedium; it.lodLow=lodLow }
+    override fun props() = listOf(
+        Prop.S("Mode", { mode }, { mode = it }),
+        Prop.F("CullingDistance", { cullingDistance }, { cullingDistance = it }),
+        Prop.F("LodHigh", { lodHigh }, { lodHigh = it })
+    )
 }
 
 class ClientPredictionComponent : Component() {
@@ -233,7 +309,11 @@ class ClientPredictionComponent : Component() {
     var reconciliationEnabled: Boolean = true
     var errorThreshold: Float = 0.1f
     var maxHistory: Int = 60
-    override fun clone() = ClientPredictionComponent().also { it.predictionEnabled=predictionEnabled; it.reconciliationEnabled=reconciliationEnabled; it.errorThreshold=errorThreshold; it.maxHistory=maxHistory }
+    override fun props() = listOf(
+        Prop.B("PredictionEnabled", { predictionEnabled }, { predictionEnabled = it }),
+        Prop.B("ReconciliationEnabled", { reconciliationEnabled }, { reconciliationEnabled = it }),
+        Prop.F("ErrorThreshold", { errorThreshold }, { errorThreshold = it })
+    )
 }
 
 class VoiceChat3DComponent : Component() {
@@ -243,7 +323,11 @@ class VoiceChat3DComponent : Component() {
     var spatialBlend: Float = 1f
     var minDistance: Float = 1f
     var maxDistance: Float = 20f
-    override fun clone() = VoiceChat3DComponent().also { it.volume=volume; it.isTalking=isTalking; it.spatialBlend=spatialBlend; it.minDistance=minDistance; it.maxDistance=maxDistance }
+    override fun props() = listOf(
+        Prop.F("Volume", { volume }, { volume = it }),
+        Prop.B("IsTalking", { isTalking }, { isTalking = it }),
+        Prop.F("SpatialBlend", { spatialBlend }, { spatialBlend = it })
+    )
 }
 
 class LobbyComponent : Component() {
@@ -252,7 +336,12 @@ class LobbyComponent : Component() {
     var maxPlayers: Int = 8
     var gameMode: String = "Deathmatch"
     var isPrivate: Boolean = false
-    override fun clone() = LobbyComponent().also { it.lobbyName=lobbyName; it.maxPlayers=maxPlayers; it.gameMode=gameMode; it.isPrivate=isPrivate }
+    override fun props() = listOf(
+        Prop.S("LobbyName", { lobbyName }, { lobbyName = it }),
+        Prop.I("MaxPlayers", { maxPlayers }, { maxPlayers = it }),
+        Prop.S("GameMode", { gameMode }, { gameMode = it }),
+        Prop.B("IsPrivate", { isPrivate }, { isPrivate = it })
+    )
 }
 
 class InputRebindingComponent : Component() {
@@ -260,7 +349,11 @@ class InputRebindingComponent : Component() {
     var actionName: String = "Jump"
     var controlScheme: String = "Keyboard&Mouse"
     var currentPath: String = "<Keyboard>/space"
-    override fun clone() = InputRebindingComponent().also { it.actionName=actionName; it.controlScheme=controlScheme; it.currentPath=currentPath }
+    override fun props() = listOf(
+        Prop.S("ActionName", { actionName }, { actionName = it }),
+        Prop.S("ControlScheme", { controlScheme }, { controlScheme = it }),
+        Prop.S("CurrentPath", { currentPath }, { currentPath = it })
+    )
 }
 
 class SaveSystemComponent : Component() {
@@ -270,7 +363,12 @@ class SaveSystemComponent : Component() {
     var cloudEnabled: Boolean = true
     var crossSaveEnabled: Boolean = true
     var maxSlots: Int = 10
-    override fun clone() = SaveSystemComponent().also { it.encryption=encryption; it.compression=compression; it.cloudEnabled=cloudEnabled; it.crossSaveEnabled=crossSaveEnabled; it.maxSlots=maxSlots }
+    override fun props() = listOf(
+        Prop.S("Encryption", { encryption }, { encryption = it }),
+        Prop.S("Compression", { compression }, { compression = it }),
+        Prop.B("CloudEnabled", { cloudEnabled }, { cloudEnabled = it }),
+        Prop.I("MaxSlots", { maxSlots }, { maxSlots = it })
+    )
 }
 
 class EditorWindowComponent : Component() {
@@ -278,7 +376,11 @@ class EditorWindowComponent : Component() {
     var windowType: String = "Hierarchy"
     var isDocked: Boolean = true
     var isVisible: Boolean = true
-    override fun clone() = EditorWindowComponent().also { it.windowType=windowType; it.isDocked=isDocked; it.isVisible=isVisible }
+    override fun props() = listOf(
+        Prop.S("WindowType", { windowType }, { windowType = it }),
+        Prop.B("IsDocked", { isDocked }, { isDocked = it }),
+        Prop.B("IsVisible", { isVisible }, { isVisible = it })
+    )
 }
 
 class XRComponent : Component() {
@@ -286,7 +388,11 @@ class XRComponent : Component() {
     var trackingType: String = "Hand"
     var isTracked: Boolean = false
     var confidence: Float = 0f
-    override fun clone() = XRComponent().also { it.trackingType=trackingType; it.isTracked=isTracked; it.confidence=confidence }
+    override fun props() = listOf(
+        Prop.S("TrackingType", { trackingType }, { trackingType = it }),
+        Prop.B("IsTracked", { isTracked }, { isTracked = it }),
+        Prop.F("Confidence", { confidence }, { confidence = it })
+    )
 }
 
 class ARPlaneComponent : Component() {
@@ -294,5 +400,9 @@ class ARPlaneComponent : Component() {
     var width: Float = 1f
     var height: Float = 1f
     var isValid: Boolean = true
-    override fun clone() = ARPlaneComponent().also { it.width=width; it.height=height; it.isValid=isValid }
+    override fun props() = listOf(
+        Prop.F("Width", { width }, { width = it }),
+        Prop.F("Height", { height }, { height = it }),
+        Prop.B("IsValid", { isValid }, { isValid = it })
+    )
 }

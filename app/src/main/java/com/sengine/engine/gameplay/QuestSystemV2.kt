@@ -178,7 +178,7 @@ class InventorySystemV2 {
         if (item.stackable) {
             for (slot in slots) if (!slot.isEmpty && slot.item?.id == item.id && slot.quantity < (slot.item?.maxStack ?: 99)) {
                 val space = (slot.item?.maxStack ?: 99) - slot.quantity
-                val toAdd = min(space, quantity)
+                val toAdd = minOf(space, quantity)
                 slot.quantity+=toAdd; currentWeight+=item.weight*toAdd
                 if (toAdd < quantity) return addItem(item, quantity-toAdd)
                 return true
@@ -195,7 +195,7 @@ class InventorySystemV2 {
     fun removeItem(itemId: String, quantity: Int = 1): Boolean {
         var remaining = quantity
         for (slot in slots) if (!slot.isEmpty && slot.item?.id == itemId) {
-            val toRemove = min(slot.quantity, remaining)
+            val toRemove = minOf(slot.quantity, remaining)
             slot.quantity-=toRemove; currentWeight-= (slot.item?.weight ?: 0f)*toRemove
             remaining-=toRemove
             if (slot.quantity <= 0) { slot.item=null; slot.quantity=0; slot.isEmpty=true }

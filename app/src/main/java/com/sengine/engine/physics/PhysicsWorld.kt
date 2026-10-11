@@ -46,7 +46,7 @@ class PhysicsWorld {
     }
 
     fun step(scene: Scene, dt: Float) {
-        accumulator += min(dt, 0.25f)
+        accumulator += minOf(dt, 0.25f)
         var steps = 0
         while (accumulator >= fixedDt && steps < 5) {
             fixedStep(scene, fixedDt)
@@ -67,7 +67,7 @@ class PhysicsWorld {
                     rb.vx += scene.gravityX * rb.gravityScale * dt
                     rb.vy += scene.gravityY * rb.gravityScale * dt
                     if (rb.drag > 0f) {
-                        val k = max(0f, 1f - rb.drag * dt)
+                        val k = maxOf(0f, 1f - rb.drag * dt)
                         rb.vx *= k; rb.vy *= k
                     }
                     moveWorld(go, rb.vx * dt, rb.vy * dt)
@@ -116,7 +116,7 @@ class PhysicsWorld {
     }
 
     private fun pairKey(a: Long, b: Long): Long {
-        val lo = min(a, b); val hi = max(a, b)
+        val lo = minOf(a, b); val hi = maxOf(a, b)
         return (lo shl 32) or (hi and 0xFFFFFFFFL)
     }
 
@@ -137,7 +137,7 @@ class PhysicsWorld {
         b.cy = w.mapY(b.col.offsetX, b.col.offsetY)
         b.hw = b.col.width * sx * 0.5f
         b.hh = b.col.height * sy * 0.5f
-        b.r = b.col.radius * max(sx, sy)
+        b.r = b.col.radius * maxOf(sx, sy)
     }
 
     private class Manifold(val nx: Float, val ny: Float, val depth: Float)
@@ -198,7 +198,7 @@ class PhysicsWorld {
         val sum = ia + ib
         if (sum == 0f) return
         // positional correction
-        val corr = max(m.depth - 0.001f, 0f) / sum * 0.9f
+        val corr = maxOf(m.depth - 0.001f, 0f) / sum * 0.9f
         if (ia > 0f) moveWorld(a.go, -m.nx * corr * ia, -m.ny * corr * ia)
         if (ib > 0f) moveWorld(b.go, m.nx * corr * ib, m.ny * corr * ib)
 
@@ -214,7 +214,7 @@ class PhysicsWorld {
         val rvy = bvy - avy
         val vn = rvx * m.nx + rvy * m.ny
         if (vn > 0f) return
-        val e = max(a.rb?.bounciness ?: 0f, b.rb?.bounciness ?: 0f)
+        val e = maxOf(a.rb?.bounciness ?: 0f, b.rb?.bounciness ?: 0f)
         val j = -(1f + e) * vn / sum
         applyImpulse(a, -j * m.nx, -j * m.ny)
         applyImpulse(b, j * m.nx, j * m.ny)

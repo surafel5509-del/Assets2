@@ -120,7 +120,7 @@ class WorldTimeSystem {
         val hourRad = hourAngle*PI.toFloat()/180f
 
         val altitudeRad = asin(sin(latRad)*sin(decRad) + cos(latRad)*cos(decRad)*cos(hourRad))
-        val azimuthRad = acos((sin(decRad)-sin(altRad)*sin(latRad))/(cos(altRad)*cos(latRad)))
+        val azimuthRad = acos((sin(decRad)-sin(altitudeRad)*sin(latRad))/(cos(altitudeRad)*cos(latRad)))
 
         sun.altitude = altitudeRad*180f/PI.toFloat()
         sun.azimuth = azimuthRad*180f/PI.toFloat()

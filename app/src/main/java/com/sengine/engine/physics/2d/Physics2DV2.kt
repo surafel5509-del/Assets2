@@ -240,12 +240,12 @@ class Physics2DV2 {
         if (abs(dx) < 1e-6f) { if (ox < bounds[0] || ox > bounds[2]) return null }
         else {
             val t1 = (bounds[0]-ox)/dx; val t2 = (bounds[2]-ox)/dx
-            tmin = max(tmin, min(t1,t2)); tmax = min(tmax, max(t1,t2))
+            tmin = maxOf(tmin, minOf(t1,t2)); tmax = minOf(tmax, maxOf(t1,t2))
         }
         if (abs(dy) < 1e-6f) { if (oy < bounds[1] || oy > bounds[3]) return null }
         else {
             val t1 = (bounds[1]-oy)/dy; val t2 = (bounds[3]-oy)/dy
-            tmin = max(tmin, min(t1,t2)); tmax = min(tmax, max(t1,t2))
+            tmin = maxOf(tmin, minOf(t1,t2)); tmax = minOf(tmax, maxOf(t1,t2))
         }
         return if (tmax >= tmin && tmax >= 0f) if (tmin >= 0f) tmin else tmax else null
     }

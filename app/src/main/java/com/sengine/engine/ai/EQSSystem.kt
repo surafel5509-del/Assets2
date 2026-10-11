@@ -177,13 +177,3 @@ class UtilityAI {
 
     fun getStats(): String = "UtilityAI Actions:${actions.size} Best:${selectBestAction()?.name}"
 }
-
-data class Blackboard(
-    var data: MutableMap<String, Any> = mutableMapOf()
-) {
-    fun set(key: String, value: Any) { data[key]=value }
-    fun <T> get(key: String): T? = data[key] as? T
-    fun has(key: String): Boolean = data.containsKey(key)
-    fun getFloat(key: String, default: Float = 0f): Float = (data[key] as? Number)?.toFloat() ?: default
-    fun getBool(key: String, default: Boolean = false): Boolean = data[key] as? Boolean ?: default
-}

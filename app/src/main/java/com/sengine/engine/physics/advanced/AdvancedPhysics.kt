@@ -24,16 +24,16 @@ data class PhysicsMaterial(
     var bounceCombine: Int = 0
 ) {
     fun combineFriction(other: PhysicsMaterial): Float = when (frictionCombine) {
-        1 -> min(dynamicFriction, other.dynamicFriction)
+        1 -> minOf(dynamicFriction, other.dynamicFriction)
         2 -> dynamicFriction * other.dynamicFriction
-        3 -> max(dynamicFriction, other.dynamicFriction)
+        3 -> maxOf(dynamicFriction, other.dynamicFriction)
         else -> (dynamicFriction + other.dynamicFriction) * 0.5f
     }
 
     fun combineBounce(other: PhysicsMaterial): Float = when (bounceCombine) {
-        1 -> min(bounciness, other.bounciness)
+        1 -> minOf(bounciness, other.bounciness)
         2 -> bounciness * other.bounciness
-        3 -> max(bounciness, other.bounciness)
+        3 -> maxOf(bounciness, other.bounciness)
         else -> (bounciness + other.bounciness) * 0.5f
     }
 }
@@ -181,9 +181,9 @@ class CharacterController {
         go.y += motion[1]
         go.z += motion[2]
 
-        velocity[0] = motion[0] / max(dt, 0.001f)
-        velocity[1] = motion[1] / max(dt, 0.001f)
-        velocity[2] = motion[2] / max(dt, 0.001f)
+        velocity[0] = motion[0] / maxOf(dt, 0.001f)
+        velocity[1] = motion[1] / maxOf(dt, 0.001f)
+        velocity[2] = motion[2] / maxOf(dt, 0.001f)
 
         // Ground check via raycast down
         val origin = floatArrayOf(go.world3[12], go.world3[13] + 0.1f, go.world3[14])

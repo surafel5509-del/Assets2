@@ -129,7 +129,7 @@ class LightingSystem {
         if (lights.size > 1) {
             val main = lights.firstOrNull { it.light.kind == 0 }
             val additional = lights.filter { it.light.kind != 0 }
-                .sortedByDescending { it.intensity / max(1f, it.distanceToCamera) }
+                .sortedByDescending { it.intensity / maxOf(1f, it.distanceToCamera) }
                 .take(maxAdditionalLights)
             lights.clear()
             if (main != null) lights.add(main)
@@ -202,7 +202,7 @@ class LightProbeGroup {
         for (p in sorted) {
             val dx = p.x - pos[0]; val dy = p.y - pos[1]; val dz = p.z - pos[2]
             val d2 = dx * dx + dy * dy + dz * dz
-            val w = 1f / max(0.01f, d2)
+            val w = 1f / maxOf(0.01f, d2)
             totalW += w
             for (i in 0 until 27) result[i] += p.sh[i] * w
         }

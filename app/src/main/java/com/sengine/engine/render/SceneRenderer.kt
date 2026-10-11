@@ -144,7 +144,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             val prog = if (sr.shader.isNotBlank()) shaders.sprite(sr.shader) else null
             val shape = if (tex != null) 0 else sr.shape
             if (m3 != null) r.quadModel(m3, sr.color, shape, tex, 200f, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
-            else r.quad(w, sr.color, shape, tex, min(w.scaleX, w.scaleY) * ppu, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
+            else r.quad(w, sr.color, shape, tex, minOf(w.scaleX, w.scaleY) * ppu, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
         }
         go.get<TextRenderer>()?.let { tr ->
             if (tr.text.isNotEmpty()) {
@@ -324,7 +324,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
                 val color = if (c.isTrigger) 0xCC4FC3F7.toInt() else 0xCC66FF66.toInt()
                 if (c.shape == 1) {
                     val p = Mat4.point(w, c.centerX, c.centerY, c.centerZ)
-                    val rad = c.radius * max(Mat4.scaleOf(w, 0), max(Mat4.scaleOf(w, 1), Mat4.scaleOf(w, 2)))
+                    val rad = c.radius * maxOf(Mat4.scaleOf(w, 0), maxOf(Mat4.scaleOf(w, 1), Mat4.scaleOf(w, 2)))
                     r.circle3(p[0], p[1], p[2], rad, 0, color); r.circle3(p[0], p[1], p[2], rad, 1, color); r.circle3(p[0], p[1], p[2], rad, 2, color)
                 } else {
                     r.wireBox(w, floatArrayOf(c.centerX - c.sizeX / 2, c.centerY - c.sizeY / 2, c.centerZ - c.sizeZ / 2),
@@ -447,7 +447,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val cx = w.mapX(c.offsetX, c.offsetY)
         val cy = w.mapY(c.offsetX, c.offsetY)
         val color = if (c.isTrigger) 0xCC4FC3F7.toInt() else 0xCC66FF66.toInt()
-        if (c.shape == 1) r.circleLines(cx, cy, c.radius * max(w.scaleX, w.scaleY), color)
+        if (c.shape == 1) r.circleLines(cx, cy, c.radius * maxOf(w.scaleX, w.scaleY), color)
         else {
             tmp.a = 1f; tmp.b = 0f; tmp.c = 0f; tmp.d = 1f; tmp.tx = cx; tmp.ty = cy
             r.obb(tmp, c.width * w.scaleX / 2, c.height * w.scaleY / 2, color)

@@ -59,8 +59,8 @@ data class VirtualizedMesh(
         meshlets.clear(); lods.clear()
         val meshletCount = (triangleCount + 123) / 124
         for (i in 0 until meshletCount) {
-            val triCount = min(124, triangleCount - i*124)
-            val vertCount = min(64, vertexCount - i*64)
+            val triCount = minOf(124, triangleCount - i*124)
+            val vertCount = minOf(64, vertexCount - i*64)
             meshlets.add(Meshlet(id=i, vertexOffset=i*64, vertexCount=vertCount, triangleOffset=i*124, triangleCount=triCount, lodLevel=0))
         }
         // Build LODs - decimate by 50% each level
@@ -74,7 +74,7 @@ data class VirtualizedMesh(
             // Create parent meshlets
             val parentCount = (currentTris + 123)/124
             for (i in 0 until parentCount) {
-                meshlets.add(Meshlet(id=meshlets.size, vertexOffset=0, vertexCount=64, triangleOffset=0, triangleCount=min(124, currentTris-i*124), lodLevel=lod, error=lod*0.01f))
+                meshlets.add(Meshlet(id=meshlets.size, vertexOffset=0, vertexCount=64, triangleOffset=0, triangleCount=minOf(124, currentTris-i*124), lodLevel=lod, error=lod*0.01f))
             }
         }
         totalVertices = vertexCount; totalTriangles = triangleCount
@@ -85,7 +85,7 @@ data class VirtualizedMesh(
             distance < 25f -> 1
             distance < 50f -> 2
             distance < 100f -> 3
-            else -> min(4, lods.size-1)
+            else -> minOf(4, lods.size-1)
         }
     }
 }

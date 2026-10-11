@@ -100,7 +100,7 @@ data class DestructibleObject(
             pieces.add(piece)
         }
         // Create clusters
-        val clusterCount = max(1, pieceCount/5)
+        val clusterCount = maxOf(1, pieceCount/5)
         for (c in 0 until clusterCount) {
             val cluster = FractureCluster(id=c)
             for (p in pieces.indices) if (p % clusterCount == c) cluster.pieces.add(p)

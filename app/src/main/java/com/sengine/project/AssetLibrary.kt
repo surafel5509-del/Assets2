@@ -725,7 +725,7 @@ vec4 effect(vec4 color, vec2 uv) {
             Triple("Toon.glsl", "Cel shading for 3D meshes", """
 // Toon / cel shading. Use on a MeshRenderer. uParam = bands (default 1 -> 4 bands)
 vec4 effect(vec4 color, vec2 uv) {
-    float bands = 4.0 * max(uParam, 0.25);
+    float bands = 4.0 * maxOf(uParam, 0.25);
     vec3 c = floor(color.rgb * bands + 0.5) / bands;
     return vec4(c, color.a);
 }

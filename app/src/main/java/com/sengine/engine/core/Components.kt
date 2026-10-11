@@ -523,7 +523,7 @@ class Light : Component() {
 
 class LightPro : Component() {
     override val type = "LightPro"
-    var type = 0
+    var kind = 0
     var color = 0xFFFFF4E0.toInt()
     var colorTemperature = 6500f
     var useColorTemperature = false
@@ -548,7 +548,7 @@ class LightPro : Component() {
     var enableVolumetrics = false
 
     override fun props() = listOf(
-        Prop.Choice("Type", listOf("Directional", "Point", "Spot", "Area Rectangle", "Area Disc"), { type }, { type = it }),
+        Prop.Choice("Type", listOf("Directional", "Point", "Spot", "Area Rectangle", "Area Disc"), { kind }, { kind = it }),
         Prop.Color("Color", { color }, { color = it }),
         Prop.F("Intensity", { intensity }, { intensity = it.coerceIn(0f, 20f) }, 0.1f),
         Prop.F("Range", { range }, { range = it.coerceAtLeast(0.1f) }),
@@ -561,12 +561,12 @@ class LightPro : Component() {
 class SkyboxComponent : Component() {
     override val type = "Skybox"
     var material = ""
-    var type = 0
+    var kind = 0
     var exposure = 1f
     var rotation = 0f
     var tint = 0xFF808080.toInt()
     override fun props() = listOf(
-        Prop.Choice("Type", listOf("Procedural", "Cubemap", "HDRI", "Gradient", "Six Sided", "Physically Based"), { type }, { type = it }),
+        Prop.Choice("Type", listOf("Procedural", "Cubemap", "HDRI", "Gradient", "Six Sided", "Physically Based"), { kind }, { kind = it }),
         Prop.Asset("Material", AssetKind.MATERIAL, { material }, { material = it }),
         Prop.F("Exposure", { exposure }, { exposure = it }),
         Prop.F("Rotation", { rotation }, { rotation = it }),
@@ -1023,7 +1023,6 @@ class AudioSource : Component() {
 
 class AudioListener : Component() {
     override val type = "AudioListener"
-    var enabled = true
     override fun props() = listOf(Prop.B("Enabled", { enabled }, { enabled = it }))
 }
 
@@ -1281,7 +1280,7 @@ class ImageComponent : Component() {
     var sprite = ""
     var color = 0xFFFFFFFF.toInt()
     var material = ""
-    var type = 0
+    var kind = 0
     var preserveAspect = false
     var fillCenter = true
     var fillMethod = 0
@@ -1289,7 +1288,7 @@ class ImageComponent : Component() {
     override fun props() = listOf(
         Prop.Asset("Sprite", AssetKind.TEXTURE, { sprite }, { sprite = it }),
         Prop.Color("Color", { color }, { color = it }),
-        Prop.Choice("Type", listOf("Simple", "Sliced", "Tiled", "Filled"), { type }, { type = it }),
+        Prop.Choice("Type", listOf("Simple", "Sliced", "Tiled", "Filled"), { kind }, { kind = it }),
         Prop.B("Preserve Aspect", { preserveAspect }, { preserveAspect = it }),
         Prop.F("Fill Amount", { fillAmount }, { fillAmount = it.coerceIn(0f, 1f) }, 0.05f),
     )

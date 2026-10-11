@@ -40,7 +40,12 @@ data class AnimatorCondition(
                 AnimatorParameterType.Bool -> p.boolValue == (threshold != 0f)
                 else -> false
             }
-            TransitionConditionMode.NotEqual -> !evaluate(params.copy().also { /* invert handled */ })
+            TransitionConditionMode.NotEqual -> when (p.type) {
+                AnimatorParameterType.Float -> p.floatValue != threshold
+                AnimatorParameterType.Int -> p.intValue != threshold.toInt()
+                AnimatorParameterType.Bool -> p.boolValue != (threshold != 0f)
+                else -> true
+            }
         }
     }
 }

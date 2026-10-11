@@ -157,7 +157,7 @@ void main() {
     a = clamp((0.5 - length(vP)) * uAA, 0.0, 1.0);
   } else if (uShape > 1.5 && uShape < 2.5) {
     float w = (0.5 - vP.y) * 0.5;
-    float e = min(w - abs(vP.x), vP.y + 0.5);
+    float e = minOf(w - abs(vP.x), vP.y + 0.5);
     a = clamp(e * uAA, 0.0, 1.0);
   } else if (uShape > 2.5) {
     float d = length(vP);
@@ -222,26 +222,26 @@ void main() {
     vec3 n = normalize(vNormal);
     vec3 v = normalize(uCamPos - vWorld);
     vec3 l = normalize(-uDirDir);
-    float diff = max(dot(n, l), 0.0);
+    float diff = maxOf(dot(n, l), 0.0);
     vec3 h = normalize(l + v);
-    float spec = pow(max(dot(n, h), 0.0), uShine) * uSpec;
+    float spec = pow(maxOf(dot(n, h), 0.0), uShine) * uSpec;
     vec3 light = uAmbient + uDirColor * diff;
     vec3 specular = uDirColor * spec * step(0.0001, diff);
     for (int i = 0; i < 4; i++) {
       vec3 d = uPointPos[i].xyz - vWorld;
       float dist = length(d);
-      float att = clamp(1.0 - dist / max(uPointPos[i].w, 0.001), 0.0, 1.0);
+      float att = clamp(1.0 - dist / maxOf(uPointPos[i].w, 0.001), 0.0, 1.0);
       att *= att;
-      vec3 pl = d / max(dist, 0.0001);
-      float pd = max(dot(n, pl), 0.0);
+      vec3 pl = d / maxOf(dist, 0.0001);
+      float pd = maxOf(dot(n, pl), 0.0);
       light += uPointColor[i] * pd * att;
-      specular += uPointColor[i] * pow(max(dot(n, normalize(pl + v)), 0.0), uShine) * uSpec * att * step(0.0001, pd);
+      specular += uPointColor[i] * pow(maxOf(dot(n, normalize(pl + v)), 0.0), uShine) * uSpec * att * step(0.0001, pd);
     }
     col = col * light + specular;
   }
   col += base.rgb * uEmission;
   if (uFog.z > 0.5) {
-    float f = clamp((length(uCamPos - vWorld) - uFog.x) / max(uFog.y - uFog.x, 0.001), 0.0, 1.0);
+    float f = clamp((length(uCamPos - vWorld) - uFog.x) / maxOf(uFog.y - uFog.x, 0.001), 0.0, 1.0);
     col = mix(col, uFogColor, f);
   }
   gl_FragColor = effect(vec4(col, base.a), uv);
@@ -284,13 +284,13 @@ void main() { gl_FragColor = effect(texture2D(uTex, vUV), vUV); }
   return vec4(col * scan * vig * 1.15, 1.0);
 }""",
             // Pixelate
-            "vec4 effect(vec4 c, vec2 uv) { float px = max(2.0, 4.0 * uParam) ; vec2 g = uResolution / px; vec2 p = (floor(uv * g) + 0.5) / g; return vec4(texture2D(uTex, p).rgb, 1.0); }",
+            "vec4 effect(vec4 c, vec2 uv) { float px = maxOf(2.0, 4.0 * uParam) ; vec2 g = uResolution / px; vec2 p = (floor(uv * g) + 0.5) / g; return vec4(texture2D(uTex, p).rgb, 1.0); }",
             // Bloom
             """vec4 effect(vec4 c, vec2 uv) {
   vec2 px = 2.5 / uResolution; vec3 acc = vec3(0.0);
   for (int x = -2; x <= 2; x++) for (int y = -2; y <= 2; y++) {
     vec3 s = texture2D(uTex, uv + vec2(float(x), float(y)) * px).rgb;
-    acc += max(s - 0.6, 0.0);
+    acc += maxOf(s - 0.6, 0.0);
   }
   return vec4(c.rgb + acc / 25.0 * 3.0 * uParam, 1.0);
 }""",

@@ -13,7 +13,7 @@ import kotlin.math.min
 class NavMeshNode(var x: Float, var y: Float, var z: Float, var walkable: Boolean = true) {
     var gCost: Float = 0f
     var hCost: Float = 0f
-    var fCost: Float get() = gCost + hCost
+    val fCost: Float get() = gCost + hCost
     var parent: NavMeshNode? = null
     val neighbors = mutableListOf<NavMeshNode>()
 }
@@ -216,6 +216,9 @@ class Blackboard {
     fun <T> get(key: String): T? { @Suppress("UNCHECKED_CAST") return data[key] as? T }
     fun has(key: String): Boolean = key in data
     fun remove(key: String) { data.remove(key) }
+    fun getFloat(key: String, default: Float = 0f): Float = (data[key] as? Number)?.toFloat() ?: default
+    fun getBool(key: String, default: Boolean = false): Boolean = data[key] as? Boolean ?: default
+    fun getData(): MutableMap<String, Any> = data
 }
 
 class BTSequence(vararg val children: BTNode) : BTNode() {

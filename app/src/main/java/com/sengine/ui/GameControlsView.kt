@@ -23,7 +23,7 @@ class GameControlsView(context: Context, private val input: () -> Input?) : View
     private var knobX = 0f
     private var knobY = 0f
 
-    private val baseR get() = min(width, height) * 0.13f
+    private val baseR get() = minOf(width, height) * 0.13f
     private val joyCx get() = baseR * 1.6f
     private val joyCy get() = height - baseR * 1.6f
     private val btnR get() = baseR * 0.55f

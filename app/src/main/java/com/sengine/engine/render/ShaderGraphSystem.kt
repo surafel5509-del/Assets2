@@ -190,7 +190,7 @@ class ShaderGraph(var name: String = "New Shader Graph") {
                 val normal = getInputVar(node, "Normal", "vNormal")
                 val viewDir = getInputVar(node, "ViewDir", "vec3(0.0, 0.0, 1.0)")
                 val power = node.properties["power"] as? Float ?: 1f
-                "float $outVar = pow(1.0 - max(dot(normalize($normal), normalize($viewDir)), 0.0), $power);"
+                "float $outVar = pow(1.0 - maxOf(dot(normalize($normal), normalize($viewDir)), 0.0), $power);"
             }
             else -> "// ${node.type} node ${node.id}"
         }

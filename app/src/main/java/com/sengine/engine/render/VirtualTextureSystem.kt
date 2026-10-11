@@ -29,8 +29,8 @@ data class VirtualTexture(
     var streamingPoolMB: Int = 256
 ) {
     fun tileKey(x: Int, y: Int, mip: Int): String = "${mip}_${x}_${y}"
-    fun tilesX(mip: Int): Int = max(1, width shr mip) / tileSize
-    fun tilesY(mip: Int): Int = max(1, height shr mip) / tileSize
+    fun tilesX(mip: Int): Int = maxOf(1, width shr mip) / tileSize
+    fun tilesY(mip: Int): Int = maxOf(1, height shr mip) / tileSize
     fun totalTiles(): Int { var t=0; for (m in 0 until mipCount) t+=tilesX(m)*tilesY(m); return t }
     fun getTile(x: Int, y: Int, mip: Int): VirtualTextureTile {
         val key = tileKey(x,y,mip)
@@ -38,7 +38,7 @@ data class VirtualTexture(
     }
     fun requestTile(x: Int, y: Int, mip: Int, frame: Long, priority: Float) {
         val tile = getTile(x,y,mip)
-        tile.lastUsedFrame = frame; tile.priority = max(tile.priority, priority)
+        tile.lastUsedFrame = frame; tile.priority = maxOf(tile.priority, priority)
         if (tile.status == VirtualTextureTileStatus.Unloaded) tile.status = VirtualTextureTileStatus.Loading
     }
 }
@@ -67,7 +67,7 @@ class VirtualTextureSystem {
             val centerTileX = ((cameraX+500f)/1000f * vt.tilesX(0)).toInt()
             val centerTileY = ((cameraZ+500f)/1000f * vt.tilesY(0)).toInt()
             val radius = 4
-            for (mip in 0 until min(3, vt.mipCount)) {
+            for (mip in 0 until minOf(3, vt.mipCount)) {
                 val scale = 1 shl mip
                 val tx0 = (centerTileX/scale - radius).coerceAtLeast(0)
                 val ty0 = (centerTileY/scale - radius).coerceAtLeast(0)
