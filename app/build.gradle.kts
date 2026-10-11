@@ -7,6 +7,10 @@ android {
     namespace = "com.sengine"
     compileSdk = 34
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.sengine.app"
         minSdk = 26
