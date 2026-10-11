@@ -734,8 +734,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.PHYSICS -> { pm.menu.add("Edit Physics") }
             AssetKind.NAVMESH -> { pm.menu.add("Bake NavMesh") }
             AssetKind.LIGHTING -> { pm.menu.add("Edit Lighting") }
-            else -> { pm.menu.add("Open") }
             null -> {}
+            else -> { pm.menu.add("Open") }
         }
         pm.menu.add("Delete")
         pm.setOnMenuItemClickListener { item ->
