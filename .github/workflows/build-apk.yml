@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -56,7 +57,6 @@ jobs:
           echo "=== S Engine 6.1.2 Ultra Edition ==="
           cat app/build.gradle.kts | grep -E "versionCode|versionName|ENGINE_VERSION"
           echo "Total Kotlin files: $(find app/src/main/java -name '*.kt' | wc -l)"
-          ls app/src/main/java/com/sengine/engine/core/ | grep Ultra | head -20
 
       - name: Build Debug APK - S Engine 6.1.2 Ultra
         id: build_debug
@@ -72,17 +72,17 @@ jobs:
           tail -n 1000 gradle-build.log >> build-failure-summary.log
           echo "" >> build-failure-summary.log
           echo "=== Errors ===" >> build-failure-summary.log
-          grep -i -A3 -B3 "error\|FAILED\|Unresolved\|Cannot\|e:" gradle-build.log | tail -n 800 >> build-failure-summary.log || true
+          grep -i -A5 -B5 "error\|FAILED\|Unresolved\|Cannot\|e:" gradle-build.log | tail -n 1000 >> build-failure-summary.log || true
           cat build-failure-summary.log
+          echo "### Build Failure - S Engine Ultra 6.1.2" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat build-failure-summary.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           if [ $BUILD_EXIT -ne 0 ]; then
             echo "::error::Gradle build failed with exit $BUILD_EXIT"
-            echo "### Build Failure - S Engine Ultra 6.1.2" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat build-failure-summary.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
             exit $BUILD_EXIT
           fi
 
@@ -120,6 +120,60 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Create Gist with failure log for debugging
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Creating Gist with build failure log..."
+          # Prepare JSON payload with log truncated to 100KB
+          LOG_CONTENT=$(cat build-failure-summary.log | head -c 90000)
+          # Escape for JSON using python
+          python3 << PY > gist_payload.json
+          import json, os
+          log_path = "build-failure-summary.log"
+          try:
+              with open(log_path, 'r') as f:
+                  content = f.read()[:90000]
+          except:
+              content = "Failed to read log"
+          payload = {
+              "description": "S Engine Ultra 6.1.2 Build Failure Log - Run ${{ github.run_id }}",
+              "public": False,
+              "files": {
+                  "build-failure-summary.log": {"content": content},
+                  "README.md": {"content": "Build failure for S Engine 6.1.2 Ultra Edition\nRun ID: ${{ github.run_id }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\n"}
+              }
+          }
+          print(json.dumps(payload))
+          PY
+          cat gist_payload.json | head -c 500
+          echo ""
+          # Try to create gist via API
+          curl -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" --data @gist_payload.json https://api.github.com/gists > gist_response.json || echo "Gist creation failed"
+          cat gist_response.json | head -c 1000
+          echo ""
+          # Also try to create issue with log
+          echo "Trying to create issue with log..."
+          python3 << PY > issue_payload.json
+          import json
+          log_path = "build-failure-summary.log"
+          try:
+              with open(log_path, 'r') as f:
+                  content = f.read()[:60000]
+          except:
+              content = "Failed to read log"
+          body = f"Build failure for S Engine 6.1.2 Ultra\nRun ID: ${{{{ github.run_id }}}}\nBranch: ${{{{ github.ref }}}}\nCommit: ${{{{ github.sha }}}}\n\n```\n{content[:50000]}\n```\n"
+          payload = {
+              "title": "Build Failure Log - Run ${{ github.run_id }} - Ultra 6.1.2",
+              "body": body,
+              "labels": ["bug", "ci"]
+          }
+          print(json.dumps(payload))
+          PY
+          curl -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" --data @issue_payload.json https://api.github.com/repos/${{ github.repository }}/issues > issue_response.json || echo "Issue creation failed"
+          cat issue_response.json | head -c 1000
+
       - name: Commit failure log to repo for debugging [skip ci]
         if: failure()
         run: |
@@ -139,7 +193,7 @@ jobs:
           echo '```' >> BUILD_FAILURE_LOG.md
           git add BUILD_FAILURE_LOG.md
           git commit -m "CI: Add build failure log for run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:${{ github.ref_name }} || echo "Push failed, trying force with lease"
+          git push origin HEAD:${{ github.ref_name }} || echo "Push failed"
           git push --force-with-lease origin HEAD:${{ github.ref_name }} || echo "Push failed even with force"
 
       - name: Show Engine Version and APK Info
@@ -148,7 +202,3 @@ jobs:
           echo "S Engine Version: 6.1.2 Ultra Edition [Ultra] API:612"
           echo "Systems: 96+ Components: 250+ Templates: 36 API: 400+"
           find . -name "*.apk" -type f -exec ls -lh {} \; || echo "No APK found"
-          if [ -f build-failure-summary.log ]; then
-            echo "=== Failure Summary ==="
-            cat build-failure-summary.log
-          fi
