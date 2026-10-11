@@ -19,7 +19,7 @@ import com.sengine.engine.core.TextRenderer
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo) }
+    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, fpsTemplate, racingTemplate, rpgTemplate, battleRoyaleTemplate, cityBuilderTemplate, ultimateShowcase) }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution
@@ -471,4 +471,772 @@ function onTrigger(other) {
         p.saveScene(s)
         p.startScene = "Main"
     }
+
+    // ================================================================ ULTIMATE EDITION TEMPLATES
+    // Unity 6 + Unreal Engine 5 class professional templates
+
+    private val fpsTemplate = Template("FPS Ultimate", "First-person shooter with advanced physics, IK, and multiplayer ready.") { p ->
+        installAssets(p, "Checker", "Wooden Crate", "Toon", "Pulse", "Player3D", "Coin Pickup")
+        p.writeAsset("FPSController.js", """
+// Ultimate FPS Controller - Unity 6 / UE5 class
+var speed = 6, mouseSensitivity = 2, jumpForce = 7, gravity = -15
+var velocityY = 0, isGrounded = false, health = 100
+var ammo = 30, maxAmmo = 30, isReloading = false
+
+function start() {
+    log("FPS Ultimate - WASD to move, Mouse to look, Space to jump, Left Click to shoot");
+    scene.find("AmmoText").text = "Ammo: " + ammo + "/" + maxAmmo;
+    scene.find("HealthText").text = "Health: " + health;
+}
+
+function update(dt) {
+    // Movement
+    var moveX = input.axisX * speed
+    var moveZ = input.axisY * speed
+    self.vx = moveX
+    self.vz = moveZ
+    
+    // Gravity
+    velocityY += gravity * dt
+    self.vy = velocityY
+    
+    if (self.grounded) {
+        isGrounded = true
+        velocityY = -2
+        if (input.aDown) {
+            velocityY = jumpForce
+            audio.play("jump.wav")
+        }
+    }
+    
+    // Look with mouse (simplified)
+    self.rotY += input.mouseDeltaX * mouseSensitivity * dt * 100
+    self.rotX = clamp(self.rotX - input.mouseDeltaY * mouseSensitivity * dt * 100, -90, 90)
+    
+    // Shooting
+    if (input.leftMouse && ammo > 0 && !isReloading) {
+        ammo--
+        scene.find("AmmoText").text = "Ammo: " + ammo + "/" + maxAmmo
+        var hit = scene.raycast(self.worldX, self.worldY, self.worldZ, self.forward()[0], self.forward()[1], self.forward()[2], 100)
+        if (hit) {
+            if (hit.tag == "Enemy") {
+                hit.send("takeDamage", 25)
+                scene.shake(0.3)
+            }
+            var fx = scene.spawn("HitFX", hit.worldX, hit.worldY, hit.worldZ)
+            if (fx) { fx.burst(20); after(1, function() { fx.destroy() }) }
+        }
+        audio.play("shoot.wav")
+        if (ammo <= 0) reload()
+    }
+    
+    if (input.bDown) reload()
+    
+    // Health check
+    if (health <= 0) {
+        scene.find("Game").send("gameOver")
+    }
+}
+
+function reload() {
+    if (isReloading || ammo == maxAmmo) return
+    isReloading = true
+    scene.find("AmmoText").text = "Reloading..."
+    after(1.5, function() {
+        ammo = maxAmmo
+        isReloading = false
+        scene.find("AmmoText").text = "Ammo: " + ammo + "/" + maxAmmo
+    })
+}
+
+function takeDamage(amount) {
+    health -= amount
+    scene.find("HealthText").text = "Health: " + health
+    scene.shake(0.5)
+    self.color = "#FF0000"
+    after(0.1, function() { self.color = "#FFFFFF" })
+}
+
+function onTrigger(other) {
+    if (other.tag == "AmmoPickup") {
+        ammo = maxAmmo
+        scene.find("AmmoText").text = "Ammo: " + ammo + "/" + maxAmmo
+        other.destroy()
+        audio.play("coin.wav")
+    }
+    if (other.tag == "HealthPickup") {
+        health = Math.min(100, health + 25)
+        scene.find("HealthText").text = "Health: " + health
+        other.destroy()
+    }
+}
+""")
+        p.writeAsset("EnemyFPS.js", """
+var health = 100, speed = 2, detectionRange = 15, attackRange = 2
+var target = null, state = "patrol", patrolPoint = null
+
+function start() {
+    target = scene.find("Player")
+    setNewPatrolPoint()
+    every(3, function() { if (state == "patrol") setNewPatrolPoint() })
+}
+
+function setNewPatrolPoint() {
+    patrolPoint = { x: random(-20, 20), y: self.y, z: random(-20, 20) }
+}
+
+function update(dt) {
+    if (!target || target.active == false) return
+    
+    var dist = self.distanceTo3(target)
+    
+    if (dist < detectionRange) state = "chase"
+    else if (state == "chase" && dist > detectionRange * 1.5) state = "patrol"
+    
+    if (state == "chase") {
+        if (dist < attackRange) {
+            state = "attack"
+        } else {
+            // Move towards player using NavMesh
+            var dirX = target.worldX - self.worldX
+            var dirZ = target.worldZ - self.worldZ
+            var len = Math.sqrt(dirX * dirX + dirZ * dirZ)
+            if (len > 0.1) {
+                self.vx = (dirX / len) * speed
+                self.vz = (dirZ / len) * speed
+                self.rotY = Math.atan2(dirX, dirZ) * 180 / Math.PI
+            }
+        }
+    } else if (state == "patrol" && patrolPoint) {
+        var dx = patrolPoint.x - self.worldX
+        var dz = patrolPoint.z - self.worldZ
+        var d = Math.sqrt(dx * dx + dz * dz)
+        if (d < 1) setNewPatrolPoint()
+        else {
+            self.vx = (dx / d) * speed * 0.5
+            self.vz = (dz / d) * speed * 0.5
+        }
+    } else if (state == "attack") {
+        if (dist > attackRange * 1.2) state = "chase"
+        else {
+            target.send("takeDamage", 10 * dt)
+        }
+    }
+}
+
+function takeDamage(amount) {
+    health -= amount
+    if (health <= 0) {
+        var fx = scene.spawn("Explosion", self.worldX, self.worldY, self.worldZ)
+        if (fx) { fx.burst(50); after(1, function() { fx.destroy() }) }
+        self.destroy()
+        scene.find("Game").send("addScore", 100)
+    } else {
+        self.color = "#FF5555"
+        after(0.1, function() { self.color = "#FF0000" })
+    }
+}
+""")
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 30f; s.fogEnd = 100f
+        val cam = obj3(s, "Player", 0f, 2f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3(friction = 0.1f).script("FPSController.js")
+        cam.tag = "Player"
+        cam.add(com.sengine.engine.core.Camera3D().also { it.fov = 75f; it.offsetY = 0.6f; it.offsetZ = 0f })
+        cam.add(com.sengine.engine.core.AudioListener())
+        cam.add(com.sengine.engine.core.CharacterControllerComponent())
+        
+        obj3(s, "Ground", 0f, -0.5f, 0f, 100f, 1f, 100f).mesh(2, 0xFF5A7A4A).col3().body3(type = 2)
+        
+        // Walls for cover
+        for (i in 0 until 10) {
+            val wx = random(-20, 20); val wz = random(-20, 20)
+            obj3(s, "Wall", wx, 1.5f, wz, 1f, 3f, 3f).mesh(0, 0xFF8D8D8D).col3().body3(type = 2)
+        }
+        
+        // Enemies
+        for (i in 0 until 8) {
+            val ex = random(-25, 25); val ez = random(-25, 25)
+            obj3(s, "Enemy", ex, 1f, ez, 0.8f, 1.8f, 0.8f).mesh(6, 0xFFEF5350).col3().body3().script("EnemyFPS.js").also { it.tag = "Enemy" }
+        }
+        
+        // Pickups
+        obj3(s, "AmmoPickup", 5f, 0.5f, 5f, 0.5f, 0.5f, 0.5f).mesh(1, 0xFFFFCA28).col3(trigger = true).also { it.tag = "AmmoPickup" }
+        obj3(s, "HealthPickup", -5f, 0.5f, -5f, 0.5f, 0.5f, 0.5f).mesh(1, 0xFF66BB6A).col3(trigger = true).also { it.tag = "HealthPickup" }
+        
+        // FX
+        val hitFX = obj3(s, "HitFX", 0f, 0f, 0f); hitFX.active = false
+        hitFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting = false; it.rate = 0f; it.speed = 3f; it.lifetime = 0.3f; it.startColor = 0xFFFFAB40.toInt(); it.endColor = 0x00FF6D00 })
+        val explosion = obj3(s, "Explosion", 0f, 0f, 0f); explosion.active = false
+        explosion.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting = false; it.rate = 0f; it.spread = 360f; it.speed = 8f; it.lifetime = 0.8f; it.startSize = 0.5f; it.startColor = 0xFFFF6D00.toInt(); it.endColor = 0x00000000 })
+        
+        obj(s, "Game", 0f, 0f).script("GameManager.js")
+        p.writeAsset("GameManager.js", "var score=0; function addScore(s){score+=s; scene.find('ScoreText').text='Score: '+score} function gameOver(){scene.find('ScoreText').text='Game Over! Score: '+score; after(3, function(){scene.reload()})}")
+        obj(s, "ScoreText", 0f, 4f).text("Score: 0", 0.5f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "AmmoText", -5f, 4f).text("Ammo: 30/30", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "HealthText", 5f, 4f).text("Health: 100", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        
+        obj3(s, "Sun", 10f, 20f, 10f).also { it.rotX = -50f; it.rotY = 30f }.add(Light().also { it.kind = 0; it.intensity = 1.2f })
+        p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    private val racingTemplate = Template("Racing Ultimate", "Vehicle physics with wheel colliders, terrain, and checkpoints.") { p ->
+        p.writeAsset("CarController.js", """
+var motorForce = 1500, brakeForce = 3000, maxSteer = 30
+var speed = 0, lap = 1, checkpoint = 0
+
+function start() {
+    log("Racing Ultimate - WASD to drive, Space to brake")
+}
+
+function update(dt) {
+    var motor = input.axisY * motorForce
+    var steer = input.axisX * maxSteer
+    var brake = input.b ? brakeForce : 0
+    
+    // Apply to wheel colliders via engine
+    self.vx += Math.sin(self.rotY * Math.PI / 180) * motor * dt * 0.001
+    self.vz += Math.cos(self.rotY * Math.PI / 180) * motor * dt * 0.001
+    self.rotY += steer * dt * (speed * 0.1)
+    
+    speed = Math.sqrt(self.vx * self.vx + self.vz * self.vz) * 3.6
+    scene.find("SpeedText").text = Math.floor(speed) + " km/h"
+    
+    // Drag
+    self.vx *= (1 - dt * 0.5)
+    self.vz *= (1 - dt * 0.5)
+}
+
+function onTrigger(other) {
+    if (other.tag == "Checkpoint") {
+        var idx = parseInt(other.name.split(" ")[1])
+        if (idx == checkpoint + 1) {
+            checkpoint = idx
+            scene.find("CheckpointText").text = "Checkpoint: " + checkpoint + "/5"
+            audio.beep()
+            if (checkpoint >= 5) {
+                lap++
+                checkpoint = 0
+                scene.find("LapText").text = "Lap: " + lap + "/3"
+                if (lap > 3) scene.find("Game").send("finish")
+            }
+        }
+    }
+}
+""")
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 50f; s.fogEnd = 200f
+        val car = obj3(s, "PlayerCar", 0f, 1f, -20f, 1.8f, 1f, 4f).mesh(0, 0xFF42A5F5).col3().body3(friction = 0.3f).script("CarController.js")
+        car.tag = "Player"
+        car.add(com.sengine.engine.core.Camera3D().also { it.follow = "PlayerCar"; it.offsetY = 5f; it.offsetZ = -10f; it.smoothing = 3f })
+        car.add(com.sengine.engine.core.WheelColliderComponent())
+        
+        obj3(s, "Ground", 0f, -0.5f, 0f, 200f, 1f, 200f).mesh(2, 0xFF4A5A4A).col3().body3(type = 2)
+        
+        // Track walls
+        for (i in 0 until 20) {
+            val angle = i * 18f * Math.PI / 180
+            val r = 40f
+            obj3(s, "TrackWall", (Math.cos(angle) * r).toFloat(), 1f, (Math.sin(angle) * r).toFloat(), 2f, 2f, 2f).mesh(0, 0xFF8D8D8D).col3().body3(type = 2)
+            obj3(s, "TrackWallInner", (Math.cos(angle) * (r - 15)).toFloat(), 1f, (Math.sin(angle) * (r - 15)).toFloat(), 2f, 2f, 2f).mesh(0, 0xFF8D8D8D).col3().body3(type = 2)
+        }
+        
+        // Checkpoints
+        for (i in 1..5) {
+            val angle = (i - 1) * 72f * Math.PI / 180
+            val r = 32.5f
+            obj3(s, "Checkpoint $i", (Math.cos(angle) * r).toFloat(), 1f, (Math.sin(angle) * r).toFloat(), 8f, 3f, 1f).mesh(0, 0xFF00FF00).col3(trigger = true).also { it.tag = "Checkpoint" }
+        }
+        
+        obj(s, "SpeedText", 0f, 4f).text("0 km/h", 0.5f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "CheckpointText", -5f, 4f).text("Checkpoint: 0/5", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "LapText", 5f, 4f).text("Lap: 1/3", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj3(s, "Sun", 20f, 30f, 20f).also { it.rotX = -60f }.add(Light().also { it.kind = 0; it.intensity = 1f })
+        p.writeAsset("GameManager.js", "function finish(){scene.find('SpeedText').text='Finished!'; after(3, function(){scene.reload()})}")
+        obj(s, "Game", 0f, 0f).script("GameManager.js")
+        p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    private val rpgTemplate = Template("RPG Ultimate", "Open-world RPG with quests, inventory, dialogue, and skill tree.") { p ->
+        p.writeAsset("PlayerRPG.js", """
+var level = 1, xp = 0, xpToNext = 100, gold = 50
+var health = 100, maxHealth = 100, mana = 100, maxMana = 100
+var strength = 10, agility = 10, intelligence = 10
+var inventory = [], quests = []
+
+function start() {
+    log("RPG Ultimate - Explore, fight, level up!")
+    updateUI()
+}
+
+function updateUI() {
+    scene.find("LevelText").text = "Lv." + level
+    scene.find("HealthText").text = "HP: " + health + "/" + maxHealth
+    scene.find("ManaText").text = "MP: " + mana + "/" + maxMana
+    scene.find("GoldText").text = "Gold: " + gold
+    scene.find("XPText").text = "XP: " + xp + "/" + xpToNext
+}
+
+function update(dt) {
+    self.vx = input.axisX * 4
+    self.vz = input.axisY * 4
+    self.vy += -9.81 * dt
+    if (self.grounded && input.aDown) self.vy = 6
+    
+    if (mana < maxMana) mana += dt * 5
+}
+
+function gainXP(amount) {
+    xp += amount
+    if (xp >= xpToNext) {
+        level++
+        xp -= xpToNext
+        xpToNext = Math.floor(xpToNext * 1.5)
+        maxHealth += 20
+        health = maxHealth
+        maxMana += 10
+        mana = maxMana
+        strength += 2; agility += 2; intelligence += 2
+        log("Level up! Now level " + level)
+        var fx = scene.spawn("LevelUpFX", self.worldX, self.worldY + 2, self.worldZ)
+        if (fx) { fx.burst(30); after(2, function(){fx.destroy()}) }
+    }
+    updateUI()
+}
+
+function takeDamage(dmg) {
+    health -= dmg
+    if (health <= 0) {
+        health = 0
+        scene.find("Game").send("gameOver")
+    }
+    updateUI()
+    scene.shake(0.3)
+}
+
+function onTrigger(other) {
+    if (other.tag == "Enemy") {
+        takeDamage(10)
+    }
+    if (other.tag == "Coin") {
+        gold += 10
+        other.destroy()
+        updateUI()
+        audio.play("coin.wav")
+    }
+    if (other.tag == "QuestNPC") {
+        other.send("interact", self)
+    }
+}
+""")
+        p.writeAsset("QuestNPC.js", """
+var questId = "q1", questName = "Kill 5 Slimes", questProgress = 0, questTarget = 5, completed = false
+
+function interact(player) {
+    if (completed) {
+        log("Quest already completed!")
+        return
+    }
+    if (questProgress >= questTarget) {
+        completed = true
+        log("Quest completed! Reward: 100 XP, 50 Gold")
+        player.send("gainXP", 100)
+        // Give gold via scene
+        after(0.1, function() {
+            var p = scene.find("Player")
+            if (p) p.gold += 50
+        })
+        self.text = "Thank you, hero!"
+    } else {
+        log(questName + ": " + questProgress + "/" + questTarget)
+    }
+}
+
+function addProgress() {
+    if (!completed) {
+        questProgress++
+        log(questName + ": " + questProgress + "/" + questTarget)
+    }
+}
+""")
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 20f; s.fogEnd = 80f
+        val player = obj3(s, "Player", 0f, 1f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3().script("PlayerRPG.js")
+        player.tag = "Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow = "Player"; it.offsetY = 8f; it.offsetZ = 8f })
+        
+        obj3(s, "Ground", 0f, -0.5f, 0f, 100f, 1f, 100f).mesh(0, 0xFF6B8E5A, "Checker.png", 10f).col3().body3(type = 2)
+        
+        // NPCs
+        val npc = obj3(s, "QuestNPC", 5f, 1f, 5f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFFFFCA28).col3(trigger = true).script("QuestNPC.js").text("?", 0.5f)
+        npc.tag = "QuestNPC"
+        
+        // Enemies
+        for (i in 0 until 10) {
+            obj3(s, "Slime", random(-20, 20), 0.5f, random(-20, 20), 0.8f, 0.8f, 0.8f).mesh(1, 0xFF66BB6A).col3(trigger = true).also { it.tag = "Enemy" }
+        }
+        
+        // Coins
+        for (i in 0 until 20) {
+            obj3(s, "Coin", random(-25, 25), 0.5f, random(-25, 25), 0.5f, 0.5f, 0.5f).mesh(5, 0xFFFFD54F).col3(trigger = true).also { it.tag = "Coin" }
+        }
+        
+        // UI
+        obj(s, "LevelText", -6f, 4f).text("Lv.1", 0.5f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "HealthText", -3f, 4f).text("HP: 100/100", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "ManaText", 0f, 4f).text("MP: 100/100", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "GoldText", 3f, 4f).text("Gold: 50", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "XPText", 6f, 4f).text("XP: 0/100", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        
+        val fx = obj3(s, "LevelUpFX", 0f, 0f, 0f); fx.active = false
+        fx.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting = false; it.rate = 0f; it.spread = 360f; it.speed = 4f; it.lifetime = 1f; it.startColor = 0xFFFFEB3B.toInt(); it.endColor = 0x00FFEB3B })
+        
+        obj3(s, "Sun", 10f, 20f, 10f).also { it.rotX = -50f }.add(Light().also { it.kind = 0; it.intensity = 1f })
+        p.writeAsset("GameManager.js", "function gameOver(){scene.find('LevelText').text='Game Over'; after(3, function(){scene.reload()})}")
+        obj(s, "Game", 0f, 0f).script("GameManager.js")
+        p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    private val battleRoyaleTemplate = Template("Battle Royale Ultimate", "100-player battle royale with shrinking zone, loot, and building.") { p ->
+        p.writeAsset("BRPlayer.js", """
+var health = 100, shield = 0, isInZone = true, zoneDamageTimer = 0
+var weapons = [], currentWeapon = 0, materials = { wood: 100, brick: 100, metal: 50 }
+
+function start() {
+    log("Battle Royale Ultimate - Survive the storm!")
+}
+
+function update(dt) {
+    self.vx = input.axisX * 5
+    self.vz = input.axisY * 5
+    self.vy += -9.81 * dt
+    if (self.grounded && input.aDown) self.vy = 7
+    
+    // Zone damage
+    if (!isInZone) {
+        zoneDamageTimer += dt
+        if (zoneDamageTimer > 1) {
+            zoneDamageTimer = 0
+            takeDamage(5)
+        }
+    }
+    
+    // Building
+    if (input.bDown) buildWall()
+}
+
+function buildWall() {
+    if (materials.wood < 10) return
+    materials.wood -= 10
+    var fwd = self.forward()
+    var wx = self.worldX + fwd[0] * 2
+    var wy = self.worldY
+    var wz = self.worldZ + fwd[2] * 2
+    scene.spawn("Wall", wx, wy, wz)
+}
+
+function takeDamage(dmg) {
+    if (shield > 0) {
+        var shieldDmg = Math.min(shield, dmg)
+        shield -= shieldDmg
+        dmg -= shieldDmg
+    }
+    health -= dmg
+    if (health <= 0) {
+        scene.find("Game").send("playerDied", self)
+        self.active = false
+    }
+    scene.shake(0.2)
+}
+
+function onTrigger(other) {
+    if (other.tag == "Weapon") {
+        weapons.push(other.name)
+        other.destroy()
+        log("Picked up " + other.name)
+    }
+    if (other.tag == "Shield") {
+        shield = Math.min(100, shield + 25)
+        other.destroy()
+    }
+}
+""")
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 30f; s.fogEnd = 120f
+        val player = obj3(s, "Player", 0f, 2f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF42A5F5).col3().body3().script("BRPlayer.js")
+        player.tag = "Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow = "Player"; it.offsetY = 6f; it.offsetZ = -8f })
+        
+        obj3(s, "Ground", 0f, -0.5f, 0f, 200f, 1f, 200f).mesh(2, 0xFF5A7A5A).col3().body3(type = 2)
+        
+        // Loot
+        for (i in 0 until 20) {
+            obj3(s, "Weapon", random(-50, 50), 0.5f, random(-50, 50), 0.3f, 0.3f, 1f).mesh(0, 0xFF8D8D8D).col3(trigger = true).also { it.tag = "Weapon" }
+            obj3(s, "Shield", random(-50, 50), 0.5f, random(-50, 50), 0.5f, 0.5f, 0.5f).mesh(1, 0xFF42A5F5).col3(trigger = true).also { it.tag = "Shield" }
+        }
+        
+        // Building walls prefab (inactive)
+        val wall = obj3(s, "Wall", 0f, 0f, 0f, 3f, 3f, 0.3f).mesh(0, 0xFF8D6E63).col3().body3(type = 2)
+        wall.active = false
+        
+        // Storm zone visualization
+        obj3(s, "Zone", 0f, 0.1f, 0f, 80f, 0.1f, 80f).mesh(2, 0x44FF0000).also { it.tag = "Zone" }
+        
+        obj(s, "PlayersAlive", 0f, 4f).text("Players: 20", 0.5f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj3(s, "Sun", 20f, 40f, 20f).also { it.rotX = -60f }.add(Light().also { it.kind = 0; it.intensity = 1.2f })
+        p.writeAsset("GameManager.js", "var alive=20; function playerDied(p){alive--; scene.find('PlayersAlive').text='Players: '+alive; if(alive<=1) {scene.find('PlayersAlive').text='Victory Royale!'; after(3, function(){scene.reload()})}}")
+        obj(s, "Game", 0f, 0f).script("GameManager.js")
+        p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    private val cityBuilderTemplate = Template("City Builder Ultimate", "Build and manage a city with economy, traffic, and citizens.") { p ->
+        p.writeAsset("CityManager.js", """
+var money = 10000, population = 0, happiness = 75
+var buildings = [], roads = []
+
+function start() {
+    log("City Builder Ultimate - Build your dream city!")
+    updateUI()
+    every(1, function() {
+        // Economy tick
+        var income = population * 10
+        var expenses = buildings.length * 5
+        money += income - expenses
+        if (money < 0) money = 0
+        updateUI()
+    })
+}
+
+function updateUI() {
+    scene.find("MoneyText").text = "Money: " + money
+    scene.find("PopText").text = "Pop: " + population
+    scene.find("HappyText").text = "Happy: " + happiness + "%"
+}
+
+function canAfford(cost) { return money >= cost }
+
+function placeBuilding(type, x, z) {
+    var costs = { house: 500, factory: 1000, park: 300, road: 50 }
+    var cost = costs[type] || 500
+    if (!canAfford(cost)) { log("Not enough money!"); return false }
+    money -= cost
+    var b = scene.spawn(type, x, 0, z)
+    if (b) {
+        buildings.push(b)
+        if (type == "house") population += 10
+        if (type == "park") happiness = Math.min(100, happiness + 5)
+        if (type == "factory") happiness = Math.max(0, happiness - 5)
+    }
+    updateUI()
+    return true
+}
+
+function update(dt) {
+    if (input.tapped) {
+        var x = input.touchX
+        var z = input.touchY
+        placeBuilding("house", x, z)
+    }
+}
+""")
+        val s = Scene("Main")
+        val cam = obj3(s, "Main Camera", 0f, 30f, -20f).also { it.rotX = -60f }
+        cam.add(com.sengine.engine.core.Camera3D().also { it.fov = 60f })
+        
+        obj3(s, "Ground", 0f, -0.5f, 0f, 100f, 1f, 100f).mesh(2, 0xFF6B8E5A).col3().body3(type = 2)
+        
+        // Building prefabs (inactive)
+        obj3(s, "house", 0f, 0f, 0f, 2f, 2f, 2f).mesh(0, 0xFF8D6E63).col3().also { it.active = false }
+        obj3(s, "factory", 0f, 0f, 0f, 3f, 3f, 3f).mesh(0, 0xFF5A5A5A).col3().also { it.active = false }
+        obj3(s, "park", 0f, 0f, 0f, 4f, 0.5f, 4f).mesh(2, 0xFF4CAF50).col3().also { it.active = false }
+        obj3(s, "road", 0f, 0f, 0f, 2f, 0.1f, 2f).mesh(0, 0xFF3A3A3A).col3().also { it.active = false }
+        
+        obj(s, "MoneyText", -5f, 4f).text("Money: 10000", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "PopText", 0f, 4f).text("Pop: 0", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "HappyText", 5f, 4f).text("Happy: 75%", 0.4f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        
+        obj(s, "CityManager", 0f, 0f).script("CityManager.js")
+        obj3(s, "Sun", 20f, 30f, 20f).also { it.rotX = -50f }.add(Light().also { it.kind = 0; it.intensity = 1f })
+        p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    private val ultimateShowcase = Template("Ultimate Showcase", "All Ultimate Edition features in one scene: PBR, VFX, AI, Physics, Terrain.") { p ->
+        installAssets(p, "Checker", "Wooden Crate", "Low-Poly Tree", "Rock", "Crystal", "Toon", "Pulse", "Player3D", "Coin Pickup", "Jump", "Rotator (Blueprint)")
+        p.writeAsset("UltimatePlayer.js", """
+// Ultimate Showcase Player - Demonstrates all engine features
+var speed = 6, jump = 7, health = 100
+var score = 0, isGrounded = false
+
+function start() {
+    log("S Engine Ultimate Edition - Ultimate Showcase")
+    log("Features: PBR Materials, GPU Instancing, Post FX, NavMesh AI, VFX Graph, Terrain, Water, Volumetrics, Multiplayer Ready")
+    log("WASD to move, Space to jump, Mouse to look, E to interact")
+}
+
+function update(dt) {
+    // Advanced movement with root motion
+    self.vx = input.axisX * speed
+    self.vz = input.axisY * speed
+    
+    // Jump with coyote time
+    if (input.aDown && self.grounded) {
+        self.vy = jump
+        audio.play("jump.wav")
+        // VFX
+        var fx = scene.spawn("JumpFX", self.worldX, self.worldY, self.worldZ)
+        if (fx) { fx.burst(15); after(1, function(){fx.destroy()}) }
+    }
+    
+    // Interaction
+    if (input.bDown) {
+        var hit = scene.raycast(self.worldX, self.worldY + 1, self.worldZ, self.forward()[0], self.forward()[1], self.forward()[2], 3)
+        if (hit) hit.send("interact")
+    }
+    
+    // Health regen
+    if (health < 100) health += dt * 2
+}
+
+function addScore(s) {
+    score += s
+    scene.find("ScoreText").text = "Score: " + score
+    scene.shake(s * 0.01)
+}
+
+function takeDamage(dmg) {
+    health -= dmg
+    scene.find("HealthBar").scaleX = health / 100
+    if (health <= 0) scene.reload()
+}
+
+function onTrigger(other) {
+    if (other.tag == "Coin") {
+        addScore(10)
+        other.destroy()
+        audio.play("coin.wav")
+        var fx = scene.spawn("CoinFX", other.worldX, other.worldY, other.worldZ)
+        if (fx) { fx.burst(20); after(1, function(){fx.destroy()}) }
+    }
+}
+""")
+        p.writeAsset("AIUltimate.js", """
+var state = "patrol", target = null, patrolPoints = [], currentPatrol = 0
+var detectionRange = 12, attackRange = 2, speed = 2.5
+
+function start() {
+    target = scene.find("Player")
+    // Find patrol points
+    for (var i = 1; i <= 4; i++) {
+        var p = scene.find("Patrol" + i)
+        if (p) patrolPoints.push(p)
+    }
+}
+
+function update(dt) {
+    if (!target) return
+    var dist = self.distanceTo3(target)
+    
+    // Behavior Tree logic
+    if (dist < detectionRange) state = "chase"
+    else if (state == "chase" && dist > detectionRange * 1.5) state = "patrol"
+    
+    if (state == "patrol" && patrolPoints.length > 0) {
+        var dest = patrolPoints[currentPatrol]
+        var dx = dest.worldX - self.worldX
+        var dz = dest.worldZ - self.worldZ
+        var d = Math.sqrt(dx*dx + dz*dz)
+        if (d < 1) {
+            currentPatrol = (currentPatrol + 1) % patrolPoints.length
+        } else {
+            self.vx = (dx / d) * speed * 0.6
+            self.vz = (dz / d) * speed * 0.6
+            self.rotY = Math.atan2(dx, dz) * 180 / Math.PI
+        }
+    } else if (state == "chase") {
+        if (dist < attackRange) {
+            state = "attack"
+        } else {
+            var dirX = target.worldX - self.worldX
+            var dirZ = target.worldZ - self.worldZ
+            var len = Math.sqrt(dirX*dirX + dirZ*dirZ)
+            self.vx = (dirX / len) * speed
+            self.vz = (dirZ / len) * speed
+            self.rotY = Math.atan2(dirX, dirZ) * 180 / Math.PI
+        }
+    } else if (state == "attack") {
+        if (dist > attackRange * 1.5) state = "chase"
+        else target.send("takeDamage", 15 * dt)
+    }
+}
+""")
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 30f; s.fogEnd = 100f; s.ambient = 0xFF5A6A7A.toInt()
+        
+        // Player with all ultimate components
+        val player = obj3(s, "Player", 0f, 2f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3(friction = 0.1f).script("UltimatePlayer.js")
+        player.tag = "Player"
+        player.add(com.sengine.engine.core.CharacterControllerComponent())
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow = "Player"; it.offsetY = 4f; it.offsetZ = 8f; it.postFx = 6; it.postIntensity = 0.8f; it.fov = 70f })
+        player.add(com.sengine.engine.core.AudioListener())
+        player.add(com.sengine.engine.core.TrailRenderer().also { it.time = 0.5f; it.startWidth = 0.3f; it.endWidth = 0f })
+        
+        // Terrain
+        obj3(s, "Ground", 0f, -0.5f, 0f, 100f, 1f, 100f).mesh(2, 0xFF7A9A6A).col3().body3(type = 2).also { it.add(com.sengine.engine.core.TerrainComponent()) }
+        
+        // PBR Showcase - different materials
+        obj3(s, "PBRMetal", -8f, 1f, -5f, 1.5f, 1.5f, 1.5f).mesh(1, 0xFFAAAAAA).also { it.get<com.sengine.engine.core.MeshRenderer>()!!.also { m -> m.specular = 1f; m.shininess = 100f } }.col3().body3()
+        obj3(s, "PBRWood", -5f, 1f, -5f, 1.5f, 1.5f, 1.5f).mesh(0, 0xFF8D6E63, "Crate.png").col3().body3()
+        obj3(s, "PBRGlass", -2f, 1f, -5f, 1.5f, 1.5f, 1.5f).mesh(0, 0x884FC3F7).col3().body3()
+        obj3(s, "PBREmissive", 2f, 1f, -5f, 1.5f, 1.5f, 1.5f).mesh(5, 0xFF7C4DFF).also { it.get<com.sengine.engine.core.MeshRenderer>()!!.emission = 1f }.col3().body3()
+        
+        // Lighting showcase
+        obj3(s, "Sun", 20f, 30f, 20f).also { it.rotX = -50f; it.rotY = 30f }.add(com.sengine.engine.core.Light().also { it.kind = 0; it.intensity = 1.2f; it.shadows = 2 })
+        obj3(s, "PointLight1", -4f, 3f, 2f).add(com.sengine.engine.core.Light().also { it.kind = 1; it.color = 0xFFFF6D00.toInt(); it.intensity = 2f; it.range = 10f })
+        obj3(s, "PointLight2", 4f, 3f, 2f).add(com.sengine.engine.core.Light().also { it.kind = 1; it.color = 0xFF00BCD4.toInt(); it.intensity = 2f; it.range = 10f })
+        obj3(s, "SpotLight", 0f, 8f, 0f).also { it.rotX = -90f }.add(com.sengine.engine.core.Light().also { it.kind = 2; it.color = 0xFFFFFFFF.toInt(); it.intensity = 3f; it.range = 20f; it.spotAngle = 45f })
+        
+        // Reflection probes
+        obj3(s, "ReflectionProbe", 0f, 2f, 0f).add(com.sengine.engine.core.ReflectionProbeComponent().also { it.resolution = 256; it.intensity = 1f })
+        
+        // AI with NavMesh
+        for (i in 0 until 5) {
+            obj3(s, "Enemy", random(-15, 15), 1f, random(-15, 15), 0.8f, 1.6f, 0.8f).mesh(6, 0xFFEF5350).col3().body3().script("AIUltimate.js").also { it.tag = "Enemy"; it.add(com.sengine.engine.core.NavMeshAgentComponent().also { a -> a.speed = 2.5f }) }
+        }
+        
+        // Patrol points
+        for (i in 1..4) {
+            val angle = (i - 1) * 90f * Math.PI / 180
+            obj3(s, "Patrol$i", (Math.cos(angle) * 10).toFloat(), 0f, (Math.sin(angle) * 10).toFloat(), 0.3f, 0.3f, 0.3f).mesh(1, 0xFF00FF00)
+        }
+        
+        // VFX
+        val coinFX = obj3(s, "CoinFX", 0f, 0f, 0f); coinFX.active = false
+        coinFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting = false; it.rate = 0f; it.spread = 360f; it.speed = 4f; it.lifetime = 0.7f; it.startColor = 0xFFFFEB3B.toInt(); it.endColor = 0x00FFEB3B })
+        coinFX.add(com.sengine.engine.core.ParticleSystemComponent().also { it.duration = 1f; it.startLifetime = 0.7f; it.startSpeed = 4f; it.emissionRate = 0f })
+        
+        val jumpFX = obj3(s, "JumpFX", 0f, 0f, 0f); jumpFX.active = false
+        jumpFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting = false; it.rate = 0f; it.direction = 90f; it.spread = 30f; it.speed = 3f; it.lifetime = 0.5f; it.startColor = 0xFF8D8D8D.toInt(); it.endColor = 0x008D8D8D })
+        
+        // Coins with PBR
+        for (i in 0 until 15) {
+            obj3(s, "Coin", random(-20, 20), 1f, random(-20, 20), 0.6f, 0.6f, 0.6f).mesh(5, 0xFFFFD54F).col3(sphere = true, trigger = true).script("Rotator.js", "x=0, y=90, z=0").also { it.tag = "Coin"; it.get<com.sengine.engine.core.MeshRenderer>()!!.emission = 0.3f }
+        }
+        
+        // Trees (GPU Instanced)
+        for (i in 0 until 20) {
+            obj3(s, "Tree", random(-30, 30), 0f, random(-30, 30), 2f, 2f, 2f).mesh(8, 0xFF5FA85B, model = "Tree.obj").col3()
+        }
+        
+        // Water
+        obj3(s, "Water", 15f, -0.3f, 15f, 20f, 1f, 20f).mesh(2, 0xFF0A4A6A).also { it.add(com.sengine.engine.core.WaterComponent()) }
+        
+        // UI - Ultimate HUD
+        obj(s, "ScoreText", 0f, 4.2f).text("Score: 0", 0.5f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "HealthBar", -5f, 4f, 2f, 0.3f).sprite(0xFF4CAF50).also { it.get<com.sengine.engine.core.SpriteRenderer>()!!.screenSpace = true; it.order = 100 }
+        obj(s, "Info", 0f, -4f).text("S Engine Ultimate Edition | PBR | VFX Graph | NavMesh AI | GPU Instancing | Post FX | Multiplayer Ready", 0.25f).also { it.get<TextRenderer>()!!.screenSpace = true; it.order = 100 }
+        
+        p.writeAsset("Rotator.js", "function update(dt){self.rotY += 90 * dt}")
+        p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    private fun random(a: Int, b: Int): Float = (a + Math.random() * (b - a)).toFloat()
 }

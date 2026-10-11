@@ -1,12 +1,26 @@
 package com.sengine.engine.core
 
 enum class AssetKind(val extensions: List<String>) {
-    TEXTURE(listOf("png", "jpg", "jpeg", "webp", "bmp")),
-    SCRIPT(listOf("js", "bp")),
-    SOUND(listOf("wav", "ogg", "mp3", "m4a")),
-    SHADER(listOf("glsl")),
-    ANIMATION(listOf("anim")),
-    MODEL(listOf("obj"));
+    TEXTURE(listOf("png", "jpg", "jpeg", "webp", "bmp", "tga", "psd", "hdr", "exr", "cubemap")),
+    SCRIPT(listOf("js", "bp", "cs", "lua", "py")),
+    SOUND(listOf("wav", "ogg", "mp3", "m4a", "flac", "aiff")),
+    SHADER(listOf("glsl", "hlsl", "shader", "shadergraph", "vfx")),
+    ANIMATION(listOf("anim", "controller", "fbx", "animclip")),
+    MODEL(listOf("obj", "fbx", "gltf", "glb", "dae", "blend")),
+    MATERIAL(listOf("mat", "material", "matgraph")),
+    FONT(listOf("ttf", "otf", "font", "tmp")),
+    PREFAB(listOf("prefab", "prefab.json")),
+    SCENE(listOf("scene", "scene.json", "unity")),
+    VIDEO(listOf("mp4", "mov", "webm", "avi")),
+    TERRAIN(listOf("terrain", "terrainlayer", "heightmap", "splatmap")),
+    PHYSICS(listOf("physmat", "physicMaterial", "collider")),
+    NAVMESH(listOf("navmesh", "navarea")),
+    LIGHTING(listOf("lighting", "lightmap", "probe", "reflectionprobe")),
+    POSTFX(listOf("postprocess", "volume", "lut")),
+    VFX(listOf("vfx", "vfxgraph", "particle", "trail")),
+    AUDIO_MIXER(listOf("mixer", "mixergroup", "snapshot")),
+    INPUT(listOf("inputactions", "input", "control")),
+    TIMELINE(listOf("timeline", "playable", "signal"));
 
     companion object {
         fun of(fileName: String): AssetKind? {

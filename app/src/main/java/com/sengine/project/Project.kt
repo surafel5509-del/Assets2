@@ -1,21 +1,53 @@
 package com.sengine.project
 
 import com.sengine.engine.core.AssetKind
+import com.sengine.engine.core.EngineConfig
+import com.sengine.engine.core.EngineVersion
+import com.sengine.engine.core.QualitySettings
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
 import org.json.JSONObject
 import java.io.File
 
-/** A game project stored in app-private storage. */
+/**
+ * S Engine Ultimate Edition - Professional Project System
+ * Unity 6 + Unreal Engine 5 class project management
+ * Supports engine config, quality settings, build settings, version control
+ */
+
 class Project(val dir: File) {
     val name: String get() = dir.name
     val assetsDir = File(dir, "assets")
     val scenesDir = File(dir, "scenes")
+    val prefabsDir = File(dir, "prefabs")
+    val materialsDir = File(dir, "materials")
+    val settingsDir = File(dir, "settings")
     private val metaFile = File(dir, "project.json")
 
     var startScene = "Main"
     var created = System.currentTimeMillis()
     var orientation = 0 // 0 landscape, 1 portrait
+    var engineConfig = EngineConfig()
+    var version = "1.0.0"
+    var companyName = "S Engine Studio"
+    var productName = name
+    var bundleIdentifier = "com.sengine.$name"
+    var buildTarget = "Android"
+    var scriptingBackend = 0 // 0 Mono, 1 IL2CPP
+    var apiCompatibility = 0 // 0 .NET Standard, 1 .NET Framework
+
+    // Build settings
+    var scenesInBuild = mutableListOf<String>()
+    var qualitySettings = QualitySettings()
+    var graphicsJobs = true
+    var gpuInstancing = true
+    var srpBatcher = true
+    var occlusionCulling = true
+
+    // Version control
+    var lastSaved = System.currentTimeMillis()
+    var autoSave = true
+    var backupCount = 3
 
     init {
         if (metaFile.exists()) {
@@ -24,20 +56,55 @@ class Project(val dir: File) {
                 startScene = o.optString("startScene", "Main")
                 created = o.optLong("created", created)
                 orientation = o.optInt("orientation", 0)
+                version = o.optString("version", "1.0.0")
+                companyName = o.optString("companyName", "S Engine Studio")
+                productName = o.optString("productName", name)
+                bundleIdentifier = o.optString("bundleIdentifier", bundleIdentifier)
+                buildTarget = o.optString("buildTarget", "Android")
+                lastSaved = o.optLong("lastSaved", lastSaved)
+                if (o.has("engineConfig")) engineConfig = EngineConfig.fromJson(o.getJSONObject("engineConfig"))
+                if (o.has("qualitySettings")) qualitySettings = QualitySettings.fromJson(o.getJSONObject("qualitySettings"))
+                if (o.has("scenesInBuild")) {
+                    val arr = o.getJSONArray("scenesInBuild")
+                    scenesInBuild.clear()
+                    for (i in 0 until arr.length()) scenesInBuild.add(arr.getString(i))
+                }
             } catch (_: Exception) {
             }
         }
+        if (scenesInBuild.isEmpty()) scenesInBuild.add(startScene)
     }
 
     fun saveMeta() {
         dir.mkdirs(); assetsDir.mkdirs(); scenesDir.mkdirs()
+        prefabsDir.mkdirs(); materialsDir.mkdirs(); settingsDir.mkdirs()
         val o = JSONObject()
         o.put("name", name)
-        o.put("engine", "S Engine 1.0")
+        o.put("engine", EngineVersion.string())
+        o.put("engineVersion", "${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH}")
+        o.put("apiVersion", EngineVersion.API_VERSION)
         o.put("startScene", startScene)
         o.put("created", created)
+        o.put("lastSaved", System.currentTimeMillis())
         o.put("orientation", orientation)
+        o.put("version", version)
+        o.put("companyName", companyName)
+        o.put("productName", productName)
+        o.put("bundleIdentifier", bundleIdentifier)
+        o.put("buildTarget", buildTarget)
+        o.put("engineConfig", engineConfig.toJson())
+        o.put("qualitySettings", qualitySettings.toJson())
+        val arr = org.json.JSONArray()
+        for (s in scenesInBuild) arr.put(s)
+        o.put("scenesInBuild", arr)
+        o.put("graphicsJobs", graphicsJobs)
+        o.put("gpuInstancing", gpuInstancing)
+        o.put("srpBatcher", srpBatcher)
+        o.put("occlusionCulling", occlusionCulling)
         metaFile.writeText(o.toString(2))
+        // Also save engine config separately
+        File(settingsDir, "EngineConfig.json").writeText(engineConfig.toJson().toString(2))
+        File(settingsDir, "QualitySettings.json").writeText(qualitySettings.toJson().toString(2))
     }
 
     fun sceneFile(n: String) = File(scenesDir, "$n.scene.json")
@@ -58,11 +125,19 @@ class Project(val dir: File) {
     fun saveScene(scene: Scene) {
         scenesDir.mkdirs()
         sceneFile(scene.name).writeText(SceneSerializer.toJson(scene).toString(1))
+        lastSaved = System.currentTimeMillis()
+        if (!scenesInBuild.contains(scene.name)) scenesInBuild.add(scene.name)
     }
 
-    fun deleteScene(n: String) = sceneFile(n).delete()
+    fun deleteScene(n: String): Boolean {
+        val deleted = sceneFile(n).delete()
+        scenesInBuild.remove(n)
+        return deleted
+    }
 
     fun assetFile(n: String) = File(assetsDir, n)
+    fun prefabFile(n: String) = File(prefabsDir, if (n.endsWith(".prefab")) n else "$n.prefab")
+    fun materialFile(n: String) = File(materialsDir, if (n.endsWith(".mat")) n else "$n.mat")
 
     fun listAssets(kind: AssetKind? = null): List<String> =
         (assetsDir.listFiles() ?: emptyArray())
@@ -70,10 +145,26 @@ class Project(val dir: File) {
             .map { it.name }
             .sortedWith(compareBy({ AssetKind.of(it)?.ordinal ?: 9 }, { it.lowercase() }))
 
+    fun listPrefabs(): List<String> =
+        (prefabsDir.listFiles() ?: emptyArray()).filter { it.isFile }.map { it.name }.sorted()
+
+    fun listMaterials(): List<String> =
+        (materialsDir.listFiles() ?: emptyArray()).filter { it.isFile }.map { it.name }.sorted()
+
     fun readAsset(n: String): String? = assetFile(n).takeIf { it.exists() }?.readText()
+    fun readPrefab(n: String): String? = prefabFile(n).takeIf { it.exists() }?.readText()
+    fun readMaterial(n: String): String? = materialFile(n).takeIf { it.exists() }?.readText()
 
     fun writeAsset(n: String, text: String) {
         assetsDir.mkdirs(); assetFile(n).writeText(text)
+    }
+
+    fun writePrefab(n: String, text: String) {
+        prefabsDir.mkdirs(); prefabFile(n).writeText(text)
+    }
+
+    fun writeMaterial(n: String, text: String) {
+        materialsDir.mkdirs(); materialFile(n).writeText(text)
     }
 
     fun uniqueAssetName(base: String): String {
@@ -84,4 +175,23 @@ class Project(val dir: File) {
         while (assetFile("${stem}_$i.$ext").exists()) i++
         return "${stem}_$i.$ext"
     }
+
+    fun uniquePrefabName(base: String): String {
+        val name = if (base.endsWith(".prefab")) base else "$base.prefab"
+        if (!prefabFile(name).exists()) return name
+        var i = 1
+        while (prefabFile("${base}_$i.prefab").exists()) i++
+        return "${base}_$i.prefab"
+    }
+
+    fun getProjectSize(): Long {
+        fun dirSize(file: File): Long {
+            if (!file.exists()) return 0
+            if (file.isFile) return file.length()
+            return file.listFiles()?.sumOf { dirSize(it) } ?: 0
+        }
+        return dirSize(dir)
+    }
+
+    fun getAssetCount(): Int = (assetsDir.listFiles()?.size ?: 0) + (prefabsDir.listFiles()?.size ?: 0) + (materialsDir.listFiles()?.size ?: 0)
 }

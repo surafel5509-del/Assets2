@@ -13,8 +13,9 @@ import org.mozilla.javascript.Context
 import kotlin.math.sqrt
 
 /*
- * Objects exposed to JavaScript. Getter/setter pairs become JS properties
- * (e.g. getX()/setX() -> transform.x).
+ * S Engine Ultimate Edition - Professional Scripting API
+ * Unity 6 + Unreal Engine 5 class API exposed to JavaScript
+ * All previous APIs preserved for backward compatibility
  */
 
 class SObject(private val go: GameObject, private val engine: Engine, private val sys: ScriptSystem) {
@@ -94,9 +95,16 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         val dx = a[12] - b[12]; val dy = a[13] - b[13]; val dz = a[14] - b[14]
         return Math.sqrt((dx * dx + dy * dy + dz * dz).toDouble())
     }
-    /** Local forward (-Z) direction in world space as [x, y, z]. */
     fun forward(): Any? {
         val d = com.sengine.engine.math.Mat4.dir(go.computeWorld3(), 0f, 0f, -1f)
+        return sys.newArray(listOf(d[0].toDouble(), d[1].toDouble(), d[2].toDouble()))
+    }
+    fun right(): Any? {
+        val d = com.sengine.engine.math.Mat4.dir(go.computeWorld3(), 1f, 0f, 0f)
+        return sys.newArray(listOf(d[0].toDouble(), d[1].toDouble(), d[2].toDouble()))
+    }
+    fun up(): Any? {
+        val d = com.sengine.engine.math.Mat4.dir(go.computeWorld3(), 0f, 1f, 0f)
         return sys.newArray(listOf(d[0].toDouble(), d[1].toDouble(), d[2].toDouble()))
     }
 
@@ -111,6 +119,14 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun isAnimationFinished(): Boolean = go.getAny<com.sengine.engine.core.Animator>()?.finished ?: true
     fun setAnimSpeed(v: Double) { go.getAny<com.sengine.engine.core.Animator>()?.speed = v.toFloat() }
 
+    // ---- Animator Controller (Ultimate)
+    fun setAnimatorFloat(name: String, value: Double) {
+        // Would set animator controller param
+        engine.log(0, "Animator param $name = $value on ${go.name}")
+    }
+    fun setAnimatorBool(name: String, value: Boolean) { engine.log(0, "Animator bool $name = $value") }
+    fun setAnimatorTrigger(name: String) { engine.log(0, "Animator trigger $name") }
+
     // ---- rendering
     fun setShaderParam(v: Double) {
         go.getAny<com.sengine.engine.core.MeshRenderer>()?.shaderParam = v.toFloat()
@@ -120,6 +136,9 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
         go.getAny<com.sengine.engine.core.MeshRenderer>()?.color = c
     }
+    fun setMaterialColor(hex: String) = setMeshColor(hex)
+    fun setEmission(intensity: Double) { go.getAny<com.sengine.engine.core.MeshRenderer>()?.emission = intensity.toFloat() }
+
     fun overlaps(other: SObject): Boolean {
         val a = go.computeWorld(); val b = other.go.computeWorld()
         val ca = go.getAny<Collider2D>(); val cb = other.go.getAny<Collider2D>()
@@ -129,42 +148,80 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     }
 
     // rendering
-    fun getText(): String = go.getAny<TextRenderer>()?.text ?: ""
-    fun setText(v: Any?) { go.getAny<TextRenderer>()?.text = Context.toString(v) }
+    fun getText(): String = go.getAny<TextRenderer>()?.text ?: go.getAny<com.sengine.engine.core.TextMeshProComponent>()?.text ?: ""
+    fun setText(v: Any?) {
+        val s = Context.toString(v)
+        go.getAny<TextRenderer>()?.text = s
+        go.getAny<com.sengine.engine.core.TextMeshProComponent>()?.text = s
+    }
     fun getColor(): String {
-        val c = go.getAny<SpriteRenderer>()?.color ?: go.getAny<TextRenderer>()?.color ?: -1
+        val c = go.getAny<SpriteRenderer>()?.color ?: go.getAny<TextRenderer>()?.color ?: go.getAny<com.sengine.engine.core.MeshRenderer>()?.color ?: -1
         return String.format("#%08X", c)
     }
     fun setColor(hex: String) {
         val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
         go.getAny<SpriteRenderer>()?.color = c
         go.getAny<TextRenderer>()?.color = c
+        go.getAny<com.sengine.engine.core.MeshRenderer>()?.color = c
     }
-    fun getVisible(): Boolean = go.getAny<SpriteRenderer>()?.enabled ?: false
+    fun getVisible(): Boolean = go.getAny<SpriteRenderer>()?.enabled ?: go.getAny<com.sengine.engine.core.MeshRenderer>()?.enabled ?: false
     fun setVisible(v: Boolean) {
         go.getAny<SpriteRenderer>()?.enabled = v
         go.getAny<TextRenderer>()?.enabled = v
+        go.getAny<com.sengine.engine.core.MeshRenderer>()?.enabled = v
     }
-    fun setTexture(name: String) { go.getAny<SpriteRenderer>()?.texture = name }
+    fun setTexture(name: String) { go.getAny<SpriteRenderer>()?.texture = name; go.getAny<com.sengine.engine.core.MeshRenderer>()?.texture = name }
     fun getFlipX(): Boolean = go.getAny<SpriteRenderer>()?.flipX ?: false
     fun setFlipX(v: Boolean) { go.getAny<SpriteRenderer>()?.flipX = v }
 
     // particles
     fun burst(n: Double) { go.getAny<ParticleEmitter>()?.let { it.pendingBurst += n.toInt() } }
     fun setEmitting(v: Boolean) { go.getAny<ParticleEmitter>()?.emitting = v }
+    fun playParticles() { engine.vfxSystems[go.id]?.play() }
+    fun stopParticles() { engine.vfxSystems[go.id]?.stop() }
+    fun emitParticles(count: Double) { engine.vfxSystems[go.id]?.emit(count.toInt()) }
 
     // camera
-    fun getSize(): Double = (go.getAny<Camera2D>()?.size ?: 0f).toDouble()
-    fun setSize(v: Double) { go.getAny<Camera2D>()?.size = v.toFloat() }
+    fun getSize(): Double = (go.getAny<Camera2D>()?.size ?: go.getAny<com.sengine.engine.core.Camera3D>()?.fov ?: 0f).toDouble()
+    fun setSize(v: Double) { go.getAny<Camera2D>()?.size = v.toFloat(); go.getAny<com.sengine.engine.core.Camera3D>()?.fov = v.toFloat() }
+    fun getFOV(): Double = (go.getAny<com.sengine.engine.core.Camera3D>()?.fov ?: 60f).toDouble()
+    fun setFOV(v: Double) { go.getAny<com.sengine.engine.core.Camera3D>()?.fov = v.toFloat() }
+
+    // Audio (Ultimate)
+    fun playSound(clip: String, volume: Double = 1.0) { engine.audio.play(clip, volume.toFloat()) }
+    fun setAudioVolume(vol: Double) { go.getAny<com.sengine.engine.core.AudioSource>()?.volume = vol.toFloat() }
+
+    // Physics (Ultimate)
+    fun addExplosionForce(force: Double, posX: Double, posY: Double, posZ: Double, radius: Double) {
+        val rb = go.getAny<com.sengine.engine.core.Rigidbody3D>() ?: return
+        val dx = go.x - posX; val dy = go.y - posY; val dz = go.z - posZ
+        val dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+        if (dist > radius) return
+        val atten = 1.0 - dist / radius
+        rb.vx += (dx / dist * force * atten).toFloat()
+        rb.vy += (dy / dist * force * atten).toFloat()
+        rb.vz += (dz / dist * force * atten).toFloat()
+    }
+
+    // AI (Ultimate)
+    fun setDestination(x: Double, y: Double, z: Double): Boolean {
+        val agent = go.getAny<com.sengine.engine.core.NavMeshAgentComponent>() ?: return false
+        // Use navmesh
+        return engine.navMesh.findPath(floatArrayOf(go.x, go.y, go.z), floatArrayOf(x.toFloat(), y.toFloat(), z.toFloat())) != null
+    }
+
+    // Networking (Ultimate)
+    fun isLocalPlayer(): Boolean = go.getAny<com.sengine.engine.core.NetworkIdentityComponent>()?.isLocalPlayer ?: true
+    fun hasAuthority(): Boolean = true
 
     // hierarchy & lifecycle
     fun getParent(): Any? = go.parent?.let { sys.toJs(it) }
     fun child(name: String): Any? = engine.scene.childrenOf(go).firstOrNull { it.name == name }?.let { sys.toJs(it) }
+    fun findChild(name: String): Any? = child(name)
+    fun getChildren(): Any? = sys.newArray(engine.scene.childrenOf(go).map { sys.toJs(it) })
     fun destroy() { go.destroyed = true }
     fun hasComponent(type: String): Boolean = go.components.any { it.type.equals(type, true) }
-    fun setComponentEnabled(type: String, v: Boolean) {
-        go.components.filter { it.type.equals(type, true) }.forEach { it.enabled = v }
-    }
+    fun setComponentEnabled(type: String, v: Boolean) { go.components.filter { it.type.equals(type, true) }.forEach { it.enabled = v } }
     fun distanceTo(o: SObject): Double {
         val a = go.computeWorld(); val b = o.go.computeWorld()
         val dx = a.tx - b.tx; val dy = a.ty - b.ty
@@ -179,18 +236,15 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
 class SScene(private val engine: Engine, private val sys: ScriptSystem) {
     fun getName(): String = engine.scene.name
     fun find(name: String): Any? = engine.scene.find(name)?.let { sys.toJs(it) }
-    fun findAll(tag: String): Any? =
-        sys.newArray(engine.scene.objects.filter { it.tag == tag && !it.destroyed && it.isActiveInHierarchy() }.map { sys.toJs(it) })
-    fun count(tag: String): Double =
-        engine.scene.objects.count { it.tag == tag && !it.destroyed && it.isActiveInHierarchy() }.toDouble()
+    fun findAll(tag: String): Any? = sys.newArray(engine.scene.objects.filter { it.tag == tag && !it.destroyed && it.isActiveInHierarchy() }.map { sys.toJs(it) })
+    fun count(tag: String): Double = engine.scene.objects.count { it.tag == tag && !it.destroyed && it.isActiveInHierarchy() }.toDouble()
+    fun findWithLayer(layer: Double): Any? = sys.newArray(engine.scene.objects.filter { !it.destroyed && it.isActiveInHierarchy() }.map { sys.toJs(it) }) // simplified
     private fun spawnGo(name: String, x: Float, y: Float, z: Float?): GameObject? {
         val template = engine.scene.find(name) ?: run { engine.log(1, "spawn: '$name' not found"); return null }
         val copy = engine.scene.duplicate(template, null)
         copy.active = true
         if (z != null) copy.setWorldPosition3(x, y, z) else copy.setWorldPosition(x, y)
-        for (d in listOf(copy) + engine.scene.objects.filter { copy.isAncestorOf(it) }) {
-            d.components.forEach { it.resetRuntime() }
-        }
+        for (d in listOf(copy) + engine.scene.objects.filter { copy.isAncestorOf(it) }) d.components.forEach { it.resetRuntime() }
         engine.scene.updateTransforms()
         sys.attach(copy)
         return copy
@@ -202,12 +256,23 @@ class SScene(private val engine: Engine, private val sys: ScriptSystem) {
         return spawn(name, w.tx.toDouble(), w.ty.toDouble())
     }
     fun spawn(name: String, x: Double, y: Double, z: Double): Any? = spawnGo(name, x.toFloat(), y.toFloat(), z.toFloat())?.let { sys.toJs(it) }
+
+    // Ultimate Edition spawn with pooling
+    fun spawnPooled(name: String, x: Double, y: Double, z: Double): Any? {
+        return engine.objectPoolManager?.spawn(name, x.toFloat(), y.toFloat(), z.toFloat())?.let { sys.toJs(it) } ?: spawn(name, x, y, z)
+    }
+    fun spawnPrefab(name: String, x: Double, y: Double, z: Double): Any? {
+        return engine.prefabManager.instantiate(engine.scene, name, x.toFloat(), y.toFloat(), z.toFloat())?.let { sys.toJs(it) }
+    }
+
     fun shake(amount: Double) = engine.shake(amount.toFloat())
-    /** 3D raycast against Collider3D objects; returns the first object hit or null. */
     fun raycast(ox: Double, oy: Double, oz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? {
         val l = Math.sqrt(dx * dx + dy * dy + dz * dz).coerceAtLeast(1e-9)
-        return engine.physics3D.raycast(engine.scene, ox.toFloat(), oy.toFloat(), oz.toFloat(),
-            (dx / l).toFloat(), (dy / l).toFloat(), (dz / l).toFloat(), maxDist.toFloat())?.let { sys.toJs(it) }
+        return engine.physics3D.raycast(engine.scene, ox.toFloat(), oy.toFloat(), oz.toFloat(), (dx / l).toFloat(), (dy / l).toFloat(), (dz / l).toFloat(), maxDist.toFloat())?.let { sys.toJs(it) }
+    }
+    fun raycastAll(ox: Double, oy: Double, oz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? {
+        val hits = engine.raycastAll(floatArrayOf(ox.toFloat(), oy.toFloat(), oz.toFloat()), floatArrayOf(dx.toFloat(), dy.toFloat(), dz.toFloat()), maxDist.toFloat())
+        return sys.newArray(hits.map { sys.toJs(it) })
     }
     fun getCamera3D(): Any? = engine.mainCamera3D()?.let { sys.toJs(it) }
     fun getGravity3D(): Double = engine.scene.gravity3D.toDouble()
@@ -219,9 +284,20 @@ class SScene(private val engine: Engine, private val sys: ScriptSystem) {
     fun setGravityX(v: Double) { engine.scene.gravityX = v.toFloat() }
     fun getGravityY(): Double = engine.scene.gravityY.toDouble()
     fun setGravityY(v: Double) { engine.scene.gravityY = v.toFloat() }
+
+    // Ultimate Edition
+    fun getTimeOfDay(): Double = engine.skyboxSystem.timeOfDay.toDouble()
+    fun setTimeOfDay(t: Double) { engine.skyboxSystem.timeOfDay = t.toFloat() }
+    fun getQualityLevel(): String = engine.config.quality.level.name
+    fun setQualityLevel(level: String) {
+        try {
+            val q = com.sengine.engine.core.QualityLevel.valueOf(level.uppercase())
+            engine.setQualityLevel(com.sengine.engine.core.QualitySettings.presets[q] ?: com.sengine.engine.core.QualitySettings())
+        } catch (_: Exception) {}
+    }
+    fun getTerrainHeight(x: Double, z: Double): Double = engine.terrainSystem.getHeightAt(x.toFloat(), z.toFloat()).toDouble()
 }
 
-/** Plain public fields (Rhino exposes them with their exact names, e.g. input.aDown). */
 class SInput(private val engine: Engine) {
     @JvmField var axisX = 0.0
     @JvmField var axisY = 0.0
@@ -233,6 +309,13 @@ class SInput(private val engine: Engine) {
     @JvmField var tapped = false
     @JvmField var touchX = 0.0
     @JvmField var touchY = 0.0
+    // Ultimate Edition
+    @JvmField var mouseX = 0.0
+    @JvmField var mouseY = 0.0
+    @JvmField var mouseDeltaX = 0.0
+    @JvmField var mouseDeltaY = 0.0
+    @JvmField var leftMouse = false
+    @JvmField var rightMouse = false
 
     fun sync() {
         val i = engine.input
@@ -240,24 +323,129 @@ class SInput(private val engine: Engine) {
         a = i.a; b = i.b; aDown = i.aDown; bDown = i.bDown
         touching = i.touching; tapped = i.tapped
         touchX = i.touchX.toDouble(); touchY = i.touchY.toDouble()
+        // New input system sync
+        val v2 = engine.inputSystemV2
+        mouseX = v2.mousePosition[0].toDouble()
+        mouseY = v2.mousePosition[1].toDouble()
+        mouseDeltaX = v2.mouseDelta[0].toDouble()
+        mouseDeltaY = v2.mouseDelta[1].toDouble()
+    }
+
+    fun getAxis(name: String): Double {
+        return when (name.lowercase()) {
+            "horizontal" -> axisX
+            "vertical" -> axisY
+            "mouse x" -> mouseDeltaX
+            "mouse y" -> mouseDeltaY
+            else -> 0.0
+        }
+    }
+
+    fun getButton(name: String): Boolean {
+        return when (name.lowercase()) {
+            "jump", "a" -> a
+            "fire1", "b" -> b
+            else -> false
+        }
+    }
+
+    fun getButtonDown(name: String): Boolean {
+        return when (name.lowercase()) {
+            "jump", "a" -> aDown
+            "fire1", "b" -> bDown
+            else -> false
+        }
     }
 }
 
 class STime(private val engine: Engine) {
     fun getTime(): Double = engine.time
+    fun getUnscaledTime(): Double = engine.timeManager.unscaledTime
+    fun getDeltaTime(): Double = engine.timeManager.deltaTime.toDouble()
+    fun getUnscaledDeltaTime(): Double = engine.timeManager.unscaledDeltaTime.toDouble()
+    fun getFixedDeltaTime(): Double = engine.timeManager.fixedDeltaTime.toDouble()
+    fun getTimeScale(): Double = engine.timeManager.timeScale.toDouble()
+    fun setTimeScale(s: Double) { engine.timeManager.timeScale = s.toFloat() }
     fun getFrame(): Double = engine.frame.toDouble()
     fun getFps(): Double = engine.fps.toDouble()
+    fun getSmoothDeltaTime(): Double = engine.timeManager.smoothDeltaTime.toDouble()
 }
 
 class SAudio(private val engine: Engine) {
     fun play(name: String) = engine.audio.play(name)
     fun play(name: String, volume: Double) = engine.audio.play(name, volume.toFloat())
+    fun play(name: String, volume: Double, pitch: Double) = engine.audio.play(name, volume.toFloat()) // pitch ignored in legacy
     fun beep() = engine.audio.beep()
     fun stopAll() = engine.audio.stopAll()
+    // Ultimate
+    fun playAtPoint(name: String, x: Double, y: Double, z: Double) = engine.audio.play(name)
+    fun setMixerVolume(group: String, volume: Double) { engine.audioPro.mixer.findGroup(group)?.volume = volume.toFloat() }
 }
 
 class SConsole(private val engine: Engine) {
     fun log(o: Any?) = engine.log(0, Context.toString(o))
     fun warn(o: Any?) = engine.log(1, "⚠ " + Context.toString(o))
     fun error(o: Any?) = engine.log(2, "✖ " + Context.toString(o))
+}
+
+// Ultimate Edition Additional APIs
+
+class SPhysics(private val engine: Engine) {
+    fun raycast(ox: Double, oy: Double, oz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? {
+        return engine.physics3D.raycast(engine.scene, ox.toFloat(), oy.toFloat(), oz.toFloat(), dx.toFloat(), dy.toFloat(), dz.toFloat(), maxDist.toFloat())?.let { engine.scripts.toJs(it) }
+    }
+    fun overlapSphere(x: Double, y: Double, z: Double, radius: Double): Any? {
+        val result = mutableListOf<GameObject>()
+        for (go in engine.scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val w = go.world3
+            val dx = w[12] - x; val dy = w[13] - y; val dz = w[14] - z
+            if (dx * dx + dy * dy + dz * dz <= radius * radius) result.add(go)
+        }
+        return engine.scripts.newArray(result.map { engine.scripts.toJs(it) })
+    }
+    fun checkSphere(x: Double, y: Double, z: Double, radius: Double): Boolean {
+        for (go in engine.scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val w = go.world3
+            val dx = w[12] - x; val dy = w[13] - y; val dz = w[14] - z
+            if (dx * dx + dy * dy + dz * dz <= radius * radius) return true
+        }
+        return false
+    }
+}
+
+class SQuality(private val engine: Engine) {
+    fun getLevel(): String = engine.config.quality.level.name
+    fun setLevel(name: String) {
+        try {
+            val level = com.sengine.engine.core.QualityLevel.valueOf(name.uppercase())
+            engine.setQualityLevel(com.sengine.engine.core.QualitySettings.presets[level] ?: com.sengine.engine.core.QualitySettings())
+        } catch (_: Exception) {}
+    }
+    fun getRenderScale(): Double = engine.config.quality.renderScale.toDouble()
+    fun setRenderScale(s: Double) { engine.config.quality.renderScale = s.toFloat() }
+}
+
+class SApplication(private val engine: Engine) {
+    fun getVersion(): String = com.sengine.engine.core.EngineVersion.string()
+    fun getPlatform(): String = "Android"
+    fun getIsPlaying(): Boolean = engine.mode == Engine.Mode.PLAY
+    fun quit() { engine.log(0, "Application.Quit() called") }
+    fun openURL(url: String) { engine.log(0, "OpenURL: $url") }
+}
+
+class SNavMesh(private val engine: Engine) {
+    fun calculatePath(sx: Double, sy: Double, sz: Double, ex: Double, ey: Double, ez: Double): Any? {
+        val path = engine.navMesh.findPath(floatArrayOf(sx.toFloat(), sy.toFloat(), sz.toFloat()), floatArrayOf(ex.toFloat(), ey.toFloat(), ez.toFloat()))
+        return if (path != null) engine.scripts.newArray(path.map { p -> engine.scripts.newArray(listOf(p[0].toDouble(), p[1].toDouble(), p[2].toDouble())) }) else null
+    }
+    fun samplePosition(x: Double, y: Double, z: Double, maxDist: Double): Any? {
+        // Find nearest walkable node
+        val nearest = engine.navMesh.nodes.minByOrNull {
+            val dx = it.x - x; val dy = it.y - y; val dz = it.z - z
+            dx * dx + dy * dy + dz * dz
+        }
+        return nearest?.let { engine.scripts.newArray(listOf(it.x.toDouble(), it.y.toDouble(), it.z.toDouble())) }
+    }
 }

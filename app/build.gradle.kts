@@ -11,8 +11,12 @@ android {
         applicationId = "com.sengine.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 600
+        versionName = "6.0.0 Ultimate Edition"
+        buildConfigField("String", "ENGINE_VERSION", "\"6.0.0 Ultimate Edition [Nexus]\"")
+        buildConfigField("int", "ENGINE_API_VERSION", "600")
+        buildConfigField("String", "RENDER_PIPELINE", "\"Universal\"")
+        ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64")) }
     }
 
     buildTypes {
