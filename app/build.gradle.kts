@@ -11,13 +11,13 @@ android {
         applicationId = "com.sengine.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 611
-        versionName = "6.1.1 Most Powerful Edition [Titan]"
-        buildConfigField("String", "ENGINE_VERSION", "\"6.1.1 Most Powerful Edition [Titan]\"")
-        buildConfigField("int", "ENGINE_API_VERSION", "611")
-        buildConfigField("String", "RENDER_PIPELINE", "\"Universal+RayTracing+Nanite+2D_URP\"")
-        buildConfigField("String", "ENGINE_CODENAME", "\"Titan\"")
-        buildConfigField("String", "ENGINE_FEATURES", "\"RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG,2D_URP,Tilemap,2D_Physics,2D_Animation,Sorting,FullControl\"")
+        versionCode = 612
+        versionName = "6.1.2 Ultra Edition"
+        buildConfigField("String", "ENGINE_VERSION", "\"6.1.2 Ultra Edition [Ultra]\"")
+        buildConfigField("int", "ENGINE_API_VERSION", "612")
+        buildConfigField("String", "RENDER_PIPELINE", "\"Universal+RayTracing+Nanite+2D_URP+Clustered+FSR2\"")
+        buildConfigField("String", "ENGINE_CODENAME", "\"Ultra\"")
+        buildConfigField("String", "ENGINE_FEATURES", "\"RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG,2D_URP,Tilemap,2D_Physics,2D_Animation,Sorting,FullControl,Clustered,CSM,FSR2,VolumetricClouds,WaterV2,Burst,UndoRedo,PrefabVariants,GOAP,InterestManagement,ClientPrediction\"")
         ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64")) }
     }
 

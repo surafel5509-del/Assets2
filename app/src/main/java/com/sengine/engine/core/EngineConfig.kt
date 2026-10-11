@@ -9,20 +9,21 @@ import org.json.JSONObject
 object EngineVersion {
     const val MAJOR = 6
     const val MINOR = 1
-    const val PATCH = 1
-    const val NAME = "S Engine Most Powerful Edition"
-    const val CODENAME = "Titan"
-    const val API_VERSION = 611
-    const val PREV_CODENAME = "Quantum"
-    const val PREV_VERSION = "6.1.0 Ultimate Edition [Quantum]"
+    const val PATCH = 2
+    const val NAME = "S Engine Ultra Edition"
+    const val CODENAME = "Ultra"
+    const val API_VERSION = 612
+    const val PREV_CODENAME = "Titan"
+    const val PREV_VERSION = "6.1.1 Most Powerful Edition [Titan]"
     fun string() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION"
-    fun fullString() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION (Prev: $PREV_VERSION [$PREV_CODENAME]) | Features: RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG,2D_URP,Tilemap,2D_Physics,2D_Animation,Sorting,FullControl"
+    fun fullString() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION (Prev: $PREV_VERSION [$PREV_CODENAME]) | Features: RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG,2D_URP,Tilemap,2D_Physics,2D_Animation,Sorting,FullControl,Clustered,CSM,FSR2,VolumetricClouds,WaterV2,Burst,UndoRedo,PrefabVariants,GOAP,InterestManagement"
 }
 
 enum class RayTracingQuality { Off, Low, Medium, High, Ultra, Psycho }
 enum class NaniteQuality { Off, Low, Medium, High, Ultra }
 enum class VirtualTextureQuality { Low, Medium, High, Ultra }
 enum class Titan2DQuality { Low, Medium, High, Ultra }
+enum class UltraQuality { Low, Medium, High, Ultra, Cinematic }
 
 enum class RenderPipelineType {
     BUILT_IN,

@@ -106,12 +106,13 @@ import com.sengine.engine.core.EngineVersion
  */
 
 object UltimateEdition {
-    const val VERSION = "6.1.1 Most Powerful Edition"
-    const val CODENAME = "Titan"
-    const val API_VERSION = 611
+    const val VERSION = "6.1.2 Ultra Edition"
+    const val CODENAME = "Ultra"
+    const val API_VERSION = 612
     const val RELEASE_DATE = "2026-10-11"
-    const val PREV_VERSION = "6.1.0 Ultimate Edition [Quantum]"
-    const val PREV_CODENAME = "Quantum"
+    const val PREV_VERSION = "6.1.1 Most Powerful Edition [Titan]"
+    const val PREV_CODENAME = "Titan"
+    const val PREV_PREV_VERSION = "6.1.0 Ultimate Edition [Quantum]"
 
     val features = listOf(
         "Universal Render Pipeline (URP) + HDRP + Forward/Deferred",

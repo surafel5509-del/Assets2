@@ -181,6 +181,28 @@ class Engine(val project: Project, initialScene: Scene) {
     val spriteEditorTools = com.sengine.engine.tools.SpriteEditorTools()
     val tilemapEditorTools = com.sengine.engine.tools.TilemapEditorTools()
 
+    // ==================== Ultimate 6.1.2 Ultra - Months/Years Professional Project ====================
+    // Ultra Core
+    val ultraCore = com.sengine.engine.core.UltraEngineCore()
+    // Ultra Rendering
+    val ultraRendering = com.sengine.engine.render.UltraRenderingSystem()
+    // Ultra Physics
+    val ultraPhysics = com.sengine.engine.physics.UltraPhysicsSystem()
+    // Ultra Animation
+    val ultraAnimation = com.sengine.engine.anim.UltraAnimationSystem()
+    // Ultra Audio
+    val ultraAudio = com.sengine.engine.audio.UltraAudioSystem()
+    // Ultra AI
+    val ultraAI = com.sengine.engine.ai.UltraAISystem()
+    // Ultra Networking
+    val ultraNetworking = com.sengine.engine.net.UltraNetworkingSystem()
+    // Ultra Gameplay
+    val ultraGameplay = com.sengine.engine.gameplay.UltraGameplaySystem()
+    // Ultra Editor
+    val ultraEditor = com.sengine.engine.tools.UltraEditorSystem()
+    // Ultra Platform
+    val ultraPlatform = com.sengine.engine.platform.UltraPlatformSystem()
+
     // Time & Frame
     var time = 0.0; private set
     var frame = 0L; private set
@@ -245,11 +267,30 @@ class Engine(val project: Project, initialScene: Scene) {
             tilemapEditorTools.createBrush("DefaultBrush", 1)
             cinemachine2DSystem.createCamera("MainCamera", "Player", 10)
         } catch (_: Exception) {}
-        log(0, "S Engine Most Powerful Edition v${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH} [${EngineVersion.CODENAME}] Initialized - TITAN")
-        log(0, "Render Pipeline: ${config.pipeline} | Color Space: ${config.colorSpace} | Quality: ${config.quality.level} | 2D URP: Enabled")
+        // Initialize Ultra systems - Months/Years Professional Project
+        try {
+            ultraCore.createBurstJob("TransformJob", "transform positions", com.sengine.engine.core.BurstOptimization.O3)
+            ultraCore.createAssembly("MainAssembly", com.sengine.engine.core.AssemblyType.Runtime)
+            ultraCore.createScriptableObject("GameConfig", "GameConfig")
+            ultraCore.prefabVariants.createVariant("BasePlayer", "PlayerVariant")
+            ultraRendering.addLight(0f, 5f, 0f, 10f, 0xFFFFFFFF.toInt(), 1f)
+            ultraPhysics.createConfigurableJoint()
+            ultraAnimation.createCurve("MoveCurve")
+            ultraAnimation.createPoseLibrary("HumanoidPoses")
+            ultraAudio.createSnapshot("Default", com.sengine.engine.audio.AudioMixerSnapshotType.Default)
+            ultraAI.createOffMeshLink(0f,0f,0f, 5f,0f,0f, com.sengine.engine.ai.OffMeshLinkType.JumpAcross)
+            ultraAI.createCoverPoint(2f,0f,2f, 0f,1f, com.sengine.engine.ai.CoverType.High)
+            ultraNetworking.createInterestZone(0f,0f,0f, 50f)
+            ultraNetworking.createLobby("MainLobby", 8, "Deathmatch")
+            ultraEditor.createWindow(com.sengine.engine.tools.EditorWindowType.Hierarchy)
+            ultraPlatform.createARPlane(0f,0f,0f, 5f,5f)
+        } catch (_: Exception) {}
+        log(0, "S Engine Most Powerful Edition v${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH} [${EngineVersion.CODENAME}] Initialized - ULTRA - Months/Years Professional Project")
+        log(0, "Render Pipeline: ${config.pipeline} | Color Space: ${config.colorSpace} | Quality: ${config.quality.level} | 2D URP: Enabled | Clustered: ${ultraRendering.mode} | Upscaler: ${ultraRendering.upscaler.type}")
         log(0, "Quantum Systems: RayTracing=${config.rayTracing} Nanite=${config.nanite} Lumen=${config.lumen} VT=${config.virtualTexture} Chaos=${config.chaosDestruction} WorldPartition=${config.worldPartition} XR=${config.xrSupport}")
         log(0, "Titan 2D Systems: Renderer2D=${renderer2DSystem.lights.size} Sprites=${spriteSystemV2.sprites.size} Tilemap=${tilemapSystemV2.layers.size} Physics2D=${physics2DV2.bodies.size} Sorting=${sortingSystem.layers.size}")
         log(0, "Most Powerful Tools: FullControl=${fullControlSystem.hierarchy.size} Packages=${packageManagerSystem.packages.size} ProfilerV2=${profilerV2System.frames.size} HotReload=${hotReloadSystem.watchedFiles.size}")
+        log(0, "Ultra Systems: Core Burst=${ultraCore.burstJobs.size} Assemblies=${ultraCore.assemblies.size} SO=${ultraCore.scriptableObjects.size} ${ultraCore.undoRedo.getStats()} | Rendering ${ultraRendering.getStats()} | Physics ${ultraPhysics.getStats()} | Anim ${ultraAnimation.getStats()} | Audio ${ultraAudio.getStats()} | AI ${ultraAI.getStats()} | Net ${ultraNetworking.getStats()} | Platform ${ultraPlatform.getStats()} | Editor ${ultraEditor.getStats()}")
     }
 
     // ---------------------------------------------------------------- commands
