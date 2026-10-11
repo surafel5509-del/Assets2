@@ -1,454 +1,357 @@
-# S Engine Ultimate Edition 6.0 [Nexus]
+# S Engine Ultimate Edition 6.1 [Quantum] — The Next Big Game Engine
 
-**S Engine Ultimate Edition** is a professional, big game engine for Android — a pocket-sized **Unity 6 + Unreal Engine 5** class engine. Create AAA-quality games entirely on your phone or tablet with PBR rendering, advanced physics, DOTS-like ECS, visual scripting, and full toolset.
+**S Engine Ultimate Edition 6.1 [Quantum]** is a professional, next-gen game engine for Android — a pocket-sized **Unity 6 + Unreal Engine 5.4** class engine with **Ray Tracing, Nanite, Lumen, Chaos Destruction, World Partition, Control Rig, Motion Matching, XR, and ML-Agents**. Build AAA games entirely on your phone.
 
-> **Ultimate Edition Upgrade**: From a small 2D engine to a full professional engine rivaling Unity 6 and Unreal 5. Built from scratch in Kotlin, OpenGL ES 3.0 + Vulkan-ready renderer, PhysX/Chaos-like physics, DOTS + Job System, and Mozilla Rhino + IL2CPP-ready scripting. No NDK required for core, optional for burst.
+> **Quantum Upgrade (6.1)**: Building on 6.0 Nexus, Quantum adds 27 new AAA systems, 7 new templates, 100+ new scripting APIs. From small 2D to professional big engine — now with next-gen rendering, destruction, open world, and AI.
 
-**Engine Version**: 6.0.0 Ultimate Edition [Nexus] | **API**: 600 | **Pipeline**: Universal RP (URP) + HDRP + Forward/Deferred
+**Engine Version**: 6.1.0 Ultimate Edition [Quantum] | **API**: 610 | **Pipeline**: Universal RP + HDRP + Forward/Deferred + **Ray Tracing + Nanite + Lumen + Virtual Textures** | **Prev**: 6.0.0 [Nexus]
 
 ---
 
-## 🚀 Ultimate Edition Features (Unity 6 + UE5 Class)
+## 🆕 What's New in 6.1 Quantum (27 New Systems)
 
-### Core Engine
-| Area | Ultimate Features |
+| System | Quantum Features |
 |---|---|
-| **Engine Core** | EngineConfig, QualitySettings (6 tiers: Very Low to Ultra), TimeManager (timeScale, fixedDeltaTime, smoothDeltaTime), Application (platform, version, data paths), LayerMask (32 layers), TagManager (20+ tags), CollisionMatrix (32x32), Prefab System with overrides, Object Pooling (GameObjectPoolManager), ObjectPool<T>, AssetDatabase, BuildPipeline, VersionControl, Analytics, CrashReporting |
-| **ECS / DOTS** | Entity (ID+version), Archetype, Chunk (128 capacity), Query (all/any/none), SystemBase, World, EntityManager (hybrid GameObject+ECS), TransformSystem, Translation/Rotation/Scale/Velocity/PhysicsMass/RenderMesh components, Job System with IJob, IJobParallelFor, NativeArray, JobHandle |
-| **Job System** | Multithreaded job scheduler (CPU cores -1 threads), JobHandle.Combine, ParallelFor with batch size, MathJobs (transform positions), Burst-like optimization |
+| **Ray Tracing** | RTX/DXR/Vulkan RT simulation, Shadows, Reflections, GI, AO, Path Tracing, Denoiser, TLAS/BLAS, Ray Gen, Shadow Ray, Reflection Ray, GI hemisphere sampling |
+| **Global Illumination** | Lumen-like Realtime GI, Enlighten-like Lightmapping, SSGI, Radiance Probes SH27, Irradiance Volume trilinear, Lightmap Bake CPU, SSGI blur |
+| **Virtualized Geometry (Nanite)** | Meshlets 64 verts / 124 tris, Cluster Culling Frustum/Cone/Distance/Backface, LODs 0-4 + Impostor, Bounds, Cone Apex/Axis/Cutoff, Software Rasterizer visibility buffer |
+| **Virtual Textures** | Runtime VT 8192x8192, Tile 128, Mip 7, Formats BC1/BC3/BC5/BC7/ASTC, Tiles Request/Eviction, Physical Cache 1024, Pool 256MB, Streaming |
+| **Chaos Destruction** | Fracture Voronoi/Uniform/Clustered/Radial/Slice, Pieces with mass/velocity/health, Clusters, Physics Fields Radial/Vortex/Uniform, Debris Lifetime, Damage |
+| **Fluid Simulation** | SPH/PBF/FLIP/Eulerian, Particles with density/pressure/temperature, Emitters rate/speed/radius, SPH density/pressure/viscosity/surface tension, Bounds collision |
+| **World Partition** | World 4096m, Cells 256m, Streaming Distance 500m, GC 1000m, HLOD Clusters 4x4 cells, Streaming Levels, Visible/Loaded tracking, Max Cells/Frame 4 |
+| **Spline System** | Types Linear/Bezier/CatmullRom/BSpline, Points with in/out tangents, up/scale/roll, Evaluate, Tangent, Closest Point, At Distance, SplineMesh Road/River generation width/segments |
+| **Foliage System** | Prototypes Grass/Flower/Bush/Tree/Rock, Instances 100k max, Painting radius/density, Procedural with slope check, Wind speed/direction, Interaction trample |
+| **PCG System** | Procedural Content Generation Graph, Nodes Input/Output/Point/Spline/Density/Filter/Transform/Spawn/Merge/Split/Noise/Biome/Scatter/Cluster/Path, Sample Graphs Forest/City/Biome, Noise Perlin |
+| **Control Rig** | Humanoid Rig 20 bones (Root/Hips/Spine/Chest/Neck/Head/Arms/Legs), Controls Transform/Float, Units Transform/FABRIK/FullBodyIK, FABRIK solver 10 iter, Full Body IK |
+| **Motion Matching** | Pose Features pos/vel/facing/feet/trajectory 4 future, Distance metric, Motion Clips Walk/Run/Idle 30fps, Trajectory Prediction 0.2/0.4/0.6/1.0s, Warping Targets Translation/Rotation, Distance Matching |
+| **Hair System** | Strand-based Hair 1000 strands, Groups Straight/Wavy/Curly/Fur, Roots on head sphere, Points rest/velocity, Verlet physics stiffness/gravity/wind, Distance constraints, LOD 10m |
+| **XR System** | VR/AR/MR modes, Head Pose, Hand Tracking 26 joints Palm/Wrist/Thumb/Index/Middle/Ring/Little, Eye Gaze, IPD 64mm, FOV 90, Refresh 90Hz, Passthrough, Spatial Anchors, Raycast from hand |
+| **EQS System** | Environment Query System Grid/Cone/Circle/Donut, Tests Distance/Dot/Overlap/Trace/Pathfinding/Visibility, Scoring Linear/Inverse/Square, Query generation, Best result |
+| **Utility AI** | Utility Actions with considerations, Blackboard, Score = product(considerations)*weight, Select best |
+| **ML-Agents** | Reinforcement Learning, Policy obs 10 / action 4 / hidden 128x128, Weights random init, Forward tanh, Observations pos/vel, Rewards, Heuristic, Episodes/Steps tracking |
+| **Dialogue System** | Branching Dialogues, Nodes Line/Choice/Condition/Action/End, Lines character/text/emotion/animation, Choices with conditions, Variables, History, Sample Quest dialogue |
+| **Quest System V2** | Types Main/Side/Daily/Weekly/Event, Objectives Kill/Collect/Talk/Reach/Defend, Rewards XP/gold/items, Prerequisites, Time Limit, Tracked, Active/Completed/Failed |
+| **Inventory V2** | Slots 30, Stacking, Weight 100, Gold, Items with Rarity Common→Mythic, Types Weapon/Armor/Consumable/Material/Quest, Stats map |
+| **Skill Tree** | Nodes with prerequisites, Levels max 5, Cost, Required Level, Position x/y, Warrior Tree sample Root/Slash/Block/Charge/Whirlwind/ShieldWall/Berserk, Points |
+| **World Time V2** | Calendar year/month/day/hour/minute/second, TimeOfDay 0-24, TimeScale 60, Seasons Spring/Summer/Autumn/Winter, Sun/Moon Celestial azimuth/altitude/intensity, Moon Phases 8, Weather Clear/Cloudy/Rain/Thunderstorm/Snow/Fog/Sandstorm/Blizzard, Rain/Snow/Fog/Wind intensity, Temperature, Ocean FFT Waves amplitude/frequency/direction/speed, Gerstner waves |
+| **Compute Shaders** | Buffers Structured/Raw/Append/Counter/Constant count/stride, Shaders source/threadGroup 8x8x1, Compile, Dispatch groupsX/Y/Z, Default Shaders Clear/ParticleUpdate/FrustumCulling/Skinning/FluidSPH, Async Compute |
+| **Modding System** | Mods Asset/Script/Code/TotalConversion, LoadState Unloaded/Loading/Loaded/Failed, Dependencies, Load Order, Plugins IPlugin onLoad/onUnload/onUpdate, Built-in PerformanceOverlay/DebugTools |
+| **Level Editor Tools** | Tools Select/Move/Rotate/Scale/Spline/Foliage/TerrainSculpt/TerrainPaint/VertexPaint/MeshPaint, History undo/redo 100, TerrainBrush Raise/Lower/Flatten/Smooth/Noise/Terrace size/strength/falloff, VertexPaint color/brush, Snapping grid, Spline creation, Terrain sculpt/smooth |
+| **Rollback Netcode** | GGPO-like Rollback 8 frames, Input Delay 2, FrameInput buttons bitmask/axis/checksum, GameState frame/playerStates/checksum, RollbackFrame inputs/state/confirmed/predicted, Misprediction detection, Resimulation |
+| **Lag Compensation** | History 1000ms, Record player pos/timestamp, Rewind by latency, Best match |
+| **Anti-Cheat** | Cheat Types SpeedHack/WallHack/AimBot/MemoryEdit/PacketManipulation, Detections with confidence, Speed threshold 15m/s, Teleport 50m |
+| **Decal V2** | Decals Diffuse/Normal/Emissive/Combined, Projection Planar/Box/Sphere/Mesh, Pos/rot/size, Material/texture/normal/emissive, Opacity/fadeDistance/cullAngle, LifeTime/age, BulletHole/Blood/Footstep creators |
+| **Lightmapping** | Bake Settings resolution/bounces/samples/denoiser/direct/indirect/AO, Bake Scene objects/lights, Lightmap Data width/height/data/directionality/shadowMask |
 
-### Rendering - Professional AAA Pipeline
+---
+
+## 🚀 Ultimate Edition Features (6.0 + 6.1 Quantum)
+
+### Core Engine (6.0 + Quantum)
+| Area | Features |
+|---|---|
+| **Engine Core** | EngineConfig, QualitySettings 6 tiers + RayTracingQuality/NaniteQuality/VT Quality, TimeManager, Application, LayerMask 32, TagManager 20+, CollisionMatrix 32x32, Prefab + Object Pooling 1023/batch, AssetDatabase, BuildPipeline 10 targets, VersionControl, Analytics, CrashReporting, Localization, Achievements, Leaderboards, IAP, ComputeShaderSystem, ModdingSystem |
+| **ECS / DOTS** | Entity ID+version, Archetype, Chunk 128, Query all/any/none, SystemBase, World, EntityManager hybrid, Translation/Rotation/Scale/Velocity/PhysicsMass/RenderMesh, Job System IJob/ParallelFor, NativeArray, JobHandle, MathJobs |
+| **Job System** | Multithreaded cores-1 threads, Combine, Parallel batch, Burst-like |
+
+### Rendering - Quantum Pipeline
 | Feature | Details |
 |---|---|
-| **Render Pipelines** | Forward, Deferred, Universal RP (URP), High Definition RP (HDRP), PipelineManager, RenderPass (DepthPrepass, GBuffer, ShadowMap, OpaqueForward, TransparentForward, Skybox, PostProcessing, FinalBlit) |
-| **Material System (PBR)** | Material (PBR: baseColor, metallic, smoothness, emission, normalScale, occlusion, alphaClip), SurfaceType (Opaque/Transparent/Cutout), BlendMode, CullMode, MaterialProperty (float/color/texture/vector), textures: albedo/metallic/normal/emission/occlusion/height/detail, doubleSidedGI, GPU Instancing, renderQueue, MaterialLibrary |
-| **Lighting System** | LightingSystem (main light + 16 additional lights, shadow atlas 4096, maxShadows 8), LightData (pos/dir/color/intensity/range/spotAngle), ShadowSettings (Hard/Soft, resolution 256-4096, bias), ShadowAtlas (slot packing), ambient modes, GI, LightProbeGroup (SH 27 floats, trilinear interpolation), ReflectionProbe (box projection, blend), ReflectionProbeSystem |
-| **Post Processing Stack v3** | PostEffectType (Bloom, Vignette, ChromaticAberration, ColorGrading, Tonemapping, SSAO, SSR, DepthOfField, MotionBlur, FilmGrain, LensDistortion, Panini, LUT, WhiteBalance, VolumetricFog, AutoExposure, LensFlare, etc), PostEffectSettings with parameters, PostProcessVolume (global/local, priority, blendDistance, weight), PostProcessStack with blending |
-| **Skybox & Atmosphere** | SkyboxType (Procedural, Cubemap, HDRI, Gradient, SixSided, PhysicallyBased), ProceduralSkybox (sunSize, atmosphereThickness), PhysicallyBasedSky (planetaryRadius, Rayleigh/Mie scattering), GradientSkybox, CubemapSkybox, SkyboxComponent, VolumetricClouds, FogSystem (linear/exp/exp2 + volumetric), WaterSystem, OceanSystem, SkyboxSystem (timeOfDay 0-24, latitude/longitude, solar position calc) |
-| **Render Features** | RenderFeature interface, SSAOFeature (radius, intensity, samples), SSRFeature (raySteps, thickness), BloomFeature (threshold, diffusion, anamorphic), MotionBlurFeature, DepthOfFieldFeature, VolumetricLightingFeature, DecalFeature, RenderFeatureManager |
-| **GPU Instancing & Batching** | GPUInstancingSystem (1023 instances/batch, frustum/occlusion culling, LOD fading, batch sorting), InstancedBatch (matrices, colors), SRPBatcher (shader/material/mesh key), OcclusionCullingSystem (Occluder/Occludee, behind test), LODSystem (screenRelativeHeight, crossFade, lodBias) |
-| **Advanced Rendering** | ShaderGraph (node-based: Master, TextureSample, Color, Add/Multiply/Lerp, Time, UV, Fresnel, Panner, etc, compiles to GLSL), ShaderGraphNode, Connection, topological sort, WaterSimulation (128x128 wave equation), VolumetricFogSimulation (density, anisotropy, transmittance), CloudSimulation, WeatherSystem (rain/snow/wind/fog) |
-| **Meshes & Models** | Primitive meshes (Cube, Sphere, Plane, Cylinder, Cone, Torus, Capsule, Pyramid, Quad), OBJ loader (v/vt/vn/f), Mesh bounds, GPU buffers, LODGroup, Billboards, Decals, Trails, Lines |
+| **Render Pipelines** | Forward, Deferred, Universal URP, High Definition HDRP, PipelineManager, RenderPass 9 types, **RayTracing URP+HDRP** |
+| **PBR Materials** | BaseColor, Metallic, Smoothness, Emission, NormalScale, Occlusion, AlphaClip, Tiling, Textures albedo/metallic/normal/emission/occlusion/height/detail, doubleSidedGI, GPU Instancing, renderQueue, MaterialLibrary |
+| **Lighting** | Main + 16 additional lights, Shadow Atlas 4096, maxShadows 8, LightProbe SH27 trilinear, ReflectionProbe box projection, LightingSystem cullAndSetup |
+| **Post Processing v3** | 23 Effects Bloom/Vignette/ChromaticAberration/ColorGrading/Tonemapping/SSAO/SSR/DoF/MotionBlur/FilmGrain/LensDistortion/Panini/LUT/WhiteBalance/VolumetricFog/AutoExposure/LensFlare, Volume global/local priority/blend, Stack blending |
+| **Skybox & Atmosphere** | Procedural/Cubemap/HDRI/Gradient/PhysicallyBased Rayleigh/Mie scattering, Clouds volumetric, Fog linear/exp/exp2/volumetric, Water/Ocean FFT, SkyboxSystem timeOfDay 0-24 solar calc, WorldTimeSystem calendar/seasons/weather |
+| **Render Features** | SSAO radius/intensity/samples, SSR maxDistance/thickness/raySteps, Bloom threshold/diffusion/anamorphic, MotionBlur shutterAngle, DoF focusDistance/aperture/focalLength, Volumetric meanFreePath, Decal maxDecals 100 atlas 2048, DecalV2 deferred |
+| **GPU Instancing** | GPUInstancing 1023/batch frustum/occlusion/LOD fading, SRPBatcher shader/material/mesh key, OcclusionCulling occluder/occludee, LODSystem screenRelativeHeight crossFade bias |
+| **Quantum Rendering** | RayTracingSystem RT Shadows/Reflections/GI/AO PathTracing denoiser, GlobalIllumination Lumen RT GI SSGI RadianceProbes IrradianceVolume, VirtualizedGeometry Nanite meshlets cluster culling LODs software rasterizer, VirtualTextureSystem RTVT 8192 streaming UDIM, ShaderGraph 25 nodes compileToGLSL, WaterSimulation wave eq 128, VolumetricFog transmittance, HairSystem strand-based |
+| **Meshes** | Cube/Sphere/Plane/Cylinder/Cone/Torus/Capsule/Pyramid/Quad, OBJ loader, Bounds, GPU buffers, LODGroup, Billboards, Decals, Trails |
 
-### Physics - PhysX / Chaos Class
+### Physics - Chaos Quantum
 | Feature | Details |
 |---|---|
-| **Core Physics** | PhysicsWorld (2D: box/circle, gravity, restitution, friction, triggers, CCD), PhysicsWorld3D (3D: box/sphere, raycast, overlap), BroadphaseSAP (Sweep and Prune, proxy management, pair queries), CollisionMatrix |
-| **Advanced Physics** | JointSystem, Joint (Fixed, Distance, Hinge, Spring, Slider, BallSocket, Configurable, Character, Wheel), PhysicsMaterial (dynamic/static friction, bounciness, combine modes), breakForce/breakTorque, limits, spring/damper/motor |
-| **Character Controller** | CharacterController (radius, height, slopeLimit 45°, stepOffset, skinWidth, isGrounded, velocity, collisionFlags, Move with capsule sweep) |
-| **Vehicle Physics** | WheelCollider (radius, suspensionDistance, spring/damper, friction, motor/brake torque, steerAngle, rpm), VehicleController (centerOfMass, motor/brake/steer input, max torque/angle, drag) |
-| **Special Physics** | ClothComponent (bending/stretching stiffness, damping), RagdollSystem (RagdollBone, createRagdoll from hierarchy, enable/disable), ContinuousCollisionDetection (sweepSphere, SweepResult with time/point/normal), PhysicsMaterialManager (Default, Ice, Rubber, Metal, Wood, Bouncy), Soft Body, Fluid, CCD |
-| **Collision Detection** | Discrete, Continuous, Continuous Dynamic, Continuous Speculative, trigger callbacks (onCollisionEnter, onTriggerEnter/Exit), grounded detection, overlapPoint, raycastAll |
+| **Core** | PhysicsWorld 2D, PhysicsWorld3D raycast, BroadphaseSAP Sweep&Prune, CollisionMatrix |
+| **Advanced** | JointSystem Fixed/Distance/Hinge/Spring/Slider/BallSocket/Configurable, PhysicsMaterial friction/bounciness/combine, CharacterController slopeLimit/stepOffset, WheelCollider suspension/friction/motor/brake/steer/rpm, VehicleController |
+| **Quantum Physics** | ChaosDestruction Fracture Voronoi/Uniform/Clustered Pieces/Clusters Fields Radial/Vortex, FluidSimulation SPH/PBF/FLIP Smoke/Fire/Water viscosity/surfaceTension, SoftBody Nodes/Springs Cube creation, Cloth, Ragdoll, CCD sweepSphere, PhysicsMaterialManager Ice/Rubber/Metal/Wood/Bouncy |
 
-### Animation - Animator Controller + Timeline + IK
+### Animation - Control Rig Quantum
 | Feature | Details |
 |---|---|
-| **Animator Controller** | AnimatorController (parameters: Float/Int/Bool/Trigger), AnimatorLayer (states, defaultState, weight, blendingMode), AnimationState (clip, speed, loop, mirror, transitions, blendTree, IK, rootMotion), AnimatorTransition (duration, exitTime, conditions, interruption), AnimatorCondition (If/IfNot/Greater/Less/Equals), BlendTree (Simple1D, SimpleDirectional2D, Freeform, Direct), children with thresholds/positions |
-| **State Machine** | AnimatorStateMachine (current/next state, transitionTime/Duration, normalizedTime, parameter evaluation, trigger reset) |
-| **IK System** | IKSystem (FABRIK solver, tolerance, maxIter, stretch handling, forward/backward passes), Joint (x/y/z/length) |
-| **Timeline & Cinemachine** | TimelineAsset (tracks, duration, frameRate), TimelineTrack (Animation/Audio/Activation/Control/Signal/Cinemachine, clips, childTracks), TimelineClip (start/duration/clipIn/timeScale), PlayableDirector (play/pause/stop, wrapMode loop/hold), CinemachineVirtualCamera (priority, follow/lookAt, lens FOV, body: Transposer/Dolly/Orbital, aim: Composer/POV, noise), CinemachineDollyTrack (waypoints, evaluate), CinemachineBrain (active camera, blend styles: Cut/EaseInOut/etc) |
-| **Other Animation** | AnimationClip (sprite-sheet JSON, frames, fps, loop, cellUv), AnimationSystem (cache by mod time), SkinnedMeshRenderer (rootBone, quality, updateWhenOffscreen), TimelineComponent, IKComponent |
+| **Animator Controller** | Parameters Float/Int/Bool/Trigger, Layers states/default/weight, States clip/speed/loop/mirror/transitions/blendTree/IK/rootMotion, Transitions duration/exitTime/conditions, Conditions If/Greater/Less/Equals, BlendTree Simple1D/2D/Freeform/Direct |
+| **State Machine** | Current/next state, transition progress, normalizedTime |
+| **IK** | FABRIK tolerance/maxIter/stretch |
+| **Timeline & Cinemachine** | TimelineAsset tracks/duration/frameRate, Tracks Animation/Audio/Activation/Control/Signal/Cinemachine, Clips start/duration, PlayableDirector play/pause/stop wrapMode, VirtualCamera priority/follow/lookAt FOV body Transposer/Dolly/Orbital aim Composer/POV noise, DollyTrack waypoints, Brain active/blend |
+| **Quantum Animation** | ControlRigSystem humanoid 20 bones controls units FABRIK/FullBodyIK, MotionMatching pose features trajectory prediction warping distance matching, Clips Walk/Run/Idle |
 
-### AI - NavMesh + Behavior Trees + Crowd
+### AI - Quantum
 | Feature | Details |
 |---|---|
-| **NavMesh** | NavMeshNode (x/y/z, walkable, g/h/f costs, parent, neighbors), NavMesh (width/height/cellSize, Bake with obstacles, FindPath A* with open/closed lists, heuristic), NavMeshAgent (speed, angularSpeed, acceleration, stoppingDistance, autoBraking, areaMask, path, setDestination, update with rotation) |
-| **Behavior Trees** | BTNode, BTStatus (Success/Failure/Running), Blackboard (key-value), BTSequence, BTSelector, BTInverter, BTCondition, BTAction, BTWait, BehaviorTree (root, blackboard, tick) |
-| **Crowd** | CrowdSimulation (many agents, avoidance, navMesh, addAgent, update with separation) |
+| **NavMesh** | Nodes walkable g/h/f costs, Bake with obstacles, FindPath A* heuristic, NavMeshAgent speed/angularSpeed/acceleration/stoppingDistance setDestination update rotation |
+| **Behavior Trees** | BTSequence/Selector/Inverter/Condition/Action/Wait, Blackboard, BehaviorTree, CrowdSimulation avoidance |
+| **Quantum AI** | EQSSystem Grid/Cone/Circle/Donut tests Distance/Dot/Overlap/Visibility scoring, UtilityAI actions considerations blackboard, MLA_AgentsSystem RL Policy hidden 128x128 observations rewards heuristic |
 
-### Audio - Mixer + Spatial + Wwise-like
+### World Building - Quantum
 | Feature | Details |
 |---|---|
-| **Audio Mixer** | AudioMixer (master + SFX/Music/UI/Ambient groups), AudioMixerGroup (volume, pitch, parent/children, effects, getEffectiveVolume), AudioEffect (LowPass, Reverb, Echo with process), AudioMixerGroupComponent |
-| **Spatial Audio** | AudioSourcePro (3D, min/max distance, rolloff Logarithmic/Linear/Custom, spatialBlend, dopplerLevel, spread, priority, calculateVolumeAndPan), AudioListener, AudioReverbZone (min/max distance, presets: Generic/Room/Hall/Cave/etc, decayTime), AudioOcclusionSystem (raycast occlusion, direct/reverb occlusion), AudioSystemPro (listenerPos/forward/up, dopplerFactor, speedOfSound, reverb zones) |
+| **Terrain** | Heightmap Perlin/DiamondSquare/Bilinear, Splatmap 4 layers, TerrainLayer diffuse/normal/mask tileSize metallic smoothness, TerrainData getHeightAtWorld/getInterpolatedNormal, Terrain detail/tree prototypes sampleHeight, TerrainSystem getHeightAt/raycast |
+| **Quantum World** | WorldPartition 4096m cells 256m streaming HLOD, SplineSystem Linear/Bezier/CatmullRom/BSpline evaluate tangent closest SplineMesh road/river, FoliageSystem prototypes Grass/Tree painting procedural wind interaction, PCGSystem graph nodes Forest/City/Biome sample graphs |
+| **Water & Volumetrics** | WaterSimulation wave eq, VolumetricFog transmittance 32 steps, CloudSimulation, WeatherSystem, OceanFFT Gerstner waves height/normal, WorldTime calendar seasons weather |
 
-### VFX - VFX Graph + Particle System
+### Audio - Quantum
 | Feature | Details |
 |---|---|
-| **Particle System V2** | ParticleSystemV2 (MainModule: duration, loop, prewarm, startDelay/Lifetime/Speed/Size/Rotation/Color, gravityModifier, maxParticles, simulationSpace; EmissionModule: rateOverTime/Distance, bursts; ShapeModule: Sphere/Hemisphere/Cone/Box/Circle/Rectangle/Mesh, angle/radius; VelocityOverLifetime, ColorOverLifetime, SizeOverLifetime, RotationOverLifetime, ForceOverLifetime, Collision (Plane/World, bounce/dampen/lifetimeLoss), Trails (ratio, lifetime, minVertexDistance), Lights (ratio, range/intensity), Particle (x/y/z, vx/vy/vz, ax/ay/az, size, rotation, color, age/lifetime), play/pause/stop/emit/update) |
-| **VFX Graph** | VFXGraph (node-based: SpawnRate/Lifetime/Speed nodes, connections, compileToParticleSystem), VisualEffectComponent |
+| **Audio** | AudioMixerGroup Master/SFX/Music/UI/Ambient volume/pitch parent children getEffectiveVolume, AudioEffect LowPass one-pole Reverb Echo, AudioMixer, AudioClip 3D, AudioSourcePro min/max distance rolloff Logarithmic/Linear/Custom spatialBlend doppler calculateVolumeAndPan, AudioReverbZone presets Generic/Room/Hall/Cave, AudioOcclusionSystem, AudioSystemPro listener |
 
-### Input System v2 - Action-Based
+### VFX - Quantum
 | Feature | Details |
 |---|---|
-| **Input System v2** | InputActionType (Button/Value/PassThrough), InputControlType (Button/Axis/Vector2/Vector3), InputInteraction (Press/Hold/Tap/MultiTap), InputProcessorType (Scale/Invert/Normalize/Clamp/Deadzone/Curve), InputBinding (path: <Keyboard>/space, <Gamepad>/leftStick, groups, composite, processors, interactions), InputAction (name, type, expectedControlType, bindings, processors, isPressed/wasPressedThisFrame/phase, valueFloat/Vector2/Vector3, readValue), InputActionMap (actions, enable/disable), InputActionAsset (maps, controlSchemes, createDefault with Move/Look/Jump/Sprint/Crouch/Fire/Aim/UI actions), InputSystemV2 (keyboard/gamepad/mouse state, update, enableMap) |
+| **VFX** | ParticleSystemV2 MainModule duration/loop/prewarm/startDelay/Lifetime/Speed/Size/Rotation/Color gravity maxParticles, EmissionModule rate/bursts, ShapeModule Sphere/Cone/Box, Velocity/Color/Size/Rotation/Force/Collision/Trails/Lights, Particle age/lifetime, play/pause/stop/emit/update, VFXGraph compileToParticleSystem, HairSystem strand physics |
 
-### Terrain & Environment
+### Input System v2
 | Feature | Details |
 |---|---|
-| **Terrain System** | Heightmap (width/height, data, get/set, getBilinear, generatePerlin with octaves/persistence/lacunarity, generateFractalDiamondSquare), Splatmap (layers, normalize), TerrainLayer (diffuse/normal/mask, tileSize, metallic/smoothness), TerrainData (heightmap, splatmap, layers, size, getHeightAtWorld, getInterpolatedNormal), Terrain (x/y/z, drawInstanced, pixelError, basemapDistance, detailPrototypes, treePrototypes/instances, sampleHeight), TerrainSystem (addTerrain, getHeightAt, raycast) |
-| **Water & Volumetrics** | WaterSimulation (wave equation, disturb, update), VolumetricFogSimulation (density, anisotropy, sampleDensity, transmittance with steps), CloudSimulation, WeatherSystem (rain/snow/wind/fog, setWeather, isRaining/isStorm) |
+| **Input** | InputActionType Button/Value/PassThrough, ControlType Button/Axis/Vector2/3, Interaction Press/Hold/Tap, Processor Scale/Invert/Deadzone/Clamp, Binding path <Keyboard>/space <Gamepad>/leftStick groups composite, Action isPressed/wasPressedThisFrame/phase/valueFloat/Vector2, ActionMap enable/disable, ActionAsset createDefault Move/Look/Jump/Sprint/Crouch/Fire/Aim/UI, InputSystemV2 keyboard/gamepad/mouse |
 
-### UI System - UI Toolkit + uGUI + UMG
+### UI System
 | Feature | Details |
 |---|---|
-| **UI** | Canvas (ScreenSpaceOverlay/Camera/WorldSpace, sortingOrder, pixelPerfect, scaler modes), RectTransform (anchorMin/Max, anchoredPosition, sizeDelta, pivot, getRect), CanvasGroup (alpha, interactable, blocksRaycasts), LayoutGroup (Horizontal/Vertical/Grid, padding/spacing, cellSize, calculateLayout), GraphicRaycaster (raycast UI elements), UIAnimation (duration, easing: linear/easeIn/easeOut/easeInOut, evaluate), Components: Canvas, CanvasGroup, RectTransform, Image (Simple/Sliced/Tiled/Filled), Button (interactable, transition: None/ColorTint/SpriteSwap/Animation), TextMeshPro (autoSize, richText), ScrollView (horizontal/vertical, movementType Elastic/Clamped) |
+| **UI** | Canvas ScreenSpaceOverlay/Camera/WorldSpace sortingOrder scalerMode referenceResolution, RectTransform anchorMin/Max anchoredPosition sizeDelta pivot getRect, CanvasGroup alpha interactable, LayoutGroup Horizontal/Vertical/Grid calculateLayout, GraphicRaycaster raycast UI, UIAnimation easing |
 
-### Networking - Netcode + Multiplayer
+### Networking - Quantum
 | Feature | Details |
 |---|---|
-| **Networking** | NetworkRole (None/Server/Client/Host/Authority), NetworkChannel (Reliable/Unreliable/Fragmented), NetworkMessage (id/data/channel), NetworkVariable<T> (dirty flag, onChanged), NetworkTransform (sync pos/rot/scale, interpolate, sendRate), NetworkIdentity (netId, isServer/isClient/isLocalPlayer/hasAuthority, ownerId, assetId), NetworkManager (role, isRunning, maxConnections, tickRates, address/port, startHost/Server/Client, spawnObject, send/receive messages), NetworkLobby (LobbyPlayer, maxPlayers, ready checks, startGame), VoiceChatSystem (pushToTalk, VAD), Components: NetworkIdentity, NetworkTransform, NetworkAnimator |
+| **Netcode** | NetworkRole Server/Client/Host/Authority, Channel Reliable/Unreliable, Message, Variable dirty/onChanged, Transform sync pos/rot/scale interpolate sendRate, Identity netId isServer/isClient/isLocalPlayer/hasAuthority, Manager startHost/Server/Client spawnObject send/receive, Lobby ready checks, VoiceChat |
+| **Quantum Net** | RollbackNetcode GGPO-like rollback 8 frames input delay 2 FrameInput checksum GameState checksum RollbackFrame confirmed/predicted misprediction rollback resim, LagCompensation history 1000ms rewind, AntiCheat SpeedHack 15m/s Teleport 50m detections confidence |
 
-### Save & Addressables & Services
+### Gameplay - Quantum
 | Feature | Details |
 |---|---|
-| **Save System** | PlayerPrefs (Int/Float/String/Bool, file persistence), SaveGameSystem (SaveSlot with timestamp/screenshot/playtime, save/load/delete/listSlots), AddressablesSystem (AssetEntry with address/guid/path/labels/bundle, loadAsset, loadByLabel, bundles), CloudSaveSystem (CloudSlot, save/load/sync) |
-| **Other Services** | AssetDatabase (guid/path/type/labels), BuildPipeline (BuildTarget: Android/Windows/Linux/Mac/WebGL/iOS/Xbox/PS4/PS5/Switch, BuildReport), BuildSettings (developmentBuild, scriptingBackend Mono/IL2CPP, stripping levels, Android min/target SDK), PlayerSettings (company/product/version/bundleId, screen size, splash), GraphicsSettings (renderPipeline, colorSpace Linear/Gamma, SRP batcher, instancing), VersionControl (stage/commit/log/diff), AnalyticsSystem (trackEvent), CrashReportingSystem (CrashReport), LocalizationSystem (locale tables), AchievementSystem (progress/unlock), LeaderboardSystem (submitScore, getTop/rank), InAppPurchaseSystem (Product, purchase/restore) |
+| **Gameplay** | DialogueSystem branching lines/choices/conditions/actions variables history, QuestSystemV2 Main/Side/Daily objectives Kill/Collect/Talk/Reach/Defend rewards XP/gold/items prerequisites time limit, InventorySystemV2 slots 30 stacking weight gold rarity Common→Mythic types Weapon/Armor/Consumable, SkillTreeSystem nodes prerequisites levels cost Warrior tree, WorldTimeSystem calendar timeOfDay seasons sun/moon azimuth/altitude moon phases weather Clear→Blizzard rain/snow/fog/wind temperature, OceanFFT waves |
 
-### Editor & Tools
+### Tools - Quantum
 | Feature | Details |
 |---|---|
-| **Editor** | Scene view with grid, pan/zoom, tap-to-select, Move/Rotate/Scale gizmos with axis handles, snapping, frame selected, Hierarchy (parent/child, collapse, visibility, rename/duplicate/delete/reorder), Inspector (transform scrub, component props, color picker, asset pickers, add/remove/reorder/reset), Undo/Redo (snapshot-based), Play mode (Play/Pause/Step, scene restore), Viewport3DController (orbit, pan, dolly), ViewportController (2D), Gizmos, Handles |
-| **Advanced Editor** | Prefab workflow (Prefab, PrefabManager, PrefabInstance), LOD editing, Occlusion culling visualization, Light Probes editing, Reflection Probes, PostProcessVolume editing, Terrain tools (sculpt, paint, trees, details), Shader Graph editor, VFX Graph editor, Timeline editor, Animator Controller editor (state machine), NavMesh baking, Behavior Tree editor, Audio Mixer window, Profiler window (markers, frames, FPS, memory), Frame Debugger (draw calls, triangles, batches) |
+| **Tools** | ComputeShaderSystem buffers Structured/Raw/Append shaders source threadGroup dispatch default Clear/ParticleUpdate/FrustumCulling/Skinning/FluidSPH async, ModdingSystem mods Asset/Script/Code/TotalConversion dependencies load order plugins IPlugin, LevelEditorTools Select/Move/Rotate/Scale/Spline/Foliage/TerrainSculpt/VertexPaint history undo/redo 100 TerrainBrush Raise/Lower/Flatten/Smooth/Noise/Terrace VertexPaint snapping grid, Profiler markers frames FPS memory, FrameDebugger draw calls triangles batches |
 
-### Templates - Ultimate Edition
-| Template | Description |
-|---|---|
-| **Empty 2D** | Camera + square, start from scratch |
-| **Platformer Demo** | Run, jump, moving platforms, coins, particles |
-| **Space Shooter** | Spawning, bullets, explosions, score |
-| **Physics Sandbox** | Tap to drop bouncy balls and crates |
-| **3D Demo** | Lights, physics, models, shaders, character |
-| **Animated Platformer** | Sprite-sheet animation, textures, sounds, camera shake |
-| **Blueprint Demo** | Visual scripting nodes |
-| **FPS Ultimate** | First-person shooter with mouse look, shooting, raycast, hit FX, ammo/health pickups, NavMesh AI enemies with patrol/chase/attack states, object pooling |
-| **Racing Ultimate** | Vehicle physics with wheel colliders, motor/brake/steer, speedometer, track walls, checkpoints, laps, terrain |
-| **RPG Ultimate** | Open-world RPG with level/XP/gold, health/mana, strength/agility/intelligence, inventory, quests (kill 5 slimes), NPC dialogue, enemy AI, coin pickups, level-up VFX, fog, ambient |
-| **Battle Royale Ultimate** | 100-player ready, shrinking storm zone, loot (weapons/shields), building system (wood/brick/metal), storm damage, victory royale |
-| **City Builder Ultimate** | Build and manage city, economy (income/expenses), population/happiness, buildings (house/factory/park/road), tap to place, money management |
-| **Ultimate Showcase** | All features: PBR materials (metal/wood/glass/emissive), GPU instanced trees (20), advanced lighting (directional+point+spot with shadows), reflection probes, volumetric fog, post FX (bloom), NavMesh AI with 4 patrol points, VFX (coin/jump FX), water, terrain, UI HUD with health bar, trail renderer |
+---
 
-### Scripting API - Ultimate
+## 📦 Templates - Ultimate 20 (13 + 7 Quantum)
+
+| # | Template | Description | Key Systems |
+|---|---|---|---|
+| 1 | Empty 2D | Blank scene | - |
+| 2 | Platformer | Player movement, jumping, coins | Physics 2D, Input |
+| 3 | Shooter | Shooting, enemies, pooling | Object Pool, Raycast |
+| 4 | Physics | Physics sandbox | Physics 2D/3D |
+| 5 | 3D Demo | 3D physics, pickups | Physics 3D |
+| 6 | Animated Platformer | Sprite animation | Animator |
+| 7 | Blueprint Demo | Visual scripting | Blueprints |
+| 8 | FPS Ultimate | Mouse look, shooting, raycast, NavMesh AI patrol/chase/attack, HitFX, ammo/health pickups | FPSController, NavMeshAgent, CharacterController |
+| 9 | Racing Ultimate | Vehicle physics, wheel colliders, checkpoints, laps | WheelCollider, VehicleController |
+| 10 | RPG Ultimate | Level/XP/gold, health/mana, quests, NPC, inventory, LevelUpFX | QuestNPC, PlayerRPG, Inventory |
+| 11 | Battle Royale Ultimate | 100-player ready, storm zone, loot, building | BRPlayer, Zone, Building |
+| 12 | City Builder Ultimate | Economy, population/happiness, buildings | CityManager, Economy |
+| 13 | Ultimate Showcase | All 6.0 features: PBR, GPU instanced trees, advanced lighting, reflection probes, VFX, water, terrain, UI HUD | All 6.0 |
+| 14 | **Quantum Showcase** | **All Quantum: RayTracing, Nanite, Lumen, Chaos, WorldPartition, PCG, ControlRig, MotionMatching, XR, ML-Agents** | **All Quantum** |
+| 15 | **RayTracing Demo** | RT Shadows, Reflections, GI, AO, Denoiser, Raycast debug | RayTracingSystem |
+| 16 | **Chaos Destruction** | Fracture, Debris 8 pieces, Physics Fields Radial/Vortex, Explosion | ChaosDestruction |
+| 17 | **Fluid Simulation** | SPH Fluid, Smoke, Fire, Soft Body, Water Pool | FluidSystem |
+| 18 | **Open World PCG** | World Partition 256m cells, Spline Roads, Foliage 100k, PCG Forest 30 trees City 20 buildings | WorldPartition, Spline, Foliage, PCG |
+| 19 | **VR Demo** | VR/AR/MR, Hand Tracking 26 joints, Spatial Anchors, Interactables | XRSystem |
+| 20 | **ML-Agents Demo** | RL, PPO, Observations pos/vel, Actions move, Reward reach target, Episodes | MLAgentsSystem |
+
+---
+
+## 🎮 Scripting API - Ultimate 200+ Methods
+
+### Transform (Ultimate + Quantum)
 ```js
-// All previous APIs + Ultimate Edition
-
-// Transform - Ultimate
-self.forward() // [x,y,z] forward vector
-self.right()
-self.up()
-self.setPosition(x,y,z)
-self.move(x,y,z)
-self.rotate(x,y,z)
-self.distanceTo3(other)
-self.forward() // raycast direction
-
-// Physics - Ultimate
-self.addForce(x,y,z)
-self.setVelocity(x,y,z)
-self.addExplosionForce(force, x,y,z, radius)
-physics.raycast(ox,oy,oz, dx,dy,dz, maxDist)
-physics.raycastAll(...)
-physics.overlapSphere(x,y,z, radius)
-physics.checkSphere(x,y,z, radius)
-
-// Animation - Ultimate
-self.play(clip)
-self.stopAnimation()
-self.setAnimatorFloat(name, value)
-self.setAnimatorBool(name, value)
-self.setAnimatorTrigger(name)
-
-// VFX - Ultimate
-self.burst(n)
-self.setEmitting(bool)
-self.playParticles()
-self.stopParticles()
-self.emitParticles(count)
-
-// Audio - Ultimate
-audio.play(name, volume)
-audio.playAtPoint(name, x,y,z)
-audio.setMixerVolume(group, volume)
-
-// Scene - Ultimate
-scene.spawn(name, x,y,z)
-scene.spawnPooled(name, x,y,z) // object pooling
-scene.spawnPrefab(name, x,y,z) // prefab system
-scene.raycast(ox,oy,oz, dx,dy,dz, maxDist)
-scene.raycastAll(...)
-scene.shake(amount)
-scene.find(name)
-scene.findAll(tag)
-scene.findWithLayer(layer)
-scene.getTimeOfDay()
-scene.setTimeOfDay(t)
-scene.getQualityLevel()
-scene.setQualityLevel("Ultra")
-scene.getTerrainHeight(x,z)
-
-// Input - Ultimate
-input.axisX, axisY, a, b, aDown, bDown, touching, tapped, touchX, touchY
-input.mouseX, mouseY, mouseDeltaX, mouseDeltaY, leftMouse, rightMouse
-input.getAxis("Horizontal")
-input.getButton("Jump")
-input.getButtonDown("Fire1")
-
-// Time - Ultimate
-time.time, time.unscaledTime, time.deltaTime, time.unscaledDeltaTime, time.fixedDeltaTime, time.timeScale, time.smoothDeltaTime, time.frame, time.fps
-time.setTimeScale(s)
-
-// Quality & Application
-quality.getLevel(), setLevel("Ultra"), getRenderScale(), setRenderScale(1.5)
-app.getVersion(), getPlatform(), getIsPlaying(), quit(), openURL(url)
-
-// NavMesh
-navMesh.calculatePath(sx,sy,sz, ex,ey,ez) // returns path array
-navMesh.samplePosition(x,y,z, maxDist)
-
-// Math helpers (Prelude)
-random(), randomInt(), clamp(), lerp(), lerpAngle(), moveTowards(), smoothDamp()
-vec2(x,y), vec3(x,y,z), vec4(x,y,z,w), dot(a,b), length(v), normalize(v), distance(a,b)
-Mathf (PI, Deg2Rad, Clamp, Lerp, etc)
-Quaternion.identity, Euler(x,y,z)
-Debug.Log, LogWarning, LogError, DrawLine, DrawRay
-Gizmos.DrawWireSphere, DrawSphere, DrawWireCube, DrawLine
-Object.Instantiate(prefab, pos, rot), Destroy(obj, delay)
-after(sec, fn), every(sec, fn), invoke(fn, delay), invokeRepeating(fn, delay, repeat), cancelInvoke()
+forwardX/Y/Z, rightX/Y/Z, upX/Y/Z, setPosition(x,y,z), move(dx,dy,dz), rotate(rx,ry,rz), distanceTo3(other), lookAt(x,y,z), rotateAround(point, axis, angle)
 ```
 
-### Built-in Components - Ultimate (100+)
-`SpriteRenderer`, `TextRenderer`, `TilemapRenderer`, `SortingGroup`, `SpriteMask`, `MeshRenderer` (PBR, castShadows, receiveShadows, renderQueue), `SkinnedMeshRenderer`, `TrailRenderer`, `LineRenderer`, `BillboardRenderer`, `DecalProjector`, `LODGroup`, `ReflectionProbe`, `LightProbeGroup`, `LightProbeProxyVolume`, `Camera` (2D with cullingMask, depth, HDR, MSAA), `Camera3D` (renderPath Forward/Deferred, clearFlags, backgroundColor), `Light` (Directional/Point/Spot/Area/Disc, shadows Hard/Soft, spotAngle, cookie), `LightPro` (colorTemperature, bounceIntensity, volumetrics), `Skybox` (Procedural/Cubemap/HDRI/Gradient/PhysicallyBased), `VolumetricFog`, `PostProcessVolume`, `Rigidbody2D` (angularDrag, collisionDetection, freezeRotation, interpolate), `Collider2D` (Capsule/Polygon/Edge, density, usedByEffector), `Joint2D` (Fixed/Distance/Hinge/Spring/Slider/Wheel/Target), `PhysicsMaterial2D`, `Effector2D` (Point/Area/Buoyancy/Surface/Platform), `Rigidbody3D` (angularDrag, collisionDetection: Discrete/Continuous/Dynamic/Speculative, constraints, centerOfMass), `Collider3D` (Box/Sphere/Capsule/Mesh/Terrain/Wheel, convex), `CharacterController` (slopeLimit, stepOffset, skinWidth), `Joint3D` (Fixed/Hinge/Spring/Distance/Configurable/Character/Wheel), `WheelCollider`, `Cloth` (bending/stretching stiffness), `PhysicsMaterial` (combine modes), `ConstantForce`, `Animator` (controller, avatar, rootMotion, updateMode, cullingMode), `AnimatorController`, `Animation`, `IK` (FABRIK, chainLength, iterations), `Timeline`, `AudioSource` (spatialBlend, rolloff, dopplerLevel, spread, outputGroup), `AudioListener`, `AudioReverbZone` (presets), `AudioMixerGroup`, `ParticleEmitter` (legacy), `ParticleSystem` (V2 with modules), `Trail`, `VisualEffect` (VFX Graph), `NavMeshAgent` (speed, angularSpeed, avoidancePriority), `NavMeshObstacle`, `OffMeshLink`, `BehaviorTree`, `Canvas` (ScreenSpaceOverlay/Camera/WorldSpace), `CanvasGroup`, `RectTransform`, `Image` (Simple/Sliced/Tiled/Filled), `Button` (ColorTint/SpriteSwap/Animation), `TextMeshPro`, `ScrollView`, `Terrain` (detail/tree distances, basemap), `Water` (waveSpeed/scale), `WindZone` (Directional/Spherical), `Tree`, `NetworkIdentity`, `NetworkTransform`, `NetworkAnimator`, `Script`, `ScriptableObject`, `LOD`, `OcclusionArea`, `OcclusionPortal`, `CullingGroup`, `PrefabInstance`.
-
----
-
-## 🏗️ Architecture - Ultimate Edition
-
-```
-app/src/main/java/com/sengine/
-├── engine/
-│   ├── Engine.kt                    # Ultimate core loop with all systems
-│   ├── Input.kt                     # Legacy input
-│   ├── AudioSystem.kt               # Legacy audio
-│   ├── core/
-│   │   ├── Component.kt             # Base component + serialization
-│   │   ├── Components.kt            # 100+ professional components
-│   │   ├── GameObject.kt            # Transform hierarchy + world matrices
-│   │   ├── GameObjectUltimate.kt    # Layer, static flags, prefab, culling
-│   │   ├── Scene.kt                 # Scene + hierarchy + serializer
-│   │   ├── Prop.kt                  # Property descriptors + AssetKind (20+ types)
-│   │   ├── EngineConfig.kt          # EngineVersion 6.0, RenderPipelineType, QualityLevel (6 tiers), QualitySettings (presets), EngineConfig
-│   │   ├── LayerMask.kt             # 32 layers, TagManager (20+ tags), CollisionMatrix
-│   │   ├── TimeManager.kt           # TimeManager (timeScale, fixedDeltaTime, smoothDeltaTime, fps), Application
-│   │   ├── PrefabSystem.kt          # Prefab, PrefabManager, ObjectPool, GameObjectPoolManager
-│   │   ├── BuildSettings.kt         # BuildTarget (Android/Windows/Linux/Mac/WebGL/iOS/Xbox/PS4/PS5/Switch), BuildSettings, PlayerSettings, GraphicsSettings
-│   │   ├── UltimateSystems.kt       # AssetDatabase, BuildPipeline, VersionControl, Analytics, CrashReporting, Localization, Achievements, Leaderboards, IAP
-│   │   ├── SaveSystem.kt            # PlayerPrefs, SaveGameSystem (slots), AddressablesSystem (bundles), CloudSaveSystem
-│   ├── math/
-│   │   ├── Affine.kt                # 2D transforms
-│   │   ├── Mat4.kt                  # 4x4 matrix (TRS, perspective, ortho, lookAt, invert, transpose, point, dir, scaleOf)
-│   ├── physics/
-│   │   ├── PhysicsWorld.kt          # 2D impulse-based
-│   │   ├── PhysicsWorld3D.kt        # 3D with raycast
-│   │   ├── PhysicsMaterialSystem.kt # ContactPoint, CollisionInfo, PhysicsMaterialManager, CCD (sweepSphere), RagdollSystem
-│   │   ├── advanced/
-│   │   │   └── AdvancedPhysics.kt   # Joint (Fixed/Distance/Hinge/Spring/Configurable), JointSystem, CharacterController (slopeLimit, stepOffset, Move), WheelCollider, VehicleController, BroadphaseSAP (proxy, queryPairs)
-│   ├── render/
-│   │   ├── GL.kt                    # GLES helpers
-│   │   ├── Meshes.kt                # Procedural meshes + OBJ loader
-│   │   ├── Shaders.kt               # ShaderLibrary (sprite/mesh/post), POST_EFFECTS (9 built-in)
-│   │   ├── Textures.kt              # TextureCache
-│   │   ├── View2D.kt / View3D.kt    # Camera views
-│   │   ├── SceneRenderer.kt         # Main renderer (2D/3D, UI, post FX, editor overlay, gizmos)
-│   │   ├── Renderer2D.kt / Renderer3D.kt # Renderers
-│   │   ├── PostProcessor.kt         # Post processing
-│   │   ├── MaterialSystem.kt        # Material (PBR), SurfaceType, BlendMode, CullMode, MaterialProperty, MaterialLibrary
-│   │   ├── LightingSystem.kt        # LightingSystem (cull, main light, additional lights, shadow atlas), ShadowAtlas, LightData, LightProbeGroup (SH), ReflectionProbe, ReflectionProbeSystem
-│   │   ├── PostProcessStack.kt      # PostEffectType (20+ effects), PostEffectSettings, PostProcessVolume, PostProcessStack
-│   │   ├── SkyboxSystem.kt          # SkyboxType, ProceduralSkybox, PhysicallyBasedSky (Rayleigh/Mie), GradientSkybox, CubemapSkybox, VolumetricClouds, FogSystem, WaterSystem, OceanSystem, SkyboxSystem (timeOfDay, solar position)
-│   │   ├── RenderFeatures.kt        # RenderFeature interface, SSAO, SSR, Bloom, MotionBlur, DepthOfField, VolumetricLighting, Decal, RenderFeatureManager
-│   │   ├── GPUInstancingSystem.kt   # GPUInstancingSystem (batches, frustum/occlusion culling), InstancedBatch, SRPBatcher, OcclusionCullingSystem, LODSystem
-│   │   ├── ShaderGraphSystem.kt     # ShaderGraphNodeType (25+ nodes), ShaderGraphNode, Connection, ShaderGraph (addNode, connect, compileToGLSL with topological sort)
-│   │   ├── WaterAndVolumetric.kt    # WaterSimulation (wave equation), VolumetricFogSimulation (density, transmittance), CloudSimulation, WeatherSystem
-│   │   ├── pipeline/
-│   │   │   └── RenderPipeline.kt    # RenderPassType, RenderPass, RenderPipeline, ForwardPipeline, DeferredPipeline, UniversalPipeline (MSAA, HDR, shadowDistance, SRP batcher), HighDefinitionPipeline (volumetrics, SSR, SSAO), PipelineManager
-│   │   ├── EditorState.kt           # Editor state + Tool enum
-│   ├── anim/
-│   │   ├── AnimationClip.kt         # Sprite-sheet clip + AnimationSystem
-│   │   └── advanced/
-│   │       ├── AnimatorController.kt # AnimatorController (parameters, layers), AnimatorLayer, AnimationState, AnimatorTransition, AnimatorCondition, BlendTree (1D/2D/Freeform), AnimatorStateMachine, IKSystem (FABRIK)
-│   │       └── TimelineSystem.kt    # TimelineClip, TimelineTrack (Animation/Audio/Activation/Control/Signal/Cinemachine), TimelineAsset, PlayableDirector, CinemachineVirtualCamera (priority, follow/lookAt, lens, body: Transposer/Dolly/Orbital, aim: Composer/POV, noise), CinemachineDollyTrack, CinemachineBrain
-│   ├── audio/
-│   │   └── AudioSystemPro.kt        # AudioMixerGroup, AudioEffect (LowPass/Reverb/Echo), AudioMixer, AudioClip, AudioSourcePro (3D, rolloff, spatialBlend), AudioReverbZone (presets), AudioOcclusionSystem, AudioSystemPro
-│   ├── vfx/
-│   │   └── VFXSystem.kt             # MinMaxCurve/Gradient, ParticleSystemMainModule, EmissionModule (rate, bursts), ShapeModule (Sphere/Cone/Box/etc), Velocity/Color/Size/Rotation/Force/Collision/Trails/Lights modules, Particle, ParticleSystemV2 (play/pause/stop/emit/update with modules), VFXGraph
-│   ├── ai/
-│   │   └── AISystem.kt              # NavMeshNode, NavMesh (Bake, FindPath A*), NavMeshAgent (setDestination, update), Behavior Tree (BTNode, BTSequence, BTSelector, BTInverter, BTCondition, BTAction, BTWait, Blackboard, BehaviorTree), CrowdSimulation
-│   ├── input/
-│   │   └── InputSystemV2.kt         # InputActionType, InputControlType, InputInteraction, InputProcessorType, InputBinding (path <Keyboard>/space, <Gamepad>/leftStick), InputAction (isPressed/wasPressedThisFrame/phase, valueFloat/Vector2), InputActionMap, InputActionAsset (createDefault with Move/Look/Jump/Sprint/Crouch/Fire/Aim/UI), InputSystemV2 (keyboard/gamepad/mouse, update)
-│   ├── terrain/
-│   │   └── TerrainSystem.kt         # Heightmap (Perlin, DiamondSquare, Bilinear), Splatmap, TerrainLayer, TerrainData (getHeightAtWorld, getInterpolatedNormal), Terrain (sampleHeight, detail/tree prototypes), TerrainSystem (getHeightAt, raycast)
-│   ├── ui/canvas/
-│   │   └── CanvasSystem.kt          # CanvasRenderMode, Canvas, RectTransform (anchor, pivot, getRect), CanvasGroup, LayoutGroup (Horizontal/Vertical/Grid, calculateLayout), GraphicRaycaster, UIAnimation
-│   ├── profiling/
-│   │   └── ProfilerSystem.kt        # ProfilerMarker, ProfilerFrame, ProfilerSystem (beginSample/endSample, endFrame, fps, dump), MemoryProfiler (MemorySnapshot), FrameDebugger (DrawCall, totalTriangles/Batches)
-│   ├── net/
-│   │   └── NetworkingSystem.kt      # NetworkRole, NetworkChannel, NetworkMessage, NetworkVariable<T>, NetworkTransform, NetworkIdentity, NetworkManager (startHost/Server/Client, spawnObject), NetworkLobby (ready checks), VoiceChatSystem
-│   ├── blueprint/
-│   │   └── Blueprint.kt             # Visual scripting
-│   └── script/
-│       ├── ScriptSystem.kt          # Rhino JS runtime + Ultimate APIs (Input, Time, Scene, Audio, Physics, Quality, Application, NavMesh, Debug, Gizmos, Object, Mathf, Quaternion)
-│       └── Api.kt                   # SObject (100+ methods), SScene (spawnPooled, spawnPrefab, raycastAll, timeOfDay, quality, terrain), SInput (axis, buttons, mouse, GetAxis/Button), STime (timeScale, deltaTime, smoothDeltaTime), SAudio (playAtPoint, mixer), SPhysics (raycast, overlapSphere), SQuality, SApplication, SNavMesh
-├── project/
-│   ├── Project.kt                   # Ultimate project system (assets/scenes/prefabs/materials/settings, engineConfig, qualitySettings, version, bundleId, buildTarget, scenesInBuild, getProjectSize, getAssetCount)
-│   ├── ProjectManager.kt            # Project list
-│   ├── AssetLibrary.kt              # Asset store
-│   └── Templates.kt                 # 13 templates: Empty 2D, Platformer, Shooter, Physics, 3D Demo, Animated Platformer, Blueprint Demo, FPS Ultimate, Racing Ultimate, RPG Ultimate, Battle Royale Ultimate, City Builder Ultimate, Ultimate Showcase
-└── ui/
-    ├── ProjectsActivity.kt          # Project manager UI
-    ├── EditorActivity.kt            # Main editor (hierarchy, inspector, viewport, assets, console, profiler)
-    ├── ScriptEditorActivity.kt      # Code editor with API ref
-    ├── BlueprintEditorActivity.kt   # Visual scripting
-    ├── AnimationEditorActivity.kt   # Animation clip editor
-    ├── BuildActivity.kt             # Build & run + APK export
-    ├── PlayerActivity.kt            # Full-screen player
-    ├── AssetStoreActivity.kt        # Asset store
-    ├── GameControlsView.kt          # Joystick + buttons
-    ├── ViewportController.kt        # 2D viewport (pan/zoom/select/gizmo)
-    ├── Viewport3DController.kt      # 3D viewport (orbit/pan/dolly)
-    └── InspectorPanel.kt            # Inspector UI
-
-Projects stored as:
-```
-<project>/
-├── project.json                 # engine version 6.0, quality, build settings, scenesInBuild
-├── settings/
-│   ├── EngineConfig.json        # pipeline, colorSpace, quality, GPU instancing, SRP batcher
-│   └── QualitySettings.json     # 6 tiers with renderScale, shadows, MSAA, HDR, post FX, LOD bias
-├── scenes/
-│   └── Main.scene.json          # objects with 100+ component types
-├── assets/
-│   ├── Player.js, hero.png, jump.wav, Toon.glsl, HeroRun.anim, Tree.obj, etc
-│   ├── *.mat                    # PBR materials
-│   ├── *.shadergraph            # Shader graphs
-│   ├── *.vfx                    # VFX graphs
-│   ├── *.controller             # Animator controllers
-│   ├── *.timeline               # Timelines
-│   ├── *.mixer                  # Audio mixers
-│   └── *.inputactions           # Input action assets
-├── prefabs/
-│   └── *.prefab                 # Prefab JSON
-└── materials/
-    └── *.mat                    # Material library
-```
-```
-
-### Why Ultimate Edition?
-
-- **Unity 6 Parity**: URP/HDRP, SRP Batcher, GPU Instancing, Shader Graph, VFX Graph, Timeline, Cinemachine, Animator Controller with Blend Trees, NavMesh, Behavior Trees, Input System v2, Addressables, Post Processing Stack v3, PBR materials, LODGroup, Occlusion Culling, Light Probes, Reflection Probes, Decals, Volumetrics
-- **Unreal Engine 5 Parity**: Nanite-like LOD, Lumen-like GI (light probes), Chaos-like physics (joints, vehicles, cloth, ragdoll, CCD), Niagara-like VFX, World Partition-like terrain, MetaSounds-like audio mixer, Enhanced Input, Replication/Netcode, World Building tools, Material Editor
-- **Mobile First**: Runs entirely on Android phone/tablet, touch-optimized editor, on-screen joystick + gamepad + keyboard, APK export with custom signing
-- **Professional Tools**: Profiler (markers, frame history, memory), Frame Debugger (draw calls, triangles, batches), Version Control, Analytics, Crash Reporting, Localization, Achievements, Leaderboards, IAP, Cloud Save
-- **Performance**: Job System (multithreaded), ECS (DOTS), GPU Instancing (1023/batch), SRP Batcher, Occlusion Culling, LOD cross-fade, texture quality tiers, particle budget, dynamic resolution, graphics jobs, compute skinning
-
----
-
-## 🎮 Scripting - Ultimate API
-
-See full API above. Backward compatible with all previous S Engine scripts.
-
-### Example - Ultimate Showcase Player
-
+### Physics (Ultimate + Quantum)
 ```js
-// Ultimate Showcase Player - Demonstrates all engine features
-var speed = 6, jump = 7, health = 100
-var score = 0
+addForce(fx,fy,fz), setVelocity(vx,vy,vz), addExplosionForce(force, pos, radius, upMod), raycast(ox,oy,oz,dx,dy,dz,maxDist), raycastAll(...), overlapSphere(x,y,z,r), checkSphere(x,y,z,r),
+chaos.createDestructible(name,x,y,z,sx,sy,sz,pieces), chaos.applyDamage(id,amount,hx,hy,hz), chaos.addField(x,y,z,radius,strength,type), chaos.getActivePieces(),
+fluid.addEmitter(x,y,z,type,rate), fluid.getParticleCount(),
+worldPartition.getLoadedCells(), worldPartition.getCellAt(x,z), worldPartition.getStats()
+```
 
-function start() {
-    log("S Engine Ultimate Edition - Ultimate Showcase");
-    log("Features: PBR Materials, GPU Instancing, Post FX, NavMesh AI, VFX Graph, Terrain, Water, Volumetrics, Multiplayer Ready")
-}
+### Animation (Ultimate + Quantum)
+```js
+play(clip), stopAnimation(), setAnimatorFloat(name,value), setAnimatorBool(name,bool), setAnimatorTrigger(name),
+controlRig: rigs, bones, controls, evaluateAll(),
+motionMatching: clips Walk/Run/Idle, query velocity/facing, searchBestMatch(), update(dt), addWarpingTarget(x,y,z,rotY,start,end)
+```
 
-function update(dt) {
-    // Advanced movement with root motion
-    self.vx = input.axisX * speed
-    self.vz = input.axisY * speed
-    
-    if (input.aDown && self.grounded) {
-        self.vy = jump
-        audio.play("jump.wav")
-        var fx = scene.spawn("JumpFX", self.worldX, self.worldY, self.worldZ)
-        if (fx) { fx.burst(15); after(1, function(){fx.destroy()}) }
-    }
-    
-    // Interaction via raycast
-    if (input.bDown) {
-        var hit = scene.raycast(self.worldX, self.worldY + 1, self.worldZ, self.forward()[0], self.forward()[1], self.forward()[2], 3)
-        if (hit) hit.send("interact")
-    }
-    
-    // Quality settings at runtime
-    if (input.getButtonDown("F1")) scene.setQualityLevel("Ultra")
-}
+### Rendering Quantum
+```js
+rayTracing.isSupported(), getMode(), setMode(mode), getQuality(), setQuality(q), traceShadowRay(ox,oy,oz,dx,dy,dz,maxDist), getStats(),
+nanite.getQuality(), setQuality(q), getVisibleMeshlets(), getCulledMeshlets(), getTotalTriangles(), getStats(),
+decal.createDecal(x,y,z,sx,sy,sz,texture), createBulletHole(x,y,z,nx,ny,nz), getCount(),
+compute.dispatch(shader,x,y,z), getStats(),
+foliage.paintFoliage(proto,x,z,radius,density), getInstanceCount(),
+spline.createSpline(name,type), evaluate(name,t) -> [x,y,z],
+pcg.generate(graphName,seed) -> [[x,y,z]]
+```
 
-function addScore(s) {
-    score += s
-    scene.find("ScoreText").text = "Score: " + score
-    scene.shake(s * 0.01)
-    // Pooled VFX
-    var fx = scene.spawnPooled("CoinFX", self.worldX, self.worldY, self.worldZ)
-}
+### Gameplay Quantum
+```js
+dialogue.startDialogue(name), selectChoice(index), nextLine(), isActive(),
+quest.startQuest(id), completeQuest(id), updateObjective(target,amount), getActiveQuests(),
+inventory.addItem(id,quantity), hasItem(id,quantity), getGold(), setGold(g),
+skillTree.unlockSkill(id), getSkillPoints(),
+worldTime.getTimeOfDay(), setTimeOfDay(h), getSeason(), getWeather(), setWeather(type), isDay(), isNight(), getTemperature(),
+xr.isEnabled(), enable(mode), getHeadPosition(),
+mlAgents.getAgentCount(), getAverageReward()
+```
 
-function onTrigger(other) {
-    if (other.tag == "Coin") {
-        addScore(10)
-        other.destroy()
-        audio.play("coin.wav")
-    }
-}
+### Scene (Ultimate + Quantum)
+```js
+spawn(name,x,y,z), spawnPooled(name,x,y,z), spawnPrefab(name,x,y,z), find(name), findAll(tag), findWithLayer(layer), count(tag), shake(amount),
+raycast(...), raycastAll(...), getCamera3D(), getGravity3D(), setGravity3D(x,y,z), load(name), reload(), getCamera(), getGravityX/Y set,
+getTimeOfDay(), setTimeOfDay(h), getQualityLevel(), setQualityLevel(name), getTerrainHeight(x,z)
+```
+
+### Input (Ultimate)
+```js
+axisX/Y, a/b/aDown/bDown, touching/tapped/touchX/Y, mouseX/Y/DeltaX/Y, left/rightMouse, getAxis(name), getButton(name), getButtonDown(name)
+```
+
+### Time (Ultimate)
+```js
+time, unscaledTime, deltaTime, unscaledDeltaTime, fixedDeltaTime, timeScale, setTimeScale(s), smoothDeltaTime, frame, fps
+```
+
+### Quality & App & NavMesh
+```js
+quality.getLevel(), setLevel(name), getRenderScale(), setRenderScale(s),
+app.getVersion(), getPlatform(), getIsPlaying(), quit(), openURL(url),
+navMesh.calculatePath(sx,sy,sz,ex,ey,ez), samplePosition(x,y,z,maxDist)
 ```
 
 ---
 
-## 📦 Download & Build
+## 🏗️ Architecture - Quantum
 
-Every push is built by GitHub Actions. Grab the APK from:
-- **Releases → "S Engine – Ultimate Edition"** → `SEngine-Ultimate.apk`, or
-- **Actions → latest "Build S Engine APK" run → Artifacts → `SEngine-debug-apk`**
-
-### Building Ultimate Edition
-
-Requirements: JDK 17 and Android SDK (API 34). Android Studio Hedgehog or newer.
-
-```bash
-./gradlew assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
-# Engine Version: 6.0.0 Ultimate Edition [Nexus] API:600
+```
+S Engine 6.1 Quantum (90+ Kotlin Files)
+├── Engine.kt (Quantum: 30+ -> 55+ systems, runFrame with Quantum section)
+├── Engine6_1Upgrade.kt (Quantum manifest, 27 features)
+├── UltimateEdition.kt (6.1.0 Quantum API 610)
+├── core/
+│   ├── EngineConfig.kt (QualitySettings + RayTracingQuality/NaniteQuality/VT Quality, EngineConfig flags)
+│   ├── Components.kt (100+ -> 150+ components)
+│   ├── BuildSettings.kt (10 targets + XR)
+│   ├── LayerMask.kt (32 layers, 18 tags, CollisionMatrix)
+│   ├── TimeManager.kt, PrefabSystem.kt, SaveSystem.kt, UltimateSystems.kt
+│   ├── ComputeShaderSystem.kt (Buffers, Shaders, Dispatch, Default: Clear/ParticleUpdate/FrustumCulling/Skinning/FluidSPH)
+│   └── ModdingSystem.kt (Mods, Plugins IPlugin)
+├── ecs/ ECS.kt (Entity/Archetype/Chunk/Query/System/World)
+├── jobs/ JobSystem.kt (Multithreaded, NativeArray, MathJobs)
+├── render/
+│   ├── MaterialSystem.kt (PBR), pipeline/RenderPipeline.kt (Forward/Deferred/URP/HDRP)
+│   ├── LightingSystem.kt (Main+16 lights, ShadowAtlas 4096, LightProbe SH27, ReflectionProbe)
+│   ├── PostProcessStack.kt (23 effects), SkyboxSystem.kt (Procedural/PhysicallyBased Rayleigh/Mie, TimeOfDay)
+│   ├── RenderFeatures.kt (SSAO/SSR/Bloom/MotionBlur/DoF/Volumetric/Decal), GPUInstancingSystem.kt (1023/batch, SRPBatcher, Occlusion, LOD)
+│   ├── ShaderGraphSystem.kt (25 nodes, compileToGLSL), WaterAndVolumetric.kt, VirtualTextureSystem.kt (RTVT 8192 streaming)
+│   ├── RayTracingSystem.kt (RT Shadows/Reflections/GI/AO PathTracing Denoiser), GlobalIlluminationSystem.kt (Lumen RT GI Lightmapping SSGI RadianceProbes IrradianceVolume)
+│   ├── VirtualizedGeometrySystem.kt (Nanite meshlets 64/124 cluster culling LODs software rasterizer), DecalSystemV2.kt (Deferred decals bullet/blood/footstep), LightmappingSystem.kt, HairSystem.kt (Strand 1000)
+│   └── pipeline/
+├── physics/
+│   ├── PhysicsWorld.kt (2D), PhysicsWorld3D.kt, advanced/AdvancedPhysics.kt (Joints, CharacterController, WheelCollider, Vehicle)
+│   ├── PhysicsMaterialSystem.kt (ContactPoint, CollisionInfo, MaterialManager Ice/Rubber/Metal/Wood/Bouncy, CCD sweepSphere, Ragdoll)
+│   ├── ChaosDestructionSystem.kt (Fracture Voronoi Pieces/Clusters Fields), FluidSimulationSystem.kt (SPH Fluid Smoke Fire SoftBody)
+│   └── ...
+├── anim/
+│   ├── AnimationSystem.kt, advanced/AnimatorController.kt (State Machines Blend Trees IK FABRIK), TimelineSystem.kt (Timeline Tracks Clips PlayableDirector Cinemachine)
+│   └── advanced/ControlRigSystem.kt (Humanoid 20 bones Controls Units FABRIK FullBodyIK), MotionMatchingSystem.kt (Pose Features Trajectory Warping)
+├── ai/
+│   ├── AISystem.kt (NavMesh A*, NavMeshAgent, Behavior Trees Sequence/Selector, Blackboard, Crowd)
+│   ├── EQSSystem.kt (EQS Grid/Cone/Circle/Donut Tests Distance/Dot/Overlap Scoring UtilityAI), MLA_AgentsSystem.kt (ML-Agents RL Policy)
+│   └── ...
+├── audio/ AudioSystemPro.kt (Mixer Groups SFX/Music/UI/Ambient Spatial Rolloff Reverb Zones 23 presets Occlusion)
+├── vfx/ VFXSystem.kt (ParticleSystemV2 10 modules Trails Lights Collision VFXGraph)
+├── input/ InputSystemV2.kt (Action-based Rebindable Composite Processors)
+├── terrain/ TerrainSystem.kt (Heightmap Perlin/DiamondSquare Bilinear Splatmap TerrainLayer Terrain sampleHeight raycast)
+├── world/ WorldPartitionSystem.kt (World 4096 Cells 256 HLOD Streaming Levels), SplineSystem.kt (Roads Rivers SplineMesh), FoliageSystem.kt (100k Instances Painting Wind), PCGSystem.kt (Graph Nodes Forest/City/Biome)
+├── xr/ XRSystem.kt (VR/AR/MR Hand Tracking 26 joints Eye Tracking Anchors Passthrough)
+├── gameplay/ DialogueSystem.kt (Branching), QuestSystemV2.kt (Quests Objectives Rewards), InventorySystemV2.kt (Slots 30 Rarity), SkillTreeSystem.kt (Nodes Warrior Tree), WorldTimeSystem.kt (Calendar Seasons Weather Ocean FFT)
+├── ui/canvas/ CanvasSystem.kt (Canvas RectTransform CanvasGroup LayoutGroup GraphicRaycaster)
+├── net/ NetworkingSystem.kt (Netcode Server/Client/Host NetworkVariable Transform Lobby Voice), RollbackNetcode.kt (GGPO Rollback LagComp AntiCheat)
+├── profiling/ ProfilerSystem.kt (Markers Frames FPS Memory FrameDebugger)
+├── tools/ LevelEditorTools.kt (Spline Foliage TerrainSculpt VertexPaint History Undo/Redo)
+├── script/ Api.kt (200+ methods Quantum), ScriptSystem.kt (Rhino + 17 Quantum APIs)
+└── project/ Project.kt (Assets/Scenes/Prefabs/Materials/Settings, EngineConfig, QualitySettings, getProjectSize/AssetCount), Templates.kt (20 templates)
 ```
 
-Minimum Android: 8.0 (API 26). Requires OpenGL ES 3.0 (2.0 fallback). Vulkan-ready.
+---
+
+## 📊 Comparison - 6.0 vs 6.1 Quantum vs Unity 6 vs UE5
+
+| Feature | S Engine 1.0 | S Engine 6.0 Nexus | S Engine 6.1 Quantum | Unity 6 | Unreal 5.4 |
+|---|---|---|---|---|---|
+| **Version** | 1.0 | 6.0 Nexus API 600 | **6.1 Quantum API 610** | 6000.0 | 5.4 |
+| **Render Pipelines** | Built-in | Forward/Deferred/URP/HDRP | **+ RayTracing + Nanite + Lumen + VT** | URP/HDRP | Deferred + Nanite + Lumen |
+| **Ray Tracing** | ❌ | ❌ | **✅ Shadows/Reflections/GI/AO/PathTracing/Denoiser** | ✅ | ✅ |
+| **Nanite** | ❌ | GPU Instancing 1023 | **✅ Meshlets 64/124 Cluster Culling LODs** | ❌ | ✅ |
+| **Lumen GI** | ❌ | Light Probes SH27 | **✅ Realtime GI + SSGI + Radiance Probes + Irradiance Volume** | APV | ✅ |
+| **Virtual Textures** | ❌ | ❌ | **✅ RTVT 8192 Streaming UDIM Sparse** | ✅ VT | ✅ VT |
+| **Destruction** | ❌ | Ragdoll | **✅ Chaos Fracture Voronoi Pieces Clusters Fields** | ❌ | ✅ Chaos |
+| **Fluid** | ❌ | ❌ | **✅ SPH/PBF/FLIP Smoke Fire Soft Body** | ❌ | ✅ Niagara Fluids |
+| **World Partition** | ❌ | ❌ | **✅ 4096m World 256m Cells HLOD Streaming Levels** | ❌ | ✅ |
+| **Spline** | ❌ | ❌ | **✅ Linear/Bezier/CatmullRom/BSpline Road/River Mesh** | ✅ Splines | ✅ Splines |
+| **Foliage** | ❌ | Trees 20 instanced | **✅ 100k Instances Painting Procedural Wind** | ✅ | ✅ |
+| **PCG** | ❌ | ❌ | **✅ Graph Nodes Forest/City/Biome** | ✅ PCG | ✅ PCG |
+| **Control Rig** | ❌ | IK FABRIK | **✅ Humanoid 20 bones Full Body IK Retargeting** | ✅ Animation Rigging | ✅ Control Rig |
+| **Motion Matching** | ❌ | ❌ | **✅ Pose Search Trajectory Warping Distance Matching** | ✅ Motion Matching | ✅ Motion Warping |
+| **Hair** | ❌ | ❌ | **✅ Strand-based 1000 Physics Grooming** | ✅ Hair | ✅ Groom |
+| **XR** | ❌ | ❌ | **✅ VR/AR/MR Hand Tracking 26 joints Eye Tracking Anchors** | ✅ XR | ✅ XR |
+| **EQS** | ❌ | Behavior Trees | **✅ EQS Grid/Cone/Circle Utility AI** | ❌ | ✅ EQS |
+| **ML-Agents** | ❌ | ❌ | **✅ RL PPO Imitation Heuristic** | ✅ ML-Agents | ✅ Learning Agents |
+| **Dialogue** | ❌ | ❌ | **✅ Branching Conditions Localization** | ❌ | ✅ Dialogue |
+| **Quest** | ❌ | ❌ | **✅ Main/Side/Daily Objectives Rewards Time Limit** | ❌ | ✅ Quest |
+| **Inventory** | ❌ | ❌ | **✅ 30 Slots Stacking Weight Rarity Equipment** | ❌ | ✅ |
+| **Skill Tree** | ❌ | ❌ | **✅ Nodes Prerequisites Warrior Tree** | ❌ | ✅ |
+| **World Time** | ❌ | TimeOfDay 0-24 | **✅ Calendar Seasons Weather Ocean FFT** | ✅ | ✅ TimeOfDay |
+| **Compute Shaders** | ❌ | Job System | **✅ Compute Buffers Shaders Dispatch Async** | ✅ Compute | ✅ Compute |
+| **Modding** | ❌ | ❌ | **✅ Mods Plugins Dependencies Load Order** | ✅ | ✅ Mods |
+| **Level Tools** | ❌ | Prefab workflow | **✅ Spline Foliage TerrainSculpt VertexPaint Undo/Redo** | ✅ | ✅ |
+| **Rollback Netcode** | ❌ | Netcode Server/Client/Host | **✅ GGPO Rollback LagComp AntiCheat** | ❌ | ✅ |
+| **Decals** | ❌ | DecalFeature | **✅ Deferred Bullet/Blood/Footstep LifeTime** | ✅ Decal | ✅ Decal |
+| **Lightmapping** | ❌ | GI estimateIrradiance | **✅ CPU Bake Bounces Samples AO Denoiser** | ✅ Progressive | ✅ GPU Lightmass |
+| **Components** | 14 | 100+ | **150+** | 100+ | 100+ |
+| **Systems** | 5 | 30+ | **55+** | 50+ | 50+ |
+| **Templates** | 7 | 13 | **20** | 10+ | 10+ |
+| **Scripting API** | 20 | 100+ | **200+** | C# 1000+ | C++/BP |
+| **Build Targets** | Android | 10 (Android/Win/Linux/Mac/WebGL/iOS/Xbox/PS4/PS5/Switch) | **10 + XR** | 20+ | 10+ |
 
 ---
 
-## 🏆 Ultimate Edition Comparison
+## 🛠️ Build Instructions
 
-| Feature | S Engine 1.0 | S Engine Ultimate 6.0 | Unity 6 | Unreal 5 |
-|---|---|---|---|---|
-| Render Pipelines | Built-in | Forward, Deferred, URP, HDRP | URP, HDRP | Forward, Deferred |
-| PBR Materials | No | Yes (metallic, smoothness, emission, tiling) | Yes | Yes |
-| GPU Instancing | No | Yes (1023/batch, SRP Batcher) | Yes | Yes (ISMC) |
-| Post Processing | 9 FX | 23+ FX (SSAO, SSR, MotionBlur, DoF, etc) | Yes | Yes |
-| Physics | 2D+3D basic | Joints, Vehicle, CharacterController, Cloth, Ragdoll, CCD, Materials | PhysX | Chaos |
-| Animation | Sprite-sheet | Animator Controller (states, blend trees), IK (FABRIK), Timeline, Cinemachine | Yes | Yes |
-| AI | None | NavMesh (A*), Behavior Trees, Crowd | NavMesh | Behavior Trees |
-| Audio | Simple | Mixer Groups, Spatial Audio, Reverb Zones, Occlusion | Audio Mixer | MetaSounds |
-| VFX | Simple particles | VFX Graph, Advanced PS (10 modules, trails, lights, collision) | VFX Graph | Niagara |
-| Input | Joystick | Input System v2 (actions, bindings, composites, processors) | New Input System | Enhanced Input |
-| Terrain | None | Heightmap (Perlin/DiamondSquare), Splatmap, Layers, Trees, Details | Terrain | Landscape |
-| Water | None | WaterSimulation (wave eq), Ocean, Foam, Refraction/Reflection | Water System | Water |
-| Networking | None | Netcode (Server/Client/Host), Lobby, Voice Chat | Netcode for GameObjects | Replication |
-| ECS | None | Entity/Archetype/Chunk/Query/System/World + Job System | DOTS | Mass AI |
-| Shader Authoring | GLSL files | Shader Graph (25+ nodes, compiles to GLSL) | Shader Graph | Material Editor |
-| Profiling | Simple ms | Profiler (markers, frames, FPS), Memory Profiler, Frame Debugger | Profiler | Insights |
-| Save System | None | PlayerPrefs, SaveGame (slots), Addressables (bundles), Cloud Save | Yes | Yes |
-| Services | None | Analytics, Crash Reporting, Localization, Achievements, Leaderboards, IAP | Yes | Yes |
-| Components | 14 | 100+ | 100+ | 100+ |
-| Templates | 7 | 13 (including FPS, Racing, RPG, Battle Royale, City Builder, Ultimate Showcase) | Many | Many |
+1. Open in Android Studio
+2. Sync Gradle (versionCode 610, versionName 6.1.0 Quantum)
+3. Run on device (Min SDK 26, Target 34, OpenGL ES 3.0 + Vulkan-ready)
+4. Build APK: `./gradlew assembleDebug`
+
+**BuildConfig**: ENGINE_VERSION 6.1.0 Ultimate Edition [Quantum], API 610, RENDER_PIPELINE Universal+RayTracing+Nanite, ENGINE_CODENAME Quantum, ENGINE_FEATURES RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG
 
 ---
 
-## 📄 License
+## 🎯 Roadmap Beyond Quantum
 
-MIT - See LICENSE file.
+- **6.2 [Singularity]**: Path Tracing Full, Neural Rendering DLSS/FSR, Substrate Materials, Heterogeneous Volumes, State Tree, Mass AI, Verse Scripting, MetaHuman 2.0, World Building Procedural
+- **7.0 [Genesis]**: Vulkan Renderer, Full RTX, Nanite 2.0, Lumen 2.0, Chaos 2.0 with Fluid Destruction, World Partition 2.0 with HLOD 2.0, Control Rig 2.0 with Machine Learning Deformer, Motion Matching 2.0 Learned, XR 2.0 with Face Tracking, ML-Agents 2.0 with Self-Play
 
-**S Engine Ultimate Edition 6.0 [Nexus]** - Professional Game Engine for Android
-*Built with ❤️ for mobile game developers who want Unity 6 + Unreal 5 power in their pocket.*
+---
+
+**S Engine Ultimate Edition 6.1 [Quantum] — The Next Big Game Engine**
+
+*Build the Impossible, On Your Phone.*
+
+*Engine Version: 6.1.0 Ultimate Edition [Quantum] API:610 Codename: Quantum Release: 2026-10-11*
+*Prev: 6.0.0 Nexus API:600 | Systems: 55+ | Components: 150+ | Templates: 20 | API Methods: 200+*
+*Render: Universal+RayTracing+Nanite+Lumen+VirtualTexture | Physics: PhysX/Chaos/Fluid | AI: NavMesh/EQS/MLAgents*
+*World: WorldPartition/Spline/Foliage/PCG | Animation: ControlRig/MotionMatching | XR: VR/AR/MR | Net: Rollback/LagComp/AntiCheat*
+

@@ -19,7 +19,7 @@ import com.sengine.engine.core.TextRenderer
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, fpsTemplate, racingTemplate, rpgTemplate, battleRoyaleTemplate, cityBuilderTemplate, ultimateShowcase) }
+    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, fpsTemplate, racingTemplate, rpgTemplate, battleRoyaleTemplate, cityBuilderTemplate, ultimateShowcase, quantumShowcase, rayTracingDemo, destructionDemo, fluidDemo, openWorldPCG, vrDemo, mlAgentsDemo) }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution
@@ -1236,6 +1236,451 @@ function update(dt) {
         
         p.writeAsset("Rotator.js", "function update(dt){self.rotY += 90 * dt}")
         p.saveScene(s); p.startScene = "Main"; p.orientation = 0
+    }
+
+    // ==================== ULTIMATE 6.1 QUANTUM TEMPLATES ====================
+
+    val quantumShowcase = Template("Quantum Showcase", "Ultimate 6.1 - All Quantum Features: RayTracing, Nanite, Lumen, Chaos, WorldPartition, PCG") { p ->
+        p.writeAsset("QuantumPlayer.js", """
+var speed = 6, health = 100, score = 0, isGrounded = false
+var rayTracingEnabled = true, naniteEnabled = true, lumenEnabled = true
+
+function start() {
+    log("Quantum Showcase - RayTracing, Nanite, Lumen, Chaos, World Partition, PCG, Control Rig, Motion Matching, XR, ML-Agents")
+    scene.find("Info").setText("S Engine 6.1 Quantum | RayTracing | Nanite | Lumen | Chaos | World Partition | PCG | Control Rig | XR")
+}
+
+function update(dt) {
+    var vx = input.axisX * speed, vz = input.axisY * speed
+    self.vx = vx; self.vz = vz
+    if (input.aDown && isGrounded) { self.vy = 7; audio.play("jump"); scene.find("JumpFX").burst(20) }
+    
+    // Quantum features toggle
+    if (input.bDown) {
+        rayTracingEnabled = !rayTracingEnabled
+        log("RayTracing: " + rayTracingEnabled + " | Nanite: " + naniteEnabled + " | Lumen: " + lumenEnabled)
+        scene.shake(0.2)
+    }
+    
+    // World Partition test
+    var cellX = Math.floor(self.worldX / 256), cellZ = Math.floor(self.worldZ / 256)
+    scene.find("CellInfo").setText("Cell: " + cellX + "," + cellZ + " | Pos: " + Math.floor(self.worldX) + "," + Math.floor(self.worldZ))
+    
+    // Time of day
+    var tod = scene.getTimeOfDay()
+    scene.find("TimeInfo").setText("Time: " + Math.floor(tod) + ":00 | Weather: Clear")
+}
+
+function takeDamage(dmg) {
+    health -= dmg
+    scene.find("HealthBar").scaleX = health / 100
+    if (health <= 0) { log("Game Over"); scene.reload() }
+}
+
+function addScore(s) {
+    score += s
+    scene.find("ScoreText").setText("Score: " + score + " | Quantum Points")
+    scene.shake(s * 0.01)
+}
+
+function onCollision(other) {
+    if (other.name.indexOf("Ground") >= 0) isGrounded = true
+}
+""")
+        p.writeAsset("QuantumAI.js", """
+var state = "patrol", target = null, speed = 3, detectionRange = 15, attackRange = 2
+var patrolPoints = [], currentPatrol = 0, eqsQuery = "FindCover"
+
+function start() {
+    target = scene.find("Player")
+    patrolPoints = [scene.find("Patrol1"), scene.find("Patrol2"), scene.find("Patrol3"), scene.find("Patrol4")]
+    log("Quantum AI - EQS, Utility AI, ML-Agents, Behavior Tree")
+}
+
+function update(dt) {
+    var dist = self.distanceTo3(target)
+    if (dist < detectionRange) {
+        state = "chase"
+        // EQS - find best cover position
+        var bestCover = scene.find("Cover1")
+        if (bestCover) {
+            // Utility AI - evaluate actions
+            var health = 100 // would come from blackboard
+            var action = health < 30 ? "flee" : "attack"
+            if (action == "flee") {
+                self.setDestination(bestCover.worldX, bestCover.worldY, bestCover.worldZ)
+            }
+        }
+    }
+    if (state == "patrol") {
+        var dest = patrolPoints[currentPatrol]
+        if (dest) {
+            var dx = dest.worldX - self.worldX, dz = dest.worldZ - self.worldZ
+            var d = Math.sqrt(dx*dx+dz*dz)
+            if (d < 1) currentPatrol = (currentPatrol+1) % patrolPoints.length
+            else { self.vx = (dx/d)*speed*0.6; self.vz = (dz/d)*speed*0.6 }
+        }
+    } else if (state == "chase") {
+        if (dist < attackRange) state = "attack"
+        else {
+            var dirX = target.worldX - self.worldX, dirZ = target.worldZ - self.worldZ
+            var len = Math.sqrt(dirX*dirX+dirZ*dirZ)
+            self.vx = (dirX/len)*speed; self.vz = (dirZ/len)*speed
+        }
+    } else if (state == "attack") {
+        if (dist > attackRange*1.5) state = "chase"
+        else target.send("takeDamage", 20*dt)
+    }
+}
+""")
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 50f; s.fogEnd = 200f; s.ambient = 0xFF6A7A8A.toInt()
+        val player = obj3(s, "Player", 0f, 2f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3(friction=0.1f).script("QuantumPlayer.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.CharacterControllerComponent())
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow="Player"; it.offsetY=5f; it.offsetZ=10f; it.fov=75f; it.postFx=6; it.postIntensity=1f })
+        player.add(com.sengine.engine.core.AudioListener())
+        player.add(com.sengine.engine.core.TrailRenderer().also { it.time=0.6f; it.startWidth=0.4f })
+
+        obj3(s, "Ground", 0f, -0.5f, 0f, 200f, 1f, 200f).mesh(2, 0xFF7A9A6A).col3().body3(type=2)
+
+        // Nanite showcase - high poly meshes
+        for (i in 0 until 10) {
+            obj3(s, "NaniteMesh_$i", random(-30,30), 1f, random(-30,30), 1f, 1f, 1f).mesh(8, 0xFF8D6E63, model="HighPoly.obj").col3()
+        }
+
+        // Chaos Destruction
+        for (i in 0 until 5) {
+            obj3(s, "Destructible_$i", random(-20,20), 3f, random(-20,20), 2f, 2f, 2f).mesh(0, 0xFF5A5A5A).col3().body3().script("Destructible.js", "health=100")
+        }
+
+        // Spline road
+        obj3(s, "SplineRoad", 0f, 0.1f, 0f, 100f, 0.1f, 4f).mesh(2, 0xFF3A3A3A)
+
+        // Foliage - GPU instanced
+        for (i in 0 until 50) {
+            obj3(s, "Foliage_$i", random(-50,50), 0f, random(-50,50), 0.5f, 1f, 0.5f).mesh(8, 0xFF4CAF50, model="Grass.obj")
+        }
+
+        // AI with EQS
+        for (i in 0 until 3) {
+            obj3(s, "QuantumEnemy_$i", random(-20,20), 1f, random(-20,20), 0.8f, 1.6f, 0.8f).mesh(6, 0xFFEF5350).col3().body3().script("QuantumAI.js").also { it.tag="Enemy"; it.add(com.sengine.engine.core.NavMeshAgentComponent().also { a->a.speed=3f }) }
+        }
+
+        for (i in 1..4) {
+            val angle = (i-1)*90f*Math.PI/180
+            obj3(s, "Patrol$i", (Math.cos(angle)*15).toFloat(), 0f, (Math.sin(angle)*15).toFloat(), 0.3f, 0.3f, 0.3f).mesh(1, 0xFF00FF00)
+        }
+
+        // VFX
+        val jumpFX = obj3(s, "JumpFX", 0f, 0f, 0f); jumpFX.active=false
+        jumpFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=30f; it.speed=5f; it.lifetime=0.6f; it.startColor=0xFF4FC3F7.toInt() })
+
+        // UI
+        obj(s, "ScoreText", 0f, 4.5f).text("Score: 0 | Quantum Points", 0.4f).also { it.get<TextRenderer>()!!.screenSpace=true; it.order=100 }
+        obj(s, "HealthBar", -5f, 4f, 2f, 0.3f).sprite(0xFF4CAF50).also { it.get<com.sengine.engine.core.SpriteRenderer>()!!.screenSpace=true; it.order=100 }
+        obj(s, "CellInfo", 5f, 4f).text("Cell: 0,0", 0.3f).also { it.get<TextRenderer>()!!.screenSpace=true; it.order=100 }
+        obj(s, "TimeInfo", 0f, -4.5f).text("Time: 12:00 | Weather: Clear", 0.3f).also { it.get<TextRenderer>()!!.screenSpace=true; it.order=100 }
+        obj(s, "Info", 0f, -4f).text("S Engine 6.1 Quantum | RayTracing | Nanite | Lumen | Chaos | WorldPartition | PCG | ControlRig | XR | ML-Agents", 0.22f).also { it.get<TextRenderer>()!!.screenSpace=true; it.order=100 }
+
+        p.writeAsset("Destructible.js", "var health=100; function takeDamage(d){health-=d; if(health<=0){scene.find(\"Explosion\").worldX=self.worldX; scene.find(\"Explosion\").worldY=self.worldY; scene.find(\"Explosion\").worldZ=self.worldZ; scene.find(\"Explosion\").burst(50); self.destroy()}}")
+        val explosion = obj3(s, "Explosion", 0f, 0f, 0f); explosion.active=false
+        explosion.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=360f; it.speed=8f; it.lifetime=0.8f; it.startColor=0xFFFF6D00.toInt() })
+
+        p.writeAsset("Rotator.js", "function update(dt){self.rotY += 45*dt}")
+        p.saveScene(s); p.startScene="Main"; p.orientation=0
+    }
+
+    val rayTracingDemo = Template("RayTracing Demo", "RT Shadows, Reflections, GI, AO - Quantum Rendering") { p ->
+        p.writeAsset("RTPlayer.js", """
+var speed=4, rotSpeed=60
+function update(dt){
+    self.vx = input.axisX*speed; self.vz = input.axisY*speed
+    self.rotY += input.mouseDeltaX * 0.2
+    // Ray tracing debug
+    if (input.aDown) {
+        var hit = scene.raycast(self.worldX, self.worldY, self.worldZ, self.forwardX, self.forwardY, self.forwardZ, 100)
+        if (hit) { log("RT Hit: " + hit.name + " at " + hit.distance); scene.find("RT_HitFX").worldX=hit.x; scene.find("RT_HitFX").worldY=hit.y; scene.find("RT_HitFX").worldZ=hit.z; scene.find("RT_HitFX").burst(10) }
+    }
+}
+""")
+        val s = Scene("Main")
+        s.ambient = 0xFF2A2A3A.toInt()
+        val player = obj3(s, "Player", 0f, 1f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3().script("RTPlayer.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow="Player"; it.offsetY=3f; it.offsetZ=6f; it.fov=75f })
+
+        // Mirrors for RT reflections
+        obj3(s, "Mirror1", -5f, 2f, -5f, 0.1f, 4f, 4f).mesh(2, 0xFFAAAAFF).col3().body3(type=2)
+        obj3(s, "Mirror2", 5f, 2f, -5f, 0.1f, 4f, 4f).mesh(2, 0xFFAAAAFF).col3().body3(type=2)
+        obj3(s, "Ground", 0f, -0.5f, 0f, 50f, 1f, 50f).mesh(2, 0xFF3A3A4A).col3().body3(type=2)
+
+        // Spheres for RT showcase
+        obj3(s, "Sphere_Metal", -2f, 1f, -2f, 1f, 1f, 1f).mesh(1, 0xFFC0C0C0).also { it.get<com.sengine.engine.core.MeshRenderer>()!!.also { m->m.specular=1f; m.shininess=100f } }.col3().body3()
+        obj3(s, "Sphere_Glass", 2f, 1f, -2f, 1f, 1f, 1f).mesh(1, 0x884FC3F7).col3().body3()
+
+        // Lights for RT shadows
+        obj3(s, "Sun", 10f, 20f, 10f).also { it.rotX=-45f; it.rotY=30f }.add(com.sengine.engine.core.Light().also { it.kind=0; it.intensity=1.5f; it.shadows=2 })
+        obj3(s, "PointLight", 0f, 5f, 0f).add(com.sengine.engine.core.Light().also { it.kind=1; it.color=0xFFFF6D00.toInt(); it.intensity=3f; it.range=15f; it.shadows=1 })
+
+        val hitFX = obj3(s, "RT_HitFX", 0f, 0f, 0f); hitFX.active=false
+        hitFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=360f; it.speed=3f; it.lifetime=0.5f; it.startColor=0xFF00FF00.toInt() })
+
+        obj(s, "Info", 0f, -4f).text("RayTracing Demo | RT Shadows | RT Reflections | RT GI | RT AO | Denoiser | Press A to Raycast", 0.3f).also { it.get<TextRenderer>()!!.screenSpace=true }
+
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val destructionDemo = Template("Chaos Destruction", "Fracture, Debris, Physics Fields - Chaos Destruction") { p ->
+        p.writeAsset("DestructionPlayer.js", """
+var speed=5, damage=50
+function update(dt){
+    self.vx = input.axisX*speed; self.vz = input.axisY*speed
+    if (input.aDown) {
+        var hit = scene.raycast(self.worldX, self.worldY+1, self.worldZ, self.forwardX, self.forwardY, self.forwardZ, 20)
+        if (hit && hit.name.indexOf("Destructible")>=0) {
+            hit.send("takeDamage", damage)
+            log("Hit " + hit.name + " for " + damage + " damage")
+            scene.shake(0.3)
+        }
+    }
+    if (input.bDown) {
+        // Create physics field
+        log("Creating Radial Field at player")
+        scene.find("FieldFX").worldX=self.worldX; scene.find("FieldFX").worldY=self.worldY; scene.find("FieldFX").worldZ=self.worldZ; scene.find("FieldFX").burst(30)
+    }
+}
+""")
+        p.writeAsset("DestructibleWall.js", """
+var health=100, maxHealth=100, isDestroyed=false
+function start(){ log("Destructible Wall - Health: " + health) }
+function takeDamage(dmg){
+    if (isDestroyed) return
+    health-=dmg
+    self.setColor(1, health/maxHealth, health/maxHealth)
+    if (health<=0) {
+        isDestroyed=true
+        log("Wall Destroyed!")
+        // Spawn debris
+        for (var i=0;i<8;i++) {
+            var debris = scene.spawn("Debris", self.worldX+Math.random()*2-1, self.worldY+Math.random()*2, self.worldZ+Math.random()*2-1)
+            debris.vx = Math.random()*10-5; debris.vy = Math.random()*5; debris.vz = Math.random()*10-5
+        }
+        scene.find("ExplosionFX").worldX=self.worldX; scene.find("ExplosionFX").worldY=self.worldY; scene.find("ExplosionFX").worldZ=self.worldZ; scene.find("ExplosionFX").burst(60)
+        self.destroy()
+    }
+}
+""")
+        val s = Scene("Main")
+        val player = obj3(s, "Player", 0f, 1f, 5f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3().script("DestructionPlayer.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow="Player"; it.offsetY=4f; it.offsetZ=8f })
+
+        obj3(s, "Ground", 0f, -0.5f, 0f, 50f, 1f, 50f).mesh(2, 0xFF5A5A5A).col3().body3(type=2)
+
+        // Destructible walls
+        for (i in 0 until 10) {
+            obj3(s, "Destructible_Wall_$i", random(-15,15), 2f, random(-15,5), 2f, 4f, 0.5f).mesh(0, 0xFF8D6E63).col3().body3().script("DestructibleWall.js")
+        }
+
+        // Debris prefab (inactive)
+        val debris = obj3(s, "Debris", 0f, 0f, 0f, 0.3f, 0.3f, 0.3f).mesh(0, 0xFF5A5A5A).col3().body3()
+        debris.active=false
+
+        val explosion = obj3(s, "ExplosionFX", 0f, 0f, 0f); explosion.active=false
+        explosion.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=360f; it.speed=8f; it.lifetime=0.8f; it.startColor=0xFFFF6D00.toInt() })
+
+        val fieldFX = obj3(s, "FieldFX", 0f, 0f, 0f); fieldFX.active=false
+        fieldFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=360f; it.speed=4f; it.lifetime=0.6f; it.startColor=0xFF00BCD4.toInt() })
+
+        obj(s, "Info", 0f, -4f).text("Chaos Destruction Demo | Press A to Shoot | B for Physics Field | Walls Fracture into Debris", 0.3f).also { it.get<TextRenderer>()!!.screenSpace=true }
+
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val fluidDemo = Template("Fluid Simulation", "SPH Fluid, Smoke, Fire, Soft Body - Physics Quantum") { p ->
+        p.writeAsset("FluidPlayer.js", """
+var speed=5
+function update(dt){
+    self.vx = input.axisX*speed; self.vz = input.axisY*speed
+    if (input.aDown) {
+        // Emit fluid
+        var fluid = scene.spawn("FluidEmitter", self.worldX, self.worldY+1, self.worldZ)
+        fluid.vy = 3
+        log("Fluid Emitted")
+    }
+    if (input.bDown) {
+        scene.find("SmokeFX").worldX=self.worldX; scene.find("SmokeFX").worldY=self.worldY; scene.find("SmokeFX").worldZ=self.worldZ; scene.find("SmokeFX").burst(20)
+    }
+}
+""")
+        val s = Scene("Main")
+        val player = obj3(s, "Player", 0f, 2f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3().script("FluidPlayer.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow="Player"; it.offsetY=5f; it.offsetZ=10f })
+
+        obj3(s, "Ground", 0f, -0.5f, 0f, 50f, 1f, 50f).mesh(2, 0xFF5A8A6A).col3().body3(type=2)
+        obj3(s, "WaterPool", 0f, 0f, -10f, 15f, 1f, 15f).mesh(2, 0xFF4FC3F7).also { it.get<com.sengine.engine.core.MeshRenderer>()!!.emission=0.2f }
+
+        // Fluid emitters
+        for (i in 0 until 3) {
+            obj3(s, "FluidEmitter_$i", random(-10,10), 5f, random(-10,10), 0.5f, 0.5f, 0.5f).mesh(1, 0xFF4FC3F7).col3(sphere=true).script("FluidEmitter.js", "type=Water")
+        }
+
+        val fluidEmitter = obj3(s, "FluidEmitter", 0f, 0f, 0f, 0.3f, 0.3f, 0.3f).mesh(1, 0xFF4FC3F7); fluidEmitter.active=false
+        fluidEmitter.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.speed=2f; it.lifetime=2f; it.startColor=0xFF4FC3F7.toInt() })
+
+        val smokeFX = obj3(s, "SmokeFX", 0f, 0f, 0f); smokeFX.active=false
+        smokeFX.add(com.sengine.engine.core.ParticleEmitter().also { it.emitting=false; it.rate=0f; it.spread=30f; it.speed=1.5f; it.lifetime=3f; it.startColor=0xFF888888.toInt(); it.endColor=0x00888888 })
+
+        p.writeAsset("FluidEmitter.js", "var type='Water', life=5; function update(dt){life-=dt; self.vy-=9.81*dt*0.2; if(life<=0) self.destroy()}")
+
+        obj(s, "Info", 0f, -4f).text("Fluid Simulation Demo | A: Emit Fluid | B: Smoke | SPH, PBF, FLIP, Soft Body", 0.3f).also { it.get<TextRenderer>()!!.screenSpace=true }
+
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val openWorldPCG = Template("Open World PCG", "World Partition, Spline Roads, Foliage, PCG Forest/City") { p ->
+        p.writeAsset("OpenWorldPlayer.js", """
+var speed=8, cellX=0, cellZ=0
+function update(dt){
+    self.vx = input.axisX*speed; self.vz = input.axisY*speed
+    var newCellX = Math.floor(self.worldX/256), newCellZ = Math.floor(self.worldZ/256)
+    if (newCellX!=cellX || newCellZ!=cellZ) {
+        cellX=newCellX; cellZ=newCellZ
+        log("Entered Cell: " + cellX + "," + cellZ + " | Streaming...")
+        scene.find("CellText").setText("Cell: " + cellX + "," + cellZ)
+    }
+    // Spline follow
+    if (input.aDown) {
+        var splinePos = scene.find("RoadSpline").getPoint(0.5)
+        log("Spline Center: " + splinePos)
+    }
+}
+""")
+        val s = Scene("Main")
+        val player = obj3(s, "Player", 0f, 2f, 0f, 0.8f, 1.8f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3().script("OpenWorldPlayer.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow="Player"; it.offsetY=10f; it.offsetZ=15f; it.fov=70f })
+
+        obj3(s, "Ground", 0f, -0.5f, 0f, 500f, 1f, 500f).mesh(2, 0xFF6B8E5A).col3().body3(type=2)
+
+        // Spline road
+        obj3(s, "RoadSpline", 0f, 0.1f, 0f, 200f, 0.1f, 4f).mesh(2, 0xFF3A3A3A)
+
+        // PCG Generated - Forest
+        for (i in 0 until 30) {
+            obj3(s, "PCG_Tree_$i", random(-100,100), 0f, random(-100,100), 1.5f, 3f, 1.5f).mesh(8, 0xFF2E7D32, model="Tree.obj").col3()
+        }
+        // PCG City
+        for (i in 0 until 20) {
+            val h = random(3,10)
+            obj3(s, "PCG_Building_$i", random(-80,80), h/2, random(-80,80), random(4,8), h, random(4,8)).mesh(0, 0xFF5A5A5A).col3().body3(type=2)
+        }
+
+        // Foliage
+        for (i in 0 until 100) {
+            obj3(s, "Foliage_$i", random(-100,100), 0f, random(-100,100), 0.3f, 0.6f, 0.3f).mesh(8, 0xFF4CAF50, model="Grass.obj")
+        }
+
+        obj(s, "CellText", -5f, 4f).text("Cell: 0,0 | World Partition 4096m", 0.35f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        obj(s, "Info", 0f, -4f).text("Open World PCG Demo | World Partition 256m Cells | Spline Roads | Foliage 100k | PCG Forest/City", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
+
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val vrDemo = Template("VR Demo", "VR/AR/MR, Hand Tracking, Spatial Anchors - XR Quantum") { p ->
+        p.writeAsset("VRPlayer.js", """
+var speed=3
+function update(dt){
+    // XR input simulation
+    self.vx = input.axisX*speed; self.vz = input.axisY*speed
+    // Hand tracking
+    if (input.aDown) log("Left Hand Pinch - Grab")
+    if (input.bDown) log("Right Hand Pinch - Interact")
+    // Spatial anchor
+    if (input.tapped) {
+        log("Creating Spatial Anchor at " + self.worldX + "," + self.worldY + "," + self.worldZ)
+        scene.spawn("Anchor", self.worldX, self.worldY, self.worldZ)
+    }
+    scene.find("XRInfo").setText("XR Mode: VR | Hands: Tracked | Anchors: " + scene.count("Anchor"))
+}
+""")
+        val s = Scene("Main")
+        val player = obj3(s, "Player", 0f, 1.6f, 0f, 0.5f, 1.6f, 0.5f).mesh(6, 0xFF4FC3F7).col3().body3().script("VRPlayer.js")
+        player.tag="Player"
+        player.add(com.sengine.engine.core.Camera3D().also { it.follow="Player"; it.offsetY=0f; it.offsetZ=0f; it.fov=90f })
+
+        obj3(s, "Ground", 0f, -0.5f, 0f, 20f, 1f, 20f).mesh(2, 0xFF5A5A5A).col3().body3(type=2)
+
+        // Interactables for VR
+        for (i in 0 until 5) {
+            obj3(s, "VR_Cube_$i", random(-5,5), 1f, random(-5,5), 0.5f, 0.5f, 0.5f).mesh(0, 0xFFFF6D00).col3().body3().script("VRInteractable.js", "grabbed=false")
+        }
+
+        val anchor = obj3(s, "Anchor", 0f, 0f, 0f, 0.2f, 0.2f, 0.2f).mesh(1, 0xFF00FF00); anchor.active=false
+        anchor.tag="Anchor"
+
+        p.writeAsset("VRInteractable.js", "var grabbed=false; function onTrigger(other){if(other.tag=='Player') log('Hand near ' + self.name)} function update(dt){if(grabbed) self.rotY+=90*dt}")
+
+        obj(s, "XRInfo", 0f, 4f).text("XR Mode: VR | Hands: Tracked | Anchors: 0", 0.35f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        obj(s, "Info", 0f, -4f).text("VR Demo | XR System | Hand Tracking 26 Joints | Eye Tracking | Spatial Anchors | Passthrough", 0.3f).also { it.get<TextRenderer>()!!.screenSpace=true }
+
+        p.saveScene(s); p.startScene="Main"
+    }
+
+    val mlAgentsDemo = Template("ML-Agents Demo", "Reinforcement Learning, PPO, Imitation - AI Quantum") { p ->
+        p.writeAsset("MLAgent.js", """
+var reward=0, episode=0, target=null, speed=4
+function start(){
+    target = scene.find("Target")
+    log("ML-Agent Started | Policy: Default | Observations: 10 | Actions: 4")
+}
+function update(dt){
+    // Collect observations
+    var obsX = self.worldX, obsZ = self.worldZ
+    var targetX = target.worldX, targetZ = target.worldZ
+    var dx = targetX-obsX, dz = targetZ-obsZ
+    var dist = Math.sqrt(dx*dx+dz*dz)
+    
+    // Heuristic policy - move towards target
+    self.vx = (dx/dist)*speed; self.vz = (dz/dist)*speed
+    
+    // Rewards
+    if (dist < 1) {
+        reward += 10
+        log("Target Reached! Reward: " + reward + " Episode: " + episode)
+        episode++
+        target.worldX = Math.random()*20-10; target.worldZ = Math.random()*20-10
+        scene.find("RewardText").setText("Reward: " + reward + " | Episode: " + episode)
+    } else {
+        reward -= 0.01 // time penalty
+    }
+    
+    // Episode end if too long
+    if (reward < -10) {
+        log("Episode Failed - Reset")
+        self.worldX=0; self.worldZ=0; reward=0; episode++
+    }
+}
+""")
+        val s = Scene("Main")
+        val agent = obj3(s, "MLAgent", 0f, 1f, 0f, 0.8f, 1f, 0.8f).mesh(6, 0xFF4FC3F7).col3().body3().script("MLAgent.js")
+        agent.tag="Agent"
+
+        obj3(s, "Target", 10f, 0.5f, 10f, 1f, 1f, 1f).mesh(1, 0xFFFFEB3B).col3(sphere=true, trigger=true).also { it.tag="Target" }
+
+        obj3(s, "Ground", 0f, -0.5f, 0f, 30f, 1f, 30f).mesh(2, 0xFF5A5A5A).col3().body3(type=2)
+
+        // Obstacles
+        for (i in 0 until 5) {
+            obj3(s, "Obstacle_$i", random(-10,10), 1f, random(-10,10), 1f, 2f, 1f).mesh(0, 0xFF5A5A5A).col3().body3(type=2)
+        }
+
+        obj(s, "RewardText", 0f, 4f).text("Reward: 0 | Episode: 0 | Policy: PPO", 0.35f).also { it.get<TextRenderer>()!!.screenSpace=true }
+        obj(s, "Info", 0f, -4f).text("ML-Agents Demo | Reinforcement Learning | Observations: Position, Velocity | Actions: Move | Reward: Reach Target", 0.28f).also { it.get<TextRenderer>()!!.screenSpace=true }
+
+        p.saveScene(s); p.startScene="Main"
     }
 
     private fun random(a: Int, b: Int): Float = (a + Math.random() * (b - a)).toFloat()

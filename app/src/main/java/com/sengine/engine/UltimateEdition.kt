@@ -106,10 +106,11 @@ import com.sengine.engine.core.EngineVersion
  */
 
 object UltimateEdition {
-    const val VERSION = "6.0.0 Ultimate Edition"
-    const val CODENAME = "Nexus"
-    const val API_VERSION = 600
+    const val VERSION = "6.1.0 Ultimate Edition"
+    const val CODENAME = "Quantum"
+    const val API_VERSION = 610
     const val RELEASE_DATE = "2026-10-11"
+    const val PREV_VERSION = "6.0.0 Ultimate Edition [Nexus]"
 
     val features = listOf(
         "Universal Render Pipeline (URP) + HDRP + Forward/Deferred",

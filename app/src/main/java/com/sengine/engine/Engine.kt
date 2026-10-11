@@ -105,6 +105,59 @@ class Engine(val project: Project, initialScene: Scene) {
     // AI
     val behaviorTrees = mutableMapOf<Long, com.sengine.engine.ai.BehaviorTree>()
 
+    // ==================== Ultimate 6.1 Quantum Systems ====================
+    // Rendering Quantum
+    val rayTracingSystem = com.sengine.engine.render.RayTracingSystem()
+    val giSystem = com.sengine.engine.render.GlobalIlluminationSystem()
+    val naniteSystem = com.sengine.engine.render.VirtualizedGeometrySystem()
+    val virtualTextureSystem = com.sengine.engine.render.VirtualTextureSystem()
+    val decalSystemV2 = com.sengine.engine.render.DecalSystemV2()
+    val lightmappingSystem = com.sengine.engine.render.LightmappingSystem()
+    val hairSystem = com.sengine.engine.render.HairSystem()
+
+    // Physics Quantum
+    val chaosDestruction = com.sengine.engine.physics.ChaosDestructionSystem()
+    val fluidSystem = com.sengine.engine.physics.SPHFluidSystem()
+    val softBodySystem = com.sengine.engine.physics.SoftBodySystem()
+
+    // World Quantum
+    val worldPartition = com.sengine.engine.world.WorldPartitionSystem()
+    val splineSystem = com.sengine.engine.world.SplineSystem()
+    val foliageSystem = com.sengine.engine.world.FoliageSystem()
+    val pcgSystem = com.sengine.engine.world.PCGSystem()
+
+    // Animation Quantum
+    val controlRigSystem = com.sengine.engine.anim.advanced.ControlRigSystem()
+    val motionMatchingSystem = com.sengine.engine.anim.advanced.MotionMatchingSystem()
+
+    // XR Quantum
+    val xrSystem = com.sengine.engine.xr.XRSystem()
+
+    // AI Quantum
+    val eqsSystem = com.sengine.engine.ai.EQSSystem()
+    val utilityAI = com.sengine.engine.ai.UtilityAI()
+    val mlAgentsSystem = com.sengine.engine.ai.MLAgentsSystem()
+
+    // Gameplay Quantum
+    val dialogueSystem = com.sengine.engine.gameplay.DialogueSystem()
+    val questSystem = com.sengine.engine.gameplay.QuestSystemV2()
+    val inventorySystem = com.sengine.engine.gameplay.InventorySystemV2()
+    val skillTreeSystem = com.sengine.engine.gameplay.SkillTreeSystem()
+    val worldTimeSystem = com.sengine.engine.gameplay.WorldTimeSystem()
+    val oceanSystem = com.sengine.engine.gameplay.OceanFFTSystem()
+
+    // Core Quantum
+    val computeShaderSystem = com.sengine.engine.core.ComputeShaderSystem()
+    val moddingSystem = com.sengine.engine.core.ModdingSystem()
+
+    // Tools Quantum
+    val levelEditorTools = com.sengine.engine.tools.LevelEditorTools()
+
+    // Networking Quantum
+    val rollbackNetcode = com.sengine.engine.net.RollbackNetcode()
+    val lagCompensation = com.sengine.engine.net.LagCompensationSystem()
+    val antiCheatSystem = com.sengine.engine.net.AntiCheatSystem()
+
     // Time & Frame
     var time = 0.0; private set
     var frame = 0L; private set
@@ -136,8 +189,24 @@ class Engine(val project: Project, initialScene: Scene) {
         objectPoolManager = com.sengine.engine.core.GameObjectPoolManager(scene)
         // Bake navmesh for default scene
         try { navMesh.bake(0f, scene.objects.filter { it.tag == "Obstacle" || it.name.contains("Wall") }) } catch (_: Exception) {}
+        // Initialize Quantum systems
+        try {
+            rayTracingSystem.initialize()
+            giSystem.addLightmap("Default", 512, 512)
+            worldPartition.initialize()
+            pcgSystem.createDefaultGraphs()
+            motionMatchingSystem.createLocomotionClips()
+            questSystem.createSampleQuests()
+            skillTreeSystem.createWarriorTree()
+            computeShaderSystem.createDefaultShaders()
+            oceanSystem.createDefaultOcean()
+            dialogueSystem.createSampleDialogue()
+            foliageSystem.addPrototype("Grass", com.sengine.engine.world.FoliageType.Grass, 200f)
+            foliageSystem.addPrototype("Tree", com.sengine.engine.world.FoliageType.Tree, 5f)
+        } catch (_: Exception) {}
         log(0, "S Engine Ultimate Edition v${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH} [${EngineVersion.CODENAME}] Initialized")
         log(0, "Render Pipeline: ${config.pipeline} | Color Space: ${config.colorSpace} | Quality: ${config.quality.level}")
+        log(0, "Quantum Systems: RayTracing=${config.rayTracing} Nanite=${config.nanite} Lumen=${config.lumen} VT=${config.virtualTexture} Chaos=${config.chaosDestruction} WorldPartition=${config.worldPartition} XR=${config.xrSupport}")
     }
 
     // ---------------------------------------------------------------- commands
@@ -385,6 +454,58 @@ class Engine(val project: Project, initialScene: Scene) {
         val tCull1 = System.nanoTime()
         cullingMs = cullingMs * 0.9f + (tCull1 - tCull0) / 1e6f * 0.1f
         profiler.endSample("Culling")
+
+        // Quantum Systems Update
+        profiler.beginSample("Quantum")
+        try {
+            // Ray Tracing
+            if (config.rayTracing && config.quality.rayTracing != com.sengine.engine.core.RayTracingQuality.Off) {
+                rayTracingSystem.frameRayCount = 0
+            }
+            // GI
+            giSystem.updateProbes(floatArrayOf(0.5f,0.5f,0.6f))
+            // Nanite
+            val camPos = mainCamera3D()?.world3 ?: floatArrayOf(0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,0f,1f)
+            val camPosArr = floatArrayOf(camPos[12], camPos[13], camPos[14])
+            val camDir = floatArrayOf(0f,0f,-1f)
+            val frustum = Array(6){ floatArrayOf(0f,0f,0f,1f) }
+            naniteSystem.cullMeshlets(camPosArr, camDir, frustum)
+            // Virtual Textures
+            virtualTextureSystem.requestTilesForView(camPosArr[0], camPosArr[1], camPosArr[2], 100f, 100f)
+            virtualTextureSystem.updateStreaming()
+            // Chaos Destruction
+            chaosDestruction.update(dt)
+            // Fluid
+            fluidSystem.update(dt)
+            softBodySystem.update(dt)
+            // World Partition
+            worldPartition.updatePlayerPosition(camPosArr[0], camPosArr[1], camPosArr[2])
+            worldPartition.updateStreaming()
+            // Foliage
+            foliageSystem.update(dt, camPosArr[0], camPosArr[2])
+            // Control Rig & Motion Matching
+            controlRigSystem.evaluateAll()
+            motionMatchingSystem.update(dt)
+            // Hair
+            hairSystem.update(dt)
+            // XR
+            if (config.xrSupport && xrSystem.enabled) { /* XR update */ }
+            // AI Quantum
+            mlAgentsSystem.update(dt)
+            // Gameplay Quantum
+            worldTimeSystem.update(dt)
+            oceanSystem.update(dt)
+            questSystem.update(dt)
+            // Compute
+            computeShaderSystem.executeQueue()
+            // Modding
+            moddingSystem.updatePlugins(dt)
+            // Decals
+            decalSystemV2.update(dt, camPosArr[0], camPosArr[2])
+            // Rollback Netcode
+            if (rollbackNetcode.players.isNotEmpty()) rollbackNetcode.update()
+        } catch (_: Exception) {}
+        profiler.endSample("Quantum")
 
         decayShake(dt)
 

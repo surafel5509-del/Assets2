@@ -8,13 +8,19 @@ import org.json.JSONObject
  */
 object EngineVersion {
     const val MAJOR = 6
-    const val MINOR = 0
+    const val MINOR = 1
     const val PATCH = 0
     const val NAME = "S Engine Ultimate Edition"
-    const val CODENAME = "Nexus"
-    const val API_VERSION = 600
+    const val CODENAME = "Quantum"
+    const val API_VERSION = 610
+    const val PREV_CODENAME = "Nexus"
     fun string() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION"
+    fun fullString() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION (Prev: $PREV_CODENAME) | Features: RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG"
 }
+
+enum class RayTracingQuality { Off, Low, Medium, High, Ultra, Psycho }
+enum class NaniteQuality { Off, Low, Medium, High, Ultra }
+enum class VirtualTextureQuality { Low, Medium, High, Ultra }
 
 enum class RenderPipelineType {
     BUILT_IN,
@@ -59,7 +65,27 @@ data class QualitySettings(
     var textureQuality: Int = 0, // 0 full, 1 half, 2 quarter
     var anisotropicFiltering: Int = 2, // 0 off, 1 per texture, 2 forced
     var vSync: Int = 1,
-    var targetFrameRate: Int = 60
+    var targetFrameRate: Int = 60,
+    // 6.1 Quantum additions
+    var rayTracing: RayTracingQuality = RayTracingQuality.High,
+    var rayTracingShadows: Boolean = true,
+    var rayTracingReflections: Boolean = true,
+    var rayTracingGI: Boolean = true,
+    var rayTracingAO: Boolean = true,
+    var nanite: NaniteQuality = NaniteQuality.High,
+    var naniteMaxTriangles: Int = 10_000_000,
+    var virtualTexture: VirtualTextureQuality = VirtualTextureQuality.High,
+    var virtualTexturePoolMB: Int = 256,
+    var lumenGI: Boolean = true,
+    var lumenReflections: Boolean = true,
+    var virtualShadowMaps: Boolean = true,
+    var chaosDestruction: Boolean = true,
+    var fluidSimulation: Boolean = true,
+    var worldPartitionStreaming: Boolean = true,
+    var foliageDensity: Float = 1f,
+    var hairQuality: Int = 2, // 0 off, 1 low, 2 high
+    var computeShaders: Boolean = true,
+    var xrEnabled: Boolean = false
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("level", level.name)
@@ -119,7 +145,18 @@ data class EngineConfig(
     var occlusionCulling: Boolean = true,
     var lodCrossFade: Boolean = true,
     var allowHDRDisplay: Boolean = true,
-    var version: String = EngineVersion.string()
+    var version: String = EngineVersion.string(),
+    // 6.1 Quantum
+    var rayTracing: Boolean = true,
+    var nanite: Boolean = true,
+    var lumen: Boolean = true,
+    var virtualTexture: Boolean = true,
+    var virtualShadowMaps: Boolean = true,
+    var chaosDestruction: Boolean = true,
+    var worldPartition: Boolean = true,
+    var computeShaders: Boolean = true,
+    var xrSupport: Boolean = true,
+    var mlAgents: Boolean = true
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("pipeline", pipeline.name)

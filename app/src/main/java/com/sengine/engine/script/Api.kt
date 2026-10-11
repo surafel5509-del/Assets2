@@ -449,3 +449,155 @@ class SNavMesh(private val engine: Engine) {
         return nearest?.let { engine.scripts.newArray(listOf(it.x.toDouble(), it.y.toDouble(), it.z.toDouble())) }
     }
 }
+
+// ==================== ULTIMATE 6.1 QUANTUM APIs ====================
+
+class SRayTracing(private val engine: Engine) {
+    fun isSupported(): Boolean = engine.rayTracingSystem.supported
+    fun getMode(): String = engine.rayTracingSystem.settings.mode.name
+    fun setMode(mode: String) { try { engine.rayTracingSystem.settings.mode = com.sengine.engine.render.RayTracingMode.valueOf(mode) } catch (_: Exception) {} }
+    fun getQuality(): String = engine.rayTracingSystem.settings.quality.name
+    fun setQuality(q: String) { try { engine.rayTracingSystem.settings.quality = com.sengine.engine.render.RayTracingQuality.valueOf(q) } catch (_: Exception) {} }
+    fun traceShadowRay(ox: Double, oy: Double, oz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Boolean {
+        return engine.rayTracingSystem.traceShadowRay(floatArrayOf(ox.toFloat(), oy.toFloat(), oz.toFloat()), floatArrayOf(dx.toFloat(), dy.toFloat(), dz.toFloat()), maxDist.toFloat(), emptyList())
+    }
+    fun getStats(): String = engine.rayTracingSystem.getStats()
+}
+
+class SNanite(private val engine: Engine) {
+    fun getQuality(): String = engine.naniteSystem.quality.name
+    fun setQuality(q: String) { try { engine.naniteSystem.quality = com.sengine.engine.render.NaniteQuality.valueOf(q) } catch (_: Exception) {} }
+    fun getVisibleMeshlets(): Double = engine.naniteSystem.statsVisibleMeshlets.toDouble()
+    fun getCulledMeshlets(): Double = engine.naniteSystem.statsCulledMeshlets.toDouble()
+    fun getTotalTriangles(): Double = engine.naniteSystem.statsTotalTriangles.toDouble()
+    fun getStats(): String = engine.naniteSystem.getStats()
+}
+
+class SChaos(private val engine: Engine) {
+    fun createDestructible(name: String, x: Double, y: Double, z: Double, sizeX: Double, sizeY: Double, sizeZ: Double, pieces: Double): Any? {
+        val obj = engine.chaosDestruction.createDestructible(System.currentTimeMillis(), name, x.toFloat(), y.toFloat(), z.toFloat(), sizeX.toFloat(), sizeY.toFloat(), sizeZ.toFloat(), pieces.toInt())
+        return engine.scripts.newArray(listOf(obj.id.toDouble(), obj.health.toDouble()))
+    }
+    fun applyDamage(id: Double, amount: Double, hx: Double, hy: Double, hz: Double) { engine.chaosDestruction.applyDamage(id.toLong(), amount.toFloat(), hx.toFloat(), hy.toFloat(), hz.toFloat()) }
+    fun addField(x: Double, y: Double, z: Double, radius: Double, strength: Double, type: String) { engine.chaosDestruction.addField(x.toFloat(), y.toFloat(), z.toFloat(), radius.toFloat(), strength.toFloat(), type) }
+    fun getActivePieces(): Double = engine.chaosDestruction.getActivePieceCount().toDouble()
+    fun getStats(): String = engine.chaosDestruction.getStats()
+}
+
+class SFluid(private val engine: Engine) {
+    fun addEmitter(x: Double, y: Double, z: Double, type: String, rate: Double) { try { engine.fluidSystem.addEmitter(x.toFloat(), y.toFloat(), z.toFloat(), com.sengine.engine.physics.FluidType.valueOf(type), rate.toFloat()) } catch (_: Exception) {} }
+    fun getParticleCount(): Double = engine.fluidSystem.particles.size.toDouble()
+    fun getStats(): String = engine.fluidSystem.getStats()
+}
+
+class SWorldPartition(private val engine: Engine) {
+    fun getLoadedCells(): Double = engine.worldPartition.loadedCells.toDouble()
+    fun getVisibleCells(): Double = engine.worldPartition.visibleCells.toDouble()
+    fun getCellAt(x: Double, z: Double): String {
+        val cx = kotlin.math.floor(x/256.0).toInt(); val cz = kotlin.math.floor(z/256.0).toInt()
+        return "${cx}_${cz}"
+    }
+    fun getStats(): String = engine.worldPartition.getStats()
+}
+
+class SSpline(private val engine: Engine) {
+    fun createSpline(name: String, type: String): Any? {
+        try { val t = com.sengine.engine.world.SplineType.valueOf(type); engine.splineSystem.createSpline(name, t) } catch (_: Exception) { engine.splineSystem.createSpline(name) }
+        return name
+    }
+    fun evaluate(name: String, t: Double): Any? {
+        val pos = engine.splineSystem.evaluate(name, t.toFloat()) ?: return null
+        return engine.scripts.newArray(listOf(pos[0].toDouble(), pos[1].toDouble(), pos[2].toDouble()))
+    }
+    fun getStats(): String = engine.splineSystem.getStats()
+}
+
+class SFoliage(private val engine: Engine) {
+    fun paintFoliage(proto: String, x: Double, z: Double, radius: Double, density: Double) {
+        engine.foliageSystem.paintFoliage(proto, x.toFloat(), z.toFloat(), radius.toFloat(), { _, _ -> 0f }, density.toFloat())
+    }
+    fun getInstanceCount(): Double = engine.foliageSystem.instances.size.toDouble()
+    fun getStats(): String = engine.foliageSystem.getStats()
+}
+
+class SPCG(private val engine: Engine) {
+    fun generate(graphName: String, seed: Double): Any? {
+        val points = engine.pcgSystem.generate(graphName, seed.toInt())
+        return engine.scripts.newArray(points.map { p -> engine.scripts.newArray(listOf(p.x.toDouble(), p.y.toDouble(), p.z.toDouble())) })
+    }
+    fun getStats(): String = engine.pcgSystem.getStats()
+}
+
+class SDialogue(private val engine: Engine) {
+    fun startDialogue(name: String): Boolean = engine.dialogueSystem.startDialogue(name)
+    fun selectChoice(index: Double) { engine.dialogueSystem.selectChoice(index.toInt()) }
+    fun nextLine() { engine.dialogueSystem.nextLine() }
+    fun isActive(): Boolean = engine.dialogueSystem.isActive
+    fun getStats(): String = engine.dialogueSystem.getStats()
+}
+
+class SQuest(private val engine: Engine) {
+    fun startQuest(id: String): Boolean = engine.questSystem.startQuest(id)
+    fun completeQuest(id: String): Boolean = engine.questSystem.completeQuest(id)
+    fun updateObjective(target: String, amount: Double) { engine.questSystem.updateObjectiveByTarget(target, amount.toInt()) }
+    fun getActiveQuests(): Any? = engine.scripts.newArray(engine.questSystem.getActiveQuests().map { it.id })
+    fun getStats(): String = engine.questSystem.getStats()
+}
+
+class SInventory(private val engine: Engine) {
+    fun addItem(id: String, quantity: Double): Boolean {
+        val item = com.sengine.engine.gameplay.Item(id=id, name=id, quantity=quantity.toInt()); return engine.inventorySystem.addItem(item, quantity.toInt())
+    }
+    fun hasItem(id: String, quantity: Double): Boolean = engine.inventorySystem.hasItem(id, quantity.toInt())
+    fun getGold(): Double = engine.inventorySystem.gold.toDouble()
+    fun setGold(g: Double) { engine.inventorySystem.gold = g.toInt() }
+    fun getStats(): String = engine.inventorySystem.getStats()
+}
+
+class SSKillTree(private val engine: Engine) {
+    fun unlockSkill(id: String): Boolean = engine.skillTreeSystem.unlockSkill(id)
+    fun getSkillPoints(): Double = engine.skillTreeSystem.skillPoints.toDouble()
+    fun getStats(): String = engine.skillTreeSystem.getStats()
+}
+
+class SWorldTime(private val engine: Engine) {
+    fun getTimeOfDay(): Double = engine.worldTimeSystem.timeOfDay.toDouble()
+    fun setTimeOfDay(h: Double) { engine.worldTimeSystem.setTimeOfDay(h.toFloat()) }
+    fun getSeason(): String = engine.worldTimeSystem.season.name
+    fun getWeather(): String = engine.worldTimeSystem.currentWeather.name
+    fun setWeather(type: String) { try { engine.worldTimeSystem.setWeather(com.sengine.engine.gameplay.WeatherTypeV2.valueOf(type)) } catch (_: Exception) {} }
+    fun isDay(): Boolean = engine.worldTimeSystem.isDay()
+    fun isNight(): Boolean = engine.worldTimeSystem.isNight()
+    fun getTemperature(): Double = engine.worldTimeSystem.temperature.toDouble()
+    fun getStats(): String = engine.worldTimeSystem.getStats()
+}
+
+class SCompute(private val engine: Engine) {
+    fun dispatch(shader: String, x: Double, y: Double, z: Double) { engine.computeShaderSystem.dispatch(shader, x.toInt(), y.toInt(), z.toInt()) }
+    fun getStats(): String = engine.computeShaderSystem.getStats()
+}
+
+class SXR(private val engine: Engine) {
+    fun isEnabled(): Boolean = engine.xrSystem.enabled
+    fun enable(mode: String) { try { engine.xrSystem.initialize(com.sengine.engine.xr.XRMode.valueOf(mode)) } catch (_: Exception) {} }
+    fun getHeadPosition(): Any? {
+        val p = engine.xrSystem.headPose; return engine.scripts.newArray(listOf(p.x.toDouble(), p.y.toDouble(), p.z.toDouble()))
+    }
+    fun getStats(): String = engine.xrSystem.getStats()
+}
+
+class SMLAgents(private val engine: Engine) {
+    fun getAgentCount(): Double = engine.mlAgentsSystem.agents.size.toDouble()
+    fun getAverageReward(): Double = engine.mlAgentsSystem.averageReward.toDouble()
+    fun getStats(): String = engine.mlAgentsSystem.getStats()
+}
+
+class SDecal(private val engine: Engine) {
+    fun createDecal(x: Double, y: Double, z: Double, sizeX: Double, sizeY: Double, sizeZ: Double, texture: String): Any? {
+        val d = engine.decalSystemV2.createDecal(x.toFloat(), y.toFloat(), z.toFloat(), sizeX.toFloat(), sizeY.toFloat(), sizeZ.toFloat(), texture)
+        return d.id
+    }
+    fun createBulletHole(x: Double, y: Double, z: Double, nx: Double, ny: Double, nz: Double) { engine.decalSystemV2.createBulletHole(x.toFloat(), y.toFloat(), z.toFloat(), nx.toFloat(), ny.toFloat(), nz.toFloat()) }
+    fun getCount(): Double = engine.decalSystemV2.decals.size.toDouble()
+    fun getStats(): String = engine.decalSystemV2.getStats()
+}
