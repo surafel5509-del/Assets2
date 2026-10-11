@@ -18,27 +18,60 @@ Daemon will be stopped at the end of the build
 > Task :app:processDebugManifestForPackage
 > Task :app:processDebugResources
 > Task :app:compileDebugKotlin
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:791:45 Unresolved reference: getVoiceVolume
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:797:97 Unresolved reference: createScheme
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:798:123 Unresolved reference: rebind
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:802:93 No value passed for parameter 'name'
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:802:93 No value passed for parameter 'description'
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:803:115 Unresolved reference: completeObjective
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:804:92 Unresolved reference: getProgress
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:805:85 Unresolved reference: addSkill
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:814:110 Unresolved reference: valueOf
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:815:60 Unresolved reference: setTheme
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:55 Unresolved reference: GizmoType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:166 Unresolved reference: id
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:253 Unresolved reference: GizmoType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:324 Unresolved reference: id
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:823:63 Unresolved reference: isXRSupported
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:91 Unresolved reference: XRSessionType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:141 Unresolved reference: startXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:211 Unresolved reference: startXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:825:54 Unresolved reference: stopXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:827:109 Unresolved reference: updateTracking
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/ui/EditorActivity.kt:737:13 'else' entry must be the last one in a when-expression
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/AnimatorController.kt:288:5 Platform declaration clash: The following declarations have the same JVM signature (setController(Lcom/sengine/engine/anim/advanced/AnimatorController;)V):
+    fun `<set-controller>`(`<set-?>`: AnimatorController?): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+    fun setController(ctrl: AnimatorController): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/AnimatorController.kt:296:5 Platform declaration clash: The following declarations have the same JVM signature (setController(Lcom/sengine/engine/anim/advanced/AnimatorController;)V):
+    fun `<set-controller>`(`<set-?>`: AnimatorController?): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+    fun setController(ctrl: AnimatorController): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/TimelineSystem.kt:91:5 Platform declaration clash: The following declarations have the same JVM signature (setTime(F)V):
+    fun `<set-time>`(`<set-?>`: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+    fun setTime(t: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/TimelineSystem.kt:101:5 Platform declaration clash: The following declarations have the same JVM signature (setTime(F)V):
+    fun `<set-time>`(`<set-?>`: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+    fun setTime(t: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/QuestSystemV2.kt:60:5 Platform declaration clash: The following declarations have the same JVM signature (getActiveQuests()Ljava/util/List;):
+    fun `<get-activeQuests>`(): MutableList<String> defined in com.sengine.engine.gameplay.QuestSystemV2
+    fun getActiveQuests(): List<Quest> defined in com.sengine.engine.gameplay.QuestSystemV2
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/QuestSystemV2.kt:140:5 Platform declaration clash: The following declarations have the same JVM signature (getActiveQuests()Ljava/util/List;):
+    fun `<get-activeQuests>`(): MutableList<String> defined in com.sengine.engine.gameplay.QuestSystemV2
+    fun getActiveQuests(): List<Quest> defined in com.sengine.engine.gameplay.QuestSystemV2
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/WorldTimeSystem.kt:43:5 Platform declaration clash: The following declarations have the same JVM signature (setTimeOfDay(F)V):
+    fun `<set-timeOfDay>`(`<set-?>`: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+    fun setTimeOfDay(hours: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/WorldTimeSystem.kt:208:5 Platform declaration clash: The following declarations have the same JVM signature (setTimeOfDay(F)V):
+    fun `<set-timeOfDay>`(`<set-?>`: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+    fun setTimeOfDay(hours: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/LightingSystem.kt:77:5 Platform declaration clash: The following declarations have the same JVM signature (getMainLight()Lcom/sengine/engine/render/LightData;):
+    fun `<get-mainLight>`(): LightData? defined in com.sengine.engine.render.LightingSystem
+    fun getMainLight(): LightData? defined in com.sengine.engine.render.LightingSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/LightingSystem.kt:153:5 Platform declaration clash: The following declarations have the same JVM signature (getMainLight()Lcom/sengine/engine/render/LightData;):
+    fun `<get-mainLight>`(): LightData? defined in com.sengine.engine.render.LightingSystem
+    fun getMainLight(): LightData? defined in com.sengine.engine.render.LightingSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:31:15 Platform declaration clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:40:5 Platform declaration clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:43:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.ForwardPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.ForwardPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:71:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.DeferredPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.DeferredPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:89:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.UniversalPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.UniversalPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:118:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.HighDefinitionPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.HighDefinitionPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:149:5 Platform declaration clash: The following declarations have the same JVM signature (setActive(Lcom/sengine/engine/render/pipeline/RenderPipeline;)V):
+    fun `<set-active>`(`<set-?>`: RenderPipeline?): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+    fun setActive(pipeline: RenderPipeline): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:162:5 Platform declaration clash: The following declarations have the same JVM signature (setActive(Lcom/sengine/engine/render/pipeline/RenderPipeline;)V):
+    fun `<set-active>`(`<set-?>`: RenderPipeline?): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+    fun setActive(pipeline: RenderPipeline): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
 
 > Task :app:compileDebugKotlin FAILED
 
@@ -249,7 +282,7 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 1m 16s
+BUILD FAILED in 1m 9s
 16 actionable tasks: 16 executed
 
 === GRADLE BUILD LOG ===
@@ -292,27 +325,60 @@ Daemon will be stopped at the end of the build
 > Task :app:writeDebugSigningConfigVersions
 
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:791:45 Unresolved reference: getVoiceVolume
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:797:97 Unresolved reference: createScheme
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:798:123 Unresolved reference: rebind
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:802:93 No value passed for parameter 'name'
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:802:93 No value passed for parameter 'description'
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:803:115 Unresolved reference: completeObjective
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:804:92 Unresolved reference: getProgress
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:805:85 Unresolved reference: addSkill
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:814:110 Unresolved reference: valueOf
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:815:60 Unresolved reference: setTheme
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:55 Unresolved reference: GizmoType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:166 Unresolved reference: id
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:253 Unresolved reference: GizmoType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:324 Unresolved reference: id
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:823:63 Unresolved reference: isXRSupported
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:91 Unresolved reference: XRSessionType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:141 Unresolved reference: startXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:211 Unresolved reference: startXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:825:54 Unresolved reference: stopXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:827:109 Unresolved reference: updateTracking
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/ui/EditorActivity.kt:737:13 'else' entry must be the last one in a when-expression
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/AnimatorController.kt:288:5 Platform declaration clash: The following declarations have the same JVM signature (setController(Lcom/sengine/engine/anim/advanced/AnimatorController;)V):
+    fun `<set-controller>`(`<set-?>`: AnimatorController?): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+    fun setController(ctrl: AnimatorController): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/AnimatorController.kt:296:5 Platform declaration clash: The following declarations have the same JVM signature (setController(Lcom/sengine/engine/anim/advanced/AnimatorController;)V):
+    fun `<set-controller>`(`<set-?>`: AnimatorController?): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+    fun setController(ctrl: AnimatorController): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/TimelineSystem.kt:91:5 Platform declaration clash: The following declarations have the same JVM signature (setTime(F)V):
+    fun `<set-time>`(`<set-?>`: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+    fun setTime(t: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/TimelineSystem.kt:101:5 Platform declaration clash: The following declarations have the same JVM signature (setTime(F)V):
+    fun `<set-time>`(`<set-?>`: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+    fun setTime(t: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/QuestSystemV2.kt:60:5 Platform declaration clash: The following declarations have the same JVM signature (getActiveQuests()Ljava/util/List;):
+    fun `<get-activeQuests>`(): MutableList<String> defined in com.sengine.engine.gameplay.QuestSystemV2
+    fun getActiveQuests(): List<Quest> defined in com.sengine.engine.gameplay.QuestSystemV2
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/QuestSystemV2.kt:140:5 Platform declaration clash: The following declarations have the same JVM signature (getActiveQuests()Ljava/util/List;):
+    fun `<get-activeQuests>`(): MutableList<String> defined in com.sengine.engine.gameplay.QuestSystemV2
+    fun getActiveQuests(): List<Quest> defined in com.sengine.engine.gameplay.QuestSystemV2
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/WorldTimeSystem.kt:43:5 Platform declaration clash: The following declarations have the same JVM signature (setTimeOfDay(F)V):
+    fun `<set-timeOfDay>`(`<set-?>`: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+    fun setTimeOfDay(hours: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/WorldTimeSystem.kt:208:5 Platform declaration clash: The following declarations have the same JVM signature (setTimeOfDay(F)V):
+    fun `<set-timeOfDay>`(`<set-?>`: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+    fun setTimeOfDay(hours: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/LightingSystem.kt:77:5 Platform declaration clash: The following declarations have the same JVM signature (getMainLight()Lcom/sengine/engine/render/LightData;):
+    fun `<get-mainLight>`(): LightData? defined in com.sengine.engine.render.LightingSystem
+    fun getMainLight(): LightData? defined in com.sengine.engine.render.LightingSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/LightingSystem.kt:153:5 Platform declaration clash: The following declarations have the same JVM signature (getMainLight()Lcom/sengine/engine/render/LightData;):
+    fun `<get-mainLight>`(): LightData? defined in com.sengine.engine.render.LightingSystem
+    fun getMainLight(): LightData? defined in com.sengine.engine.render.LightingSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:31:15 Platform declaration clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:40:5 Platform declaration clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:43:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.ForwardPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.ForwardPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:71:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.DeferredPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.DeferredPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:89:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.UniversalPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.UniversalPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:118:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.HighDefinitionPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.HighDefinitionPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:149:5 Platform declaration clash: The following declarations have the same JVM signature (setActive(Lcom/sengine/engine/render/pipeline/RenderPipeline;)V):
+    fun `<set-active>`(`<set-?>`: RenderPipeline?): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+    fun setActive(pipeline: RenderPipeline): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:162:5 Platform declaration clash: The following declarations have the same JVM signature (setActive(Lcom/sengine/engine/render/pipeline/RenderPipeline;)V):
+    fun `<set-active>`(`<set-?>`: RenderPipeline?): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+    fun setActive(pipeline: RenderPipeline): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
 
 FAILURE: Build failed with an exception.
 
@@ -358,36 +424,6 @@ org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:com
 	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
-	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
-	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:313)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
-	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
-	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:304)
-	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
-	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
-	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.lambda$run$0(DefaultBuildController.java:198)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:198)
 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -515,36 +551,6 @@ Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionExcept
 	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
-	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
-	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:313)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
-	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
-	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:304)
-	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
-	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
-	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.lambda$run$0(DefaultBuildController.java:198)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:198)
 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
@@ -581,7 +587,7 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 1m 29s
+BUILD FAILED in 1m 17s
 28 actionable tasks: 14 executed, 14 up-to-date
 
 === FAILURE SUMMARY ===
@@ -605,27 +611,60 @@ Daemon will be stopped at the end of the build
 > Task :app:processDebugManifestForPackage
 > Task :app:processDebugResources
 > Task :app:compileDebugKotlin
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:791:45 Unresolved reference: getVoiceVolume
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:797:97 Unresolved reference: createScheme
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:798:123 Unresolved reference: rebind
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:802:93 No value passed for parameter 'name'
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:802:93 No value passed for parameter 'description'
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:803:115 Unresolved reference: completeObjective
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:804:92 Unresolved reference: getProgress
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:805:85 Unresolved reference: addSkill
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:814:110 Unresolved reference: valueOf
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:815:60 Unresolved reference: setTheme
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:55 Unresolved reference: GizmoType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:166 Unresolved reference: id
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:253 Unresolved reference: GizmoType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:817:324 Unresolved reference: id
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:823:63 Unresolved reference: isXRSupported
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:91 Unresolved reference: XRSessionType
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:141 Unresolved reference: startXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:824:211 Unresolved reference: startXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:825:54 Unresolved reference: stopXRSession
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/script/Api.kt:827:109 Unresolved reference: updateTracking
-e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/ui/EditorActivity.kt:737:13 'else' entry must be the last one in a when-expression
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/AnimatorController.kt:288:5 Platform declaration clash: The following declarations have the same JVM signature (setController(Lcom/sengine/engine/anim/advanced/AnimatorController;)V):
+    fun `<set-controller>`(`<set-?>`: AnimatorController?): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+    fun setController(ctrl: AnimatorController): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/AnimatorController.kt:296:5 Platform declaration clash: The following declarations have the same JVM signature (setController(Lcom/sengine/engine/anim/advanced/AnimatorController;)V):
+    fun `<set-controller>`(`<set-?>`: AnimatorController?): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+    fun setController(ctrl: AnimatorController): Unit defined in com.sengine.engine.anim.advanced.AnimatorStateMachine
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/TimelineSystem.kt:91:5 Platform declaration clash: The following declarations have the same JVM signature (setTime(F)V):
+    fun `<set-time>`(`<set-?>`: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+    fun setTime(t: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/anim/advanced/TimelineSystem.kt:101:5 Platform declaration clash: The following declarations have the same JVM signature (setTime(F)V):
+    fun `<set-time>`(`<set-?>`: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+    fun setTime(t: Float): Unit defined in com.sengine.engine.anim.advanced.PlayableDirector
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/QuestSystemV2.kt:60:5 Platform declaration clash: The following declarations have the same JVM signature (getActiveQuests()Ljava/util/List;):
+    fun `<get-activeQuests>`(): MutableList<String> defined in com.sengine.engine.gameplay.QuestSystemV2
+    fun getActiveQuests(): List<Quest> defined in com.sengine.engine.gameplay.QuestSystemV2
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/QuestSystemV2.kt:140:5 Platform declaration clash: The following declarations have the same JVM signature (getActiveQuests()Ljava/util/List;):
+    fun `<get-activeQuests>`(): MutableList<String> defined in com.sengine.engine.gameplay.QuestSystemV2
+    fun getActiveQuests(): List<Quest> defined in com.sengine.engine.gameplay.QuestSystemV2
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/WorldTimeSystem.kt:43:5 Platform declaration clash: The following declarations have the same JVM signature (setTimeOfDay(F)V):
+    fun `<set-timeOfDay>`(`<set-?>`: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+    fun setTimeOfDay(hours: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/gameplay/WorldTimeSystem.kt:208:5 Platform declaration clash: The following declarations have the same JVM signature (setTimeOfDay(F)V):
+    fun `<set-timeOfDay>`(`<set-?>`: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+    fun setTimeOfDay(hours: Float): Unit defined in com.sengine.engine.gameplay.WorldTimeSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/LightingSystem.kt:77:5 Platform declaration clash: The following declarations have the same JVM signature (getMainLight()Lcom/sengine/engine/render/LightData;):
+    fun `<get-mainLight>`(): LightData? defined in com.sengine.engine.render.LightingSystem
+    fun getMainLight(): LightData? defined in com.sengine.engine.render.LightingSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/LightingSystem.kt:153:5 Platform declaration clash: The following declarations have the same JVM signature (getMainLight()Lcom/sengine/engine/render/LightData;):
+    fun `<get-mainLight>`(): LightData? defined in com.sengine.engine.render.LightingSystem
+    fun getMainLight(): LightData? defined in com.sengine.engine.render.LightingSystem
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:31:15 Platform declaration clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:40:5 Platform declaration clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.RenderPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:43:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.ForwardPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.ForwardPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:71:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.DeferredPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.DeferredPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:89:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.UniversalPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.UniversalPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:118:1 Inherited platform declarations clash: The following declarations have the same JVM signature (getPasses()Ljava/util/List;):
+    fun `<get-passes>`(): MutableList<RenderPass> defined in com.sengine.engine.render.pipeline.HighDefinitionPipeline
+    fun getPasses(): List<RenderPass> defined in com.sengine.engine.render.pipeline.HighDefinitionPipeline
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:149:5 Platform declaration clash: The following declarations have the same JVM signature (setActive(Lcom/sengine/engine/render/pipeline/RenderPipeline;)V):
+    fun `<set-active>`(`<set-?>`: RenderPipeline?): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+    fun setActive(pipeline: RenderPipeline): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+e: file:///home/runner/work/Assets2/Assets2/app/src/main/java/com/sengine/engine/render/pipeline/RenderPipeline.kt:162:5 Platform declaration clash: The following declarations have the same JVM signature (setActive(Lcom/sengine/engine/render/pipeline/RenderPipeline;)V):
+    fun `<set-active>`(`<set-?>`: RenderPipeline?): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
+    fun setActive(pipeline: RenderPipeline): Unit defined in com.sengine.engine.render.pipeline.PipelineManager
 
 > Task :app:compileDebugKotlin FAILED
 
@@ -805,36 +844,4 @@ Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionExcept
 Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
 	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:20)
 	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:141)
-	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:73)
-	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
-	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
-	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:133)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
-	... 2 more
-
-
-BUILD FAILED in 1m 16s
-16 actionable tasks: 16 executed
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleK
