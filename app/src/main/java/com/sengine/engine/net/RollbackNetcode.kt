@@ -81,7 +81,7 @@ class RollbackNetcode {
     fun confirmFrame(frame: Int, inputs: Map<Long, FrameInput>) {
         val rollbackFrame = frames.find { it.frame == frame } ?: return
         rollbackFrame.isConfirmed=true
-        confirmedFrame = max(confirmedFrame, frame)
+        confirmedFrame = maxOf(confirmedFrame, frame)
         // Check if we need to rollback
         for ((playerId, confirmedInput) in inputs) {
             val predictedInput = rollbackFrame.inputs[playerId]
@@ -186,7 +186,7 @@ class AntiCheatSystem {
         val dist = sqrt(dx*dx+dz*dz)
         val speed = if (dt > 0f) dist/dt else 0f
         if (speed > speedHackThreshold) {
-            detections.add(CheatDetection(playerId=playerId, type=CheatType.SpeedHack, confidence=min(1f, speed/speedHackThreshold-1f), details="Speed $speed > $speedHackThreshold"))
+            detections.add(CheatDetection(playerId=playerId, type=CheatType.SpeedHack, confidence=minOf(1f, speed/speedHackThreshold-1f), details="Speed $speed > $speedHackThreshold"))
             return true
         }
         return false

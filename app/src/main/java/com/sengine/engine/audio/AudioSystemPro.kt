@@ -140,7 +140,7 @@ class AudioSourcePro {
 
         val atten = when (rolloffMode) {
             AudioRolloffMode.Logarithmic -> {
-                if (distance <= minDistance) 1f else minDistance / max(minDistance, distance)
+                if (distance <= minDistance) 1f else minDistance / maxOf(minDistance, distance)
             }
             AudioRolloffMode.Linear -> {
                 if (distance <= minDistance) 1f else 1f - ((distance - minDistance) / (maxDistance - minDistance)).coerceIn(0f, 1f)
@@ -230,7 +230,7 @@ class AudioSystemPro {
 
     fun getReverbForPosition(pos: FloatArray): Float {
         var maxReverb = 0f
-        for (zone in reverbZones) maxReverb = max(maxReverb, zone.getReverbAmount(pos))
+        for (zone in reverbZones) maxReverb = maxOf(maxReverb, zone.getReverbAmount(pos))
         return maxReverb
     }
 }

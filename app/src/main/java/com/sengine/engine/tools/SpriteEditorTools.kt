@@ -96,7 +96,7 @@ class AtlasPacker {
             val packed = sprite.copy(x=curX, y=curY)
             packedRects[sprite.name]=packed
             curX+=sprite.width+settings.padding
-            shelfHeight=max(shelfHeight, sprite.height)
+            shelfHeight=maxOf(shelfHeight, sprite.height)
         }
         return packedRects
     }

@@ -53,7 +53,7 @@ data class SpriteAtlas(
         for (sprite in sprites.values) {
             if (curX + sprite.width*100 > width) { curX=0; curY+=rowHeight+padding; rowHeight=0 }
             sprite.x = curX.toFloat()/width; sprite.y = curY.toFloat()/height
-            curX+=(sprite.width*100+padding).toInt(); rowHeight=max(rowHeight, (sprite.height*100).toInt())
+            curX+=(sprite.width*100+padding).toInt(); rowHeight=maxOf(rowHeight, (sprite.height*100).toInt())
         }
         return curY < height
     }

@@ -85,8 +85,8 @@ class ProfilerV2System {
         fps=currentFrame.fps
         totalTimeMs+=currentFrame.totalTimeMs
         averageFrameTimeMs = if (frames.isEmpty()) currentFrame.totalTimeMs else (averageFrameTimeMs*frames.size+currentFrame.totalTimeMs)/(frames.size+1)
-        minFrameTimeMs=min(minFrameTimeMs, currentFrame.totalTimeMs)
-        maxFrameTimeMs=max(maxFrameTimeMs, currentFrame.totalTimeMs)
+        minFrameTimeMs=minOf(minFrameTimeMs, currentFrame.totalTimeMs)
+        maxFrameTimeMs=maxOf(maxFrameTimeMs, currentFrame.totalTimeMs)
 
         frames.addLast(currentFrame)
         if (frames.size > maxFrames) frames.removeFirst()
