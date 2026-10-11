@@ -29,10 +29,8 @@ jobs:
       - name: Setup Android SDK - Accept Licenses
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" || true
-          sdkmanager --list | grep -E "platforms;android-34|build-tools" || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -51,25 +49,29 @@ jobs:
         run: |
           echo "=== S Engine 6.1.2 Ultra Edition ==="
           cat app/build.gradle.kts | grep -E "versionCode|versionName|ENGINE_VERSION"
-          ls -la app/src/main/java/com/sengine/engine/core/ | tail -20
-          ls -la app/src/main/java/com/sengine/engine/render/ | tail -20
           echo "Total Kotlin files: $(find app/src/main/java -name '*.kt' | wc -l)"
+          ls app/src/main/java/com/sengine/engine/core/ | grep Ultra | head -20
 
       - name: Build Debug APK - S Engine 6.1.2 Ultra
         id: build_debug
         run: |
           echo "Starting Gradle build..."
+          set -o pipefail
           ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee gradle-build.log
           BUILD_EXIT=${PIPESTATUS[0]}
           echo "Build exit code: $BUILD_EXIT"
           echo "=== APK outputs ==="
           ls -lh app/build/outputs/apk/debug/ || echo "No debug APK dir"
           find app/build -name "*.apk" -type f -exec ls -lh {} \; || echo "No APK found"
+          # Always save tail for diagnostics
+          echo "=== Last 1000 lines of build log ===" > build-failure-summary.log
+          tail -n 1000 gradle-build.log >> build-failure-summary.log
+          echo "" >> build-failure-summary.log
+          echo "=== Errors ===" >> build-failure-summary.log
+          grep -i -A2 -B2 "error\|FAILED\|Unresolved\|Cannot\|e:" gradle-build.log | tail -n 500 >> build-failure-summary.log || true
+          cat build-failure-summary.log
           if [ $BUILD_EXIT -ne 0 ]; then
-            echo "=== BUILD FAILED - Last 500 lines ==="
-            tail -n 500 gradle-build.log || true
-            echo "=== Searching for errors ==="
-            grep -i -E "error|exception|failed" gradle-build.log | tail -n 100 || true
+            echo "::error::Gradle build failed with exit $BUILD_EXIT"
             exit $BUILD_EXIT
           fi
 
@@ -89,6 +91,7 @@ jobs:
             app/build/outputs/apk/release/*.apk
             gradle-build.log
             gradle-release.log
+            build-failure-summary.log
           if-no-files-found: warn
           retention-days: 30
 
@@ -100,21 +103,39 @@ jobs:
           path: |
             gradle-build.log
             gradle-release.log
+            build-failure-summary.log
             app/build/reports/
             app/build/outputs/logs/
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Commit failure log to repo for debugging [skip ci]
+        if: failure()
+        run: |
+          echo "Committing failure log for debugging"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Create a branch for logs or commit to current branch with skip ci
+          echo "# Build Failure Log - Run ${{ github.run_id }}" > BUILD_FAILURE_LOG.md
+          echo "" >> BUILD_FAILURE_LOG.md
+          echo "Branch: ${{ github.ref }}" >> BUILD_FAILURE_LOG.md
+          echo "Commit: ${{ github.sha }}" >> BUILD_FAILURE_LOG.md
+          echo "Run ID: ${{ github.run_id }}" >> BUILD_FAILURE_LOG.md
+          echo "" >> BUILD_FAILURE_LOG.md
+          echo '```' >> BUILD_FAILURE_LOG.md
+          cat build-failure-summary.log >> BUILD_FAILURE_LOG.md
+          echo '```' >> BUILD_FAILURE_LOG.md
+          git add BUILD_FAILURE_LOG.md
+          git commit -m "CI: Add build failure log for run ${{ github.run_id }} [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref_name }} || echo "Push failed"
 
       - name: Show Engine Version and APK Info
         if: always()
         run: |
           echo "S Engine Version: 6.1.2 Ultra Edition [Ultra] API:612"
           echo "Systems: 96+ Components: 250+ Templates: 36 API: 400+"
-          echo "APK files:"
           find . -name "*.apk" -type f -exec ls -lh {} \; || echo "No APK found"
-          echo "Build logs:"
-          ls -lh *.log || true
-          if [ -f gradle-build.log ]; then
-            echo "=== Tail of build log ==="
-            tail -n 100 gradle-build.log
+          if [ -f build-failure-summary.log ]; then
+            echo "=== Failure Summary ==="
+            cat build-failure-summary.log
           fi
