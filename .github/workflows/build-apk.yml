@@ -26,8 +26,12 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK - Accept Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager --list | head -100 || true
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la $ANDROID_HOME || true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -49,7 +53,7 @@ jobs:
           ls -lh app/build/outputs/apk/debug/ || true
           find app/build/outputs -name "*.apk" -type f | xargs ls -lh || true
 
-      - name: Build Release APK (unsigned)
+      - name: Build Release APK (signed with debug key)
         run: |
           ./gradlew assembleRelease --stacktrace --no-daemon || echo "Release build failed, debug is ok"
           ls -lh app/build/outputs/apk/release/ || true
@@ -80,3 +84,5 @@ jobs:
           echo "S Engine Version: 6.1.2 Ultra Edition [Ultra] API:612"
           echo "Systems: 96+ Components: 250+ Templates: 36 API: 400+"
           cat app/build.gradle.kts | grep -E "versionCode|versionName|ENGINE_VERSION|ENGINE_API"
+          echo "APK files:"
+          find . -name "*.apk" -type f -exec ls -lh {} \;
