@@ -88,10 +88,10 @@ class HillClimbTemplateTest {
         scene.gravityY = -9.81f
         val ramp = scene.create("Ramp").also { it.rotation = 24f; it.scaleX = 4f; it.scaleY = 0.35f }
         ramp.add(com.sengine.engine.core.Collider2D())
-        ramp.add(Rigidbody2D().also { it.bodyType = 2 })
+        ramp.add(Rigidbody2D().also { it.bodyType = 2; it.friction = 0.9f })
         val ball = scene.create("Ball").also { it.x = 0f; it.y = 1.1f; it.scaleX = 0.6f; it.scaleY = 0.6f }
         ball.add(com.sengine.engine.core.Collider2D().also { it.shape = 1; it.radius = 0.5f })
-        ball.add(Rigidbody2D().also { it.bounciness = 0f })
+        ball.add(Rigidbody2D().also { it.bounciness = 0f; it.friction = 0.9f })
         val world = PhysicsWorld()
         repeat(180) { world.step(scene, 1f / 60f) }
         assertTrue("circle should rest on the sloped face", ball.y > 0.25f && ball.y < 1.2f)
