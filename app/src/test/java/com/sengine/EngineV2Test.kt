@@ -243,7 +243,9 @@ class EngineV2Test {
      */
     @Test
     fun everyTemplateSerializesRoundTrip() {
-        for (t in Templates.all) {
+        // Code-only templates: a game template has no scene to round-trip here
+        // (see EngineSimulationTest.gameTemplatesNameAShippedGameAndBuildNothing).
+        for (t in Templates.all.filter { it.gameId == null }) {
             val p = newProject(t.name)
             val s = p.loadScene("Main")
             val json = SceneSerializer.toJson(s).toString()

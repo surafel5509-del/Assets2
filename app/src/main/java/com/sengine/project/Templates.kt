@@ -25,10 +25,14 @@ object Templates {
      * [GameLibrary.materialize], which copies the same scene text, scripts and
      * asset imports the library plays.  One source of truth, in `games/`.
      */
-    class Template(val name: String, val description: String, val build: (Project) -> Unit,
-                   val gameId: String? = null)
+    class Template(
+        val name: String,
+        val description: String,
+        val gameId: String? = null,
+        val build: (Project) -> Unit,
+    )
 
-        /**
+    /**
      * Templates offered when creating a project.
      *
      * Platformer and Space Shooter demos were removed: they are explicitly out
@@ -52,8 +56,11 @@ object Templates {
         )
     }
 
+    // `build` stays the last parameter so every code-only template above keeps
+    // its trailing-lambda form; a game template carries a stub builder and is
+    // materialised from games/ instead, which is what [gameId] selects.
     private fun shipped(id: String, name: String, description: String) =
-        Template(name, description, { _ -> }, gameId = id)
+        Template(name, description, gameId = id) { _ -> }
 
     val all: List<Template> by lazy { listOf(empty, physics, demo3d, blueprintDemo) + games }
 

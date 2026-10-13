@@ -5,8 +5,10 @@ import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.SceneSerializer
 import com.sengine.project.Project
 import com.sengine.project.Templates
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -146,7 +148,13 @@ class EngineSimulationTest {
      */
     @Test
     fun everyTemplateRunsWithoutScriptErrors() {
-        for (t in Templates.all) {
+        // Code-only templates only.  A game template is materialised out of the
+        // APK's game library by ProjectManager, and the unit-test JVM has no
+        // Context to read assets from -- so there is nothing here to run.  The
+        // shipped games are covered where their data lives: run_games.js
+        // executes every one of their scripts headlessly, and validate_games.py
+        // checks every scene against the same ComponentRegistry this engine uses.
+        for (t in Templates.all.filter { it.gameId == null }) {
             val r = start(newProject(t.name))
             r.frames(240) { i ->
                 r.engine.input.joyX = if ((i / 60) % 2 == 0) 1f else -1f
@@ -154,6 +162,53 @@ class EngineSimulationTest {
             }
             println("SIM template '${t.name}' ran 240 frames, objects=${r.engine.scene.objects.size}")
             assertTrue("template '${t.name}' reported script errors: ${r.errors}", r.errors.isEmpty())
+        }
+    }
+
+    /**
+     * The contract that makes a shipped game usable as a template without a
+     * Kotlin copy of it: [Templates.Template.gameId] names a game in the library,
+     * the builder is inert (ProjectManager materialises the game instead), and
+     * the ids exist in the index the app actually loads.
+     */
+    @Test
+    fun gameTemplatesNameAShippedGameAndBuildNothing() {
+        val games = Templates.all.filter { it.gameId != null }
+        assertTrue("at least the four shipped games should be offered", games.size >= 4)
+
+        // Games come last.  The New Project dialog derives its radio ids from the
+        // position in Templates.all, so inserting one among the code templates
+        // would silently retarget every id after it.
+        assertEquals("shipped games must be appended after the code templates",
+            Templates.all.size - games.size, Templates.all.indexOfFirst { it.gameId != null })
+
+        for (t in games) {
+            val id = t.gameId!!
+            assertTrue("'${'$'}{t.name}' has a blank game id", id.isNotBlank())
+            assertTrue("'${'$'}{t.name}' has no description for the picker", t.description.isNotBlank())
+            val dir = Files.createTempDirectory("senginegame").toFile()
+            val p = Project(File(dir, "Test"))
+            p.saveMeta()
+            t.build(p)
+            assertFalse("'${'$'}{t.name}' built a scene: a game template must stay a stub, " +
+                "or the materialised game would be shadowed by a Kotlin copy",
+                p.sceneExists("Main"))
+            println("SIM game template '${'$'}{t.name}' -> ${'$'}id")
+        }
+
+        // Cross-check the ids against the index the app loads.  This runs from the
+        // module directory in CI, so the repository root is one level up; if the
+        // file is not reachable the id check is skipped rather than guessed at.
+        val index = listOf(File("../games/index.json"), File("games/index.json"))
+            .firstOrNull { it.exists() }
+        if (index != null) {
+            val arr = JSONArray(index.readText())
+            val ids = (0 until arr.length()).map { arr.optString(it) }
+            for (t in games) {
+                assertTrue("'${'$'}{t.name}' names '${'$'}{t.gameId}', which games/index.json does not list",
+                    t.gameId in ids)
+            }
+            println("SIM game ids cross-checked against ${'$'}{index.path}: ${'$'}ids")
         }
     }
 
