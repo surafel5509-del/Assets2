@@ -22,11 +22,11 @@ Then, in the order the system should be built:
 | 4 | [04-SCRIPTING.md](docs/04-SCRIPTING.md) | JavaScript runtime and the scripting API |
 | 5 | [05-ASSET-STORE.md](docs/05-ASSET-STORE.md) | ZIP ingest, sprite-sheet detection, licensing |
 | 6 | [06-BUILD-AND-PROFILING.md](docs/06-BUILD-AND-PROFILING.md) | In-app APK export, runtime profiler |
-| 7 | [07-GAMES.md](docs/07-GAMES.md) | The four games and what the validator caught |
+| 7 | [07-GAMES.md](docs/07-GAMES.md) | The twelve games and what the validator caught |
 | | [LIBRARIES.md](docs/LIBRARIES.md) | Every dependency and why |
 | | [DIRECTORY-STRUCTURE.md](docs/DIRECTORY-STRUCTURE.md) | Full annotated tree |
 
-## The four games
+## The twelve games
 
 | | Game | Genre | Detail |
 |---|---|---|---|
@@ -34,6 +34,19 @@ Then, in the order the system should be built:
 | 2 | **Blade & Bulwark** | 2D fighting | [games/02_fighting_2d](games/02_fighting_2d/README.md) |
 | 3 | **Hollow Ridge** | 3D action-adventure | [games/03_action_3d](games/03_action_3d/README.md) |
 | 4 | **Neon Overdrive** | 3D endless runner | [games/04_runner_3d](games/04_runner_3d/README.md) |
+| 5 | **Sector Zero** | 3D low-poly arena shooter | [games/05_shooter_lowpoly_3d](games/05_shooter_lowpoly_3d/README.md) |
+| 6 | **Skyline Drift** | 3D open-world driving | [games/06_open_world_3d](games/06_open_world_3d/README.md) |
+| 7 | **Dirt Rush** | 2D side-scrolling motorbike | [games/07_motorbike_2d](games/07_motorbike_2d/README.md) |
+| 8 | **Dead Blocks** | top-down zombie survival | [games/08_zombie_topdown](games/08_zombie_topdown/README.md) |
+| 9 | **Crypt of the Ember Sigil** | 2D top-down dungeon crawler | [games/09_dungeon_crawler_2d](games/09_dungeon_crawler_2d/README.md) |
+| 10 | **Blackout Heist** | 2D top-down stealth heist | [games/10_blackout_heist_2d](games/10_blackout_heist_2d/README.md) |
+| 11 | **Emberfall Valley** | 3D open-world survival, low-poly | [games/11_emberfall_valley_3d](games/11_emberfall_valley_3d/README.md) |
+| 12 | **Sunken Citadel** | 3D action arena, low-poly | [games/12_sunken_citadel_3d](games/12_sunken_citadel_3d/README.md) |
+
+Games 09–12 are the large ones: 1 086 / 799 / 1 143 / 662 live objects, and every
+one of them ships a full set of declared store art. Each is offered as a project
+starting point through `Templates.games`, which materialises the game itself
+rather than a Kotlin copy of it.
 
 They are data, not code — `game.json`, scene JSON and ES5 scripts — materialised
 into a project by `GameLibrary`, with art imported from the asset store.
@@ -51,13 +64,13 @@ cd native && make
 # silently downgrade them.  Use --force if you really mean it.
 python3 tools/build_asset_store.py
 
-# Validate all four games against the store manifest and the engine
+# Validate all twelve games against the store manifest and the engine
 python3 tools/validate_games.py
-#   → 3 132 checks, 0 errors — RESULT: PASS
+#   → 57 535 checks, 0 errors — RESULT: PASS
 
 # Actually execute every game script headlessly (240 frames each)
 node tools/run_games.js
-#   → RESULT: PASS
+#   → 304 checks, 0 failures — RESULT: PASS
 ```
 
 The Android build (`./gradlew assembleDebug`) needs a JDK and the Android SDK; the
@@ -75,13 +88,13 @@ APK to a GitHub Release via
 |---|---|
 | Native C++ core | **Verified.** `make` → 219 checks, 0 failures |
 | Asset store generation | **Verified.** 25 packs, 5 008 files, 154 sprite sheets |
-| Games vs. store vs. engine | **Verified.** 3 132 checks, 0 errors |
-| Game scripts, executed | **Verified.** `run_games.js` — 27 scripts × 240 frames, 89 checks |
+| Games vs. store vs. engine | **Verified.** 57 535 checks, 0 errors |
+| Game scripts, executed | **Verified.** `run_games.js` — 77 scripts × 240 frames, 304 checks |
 | Kotlin / Gradle | **Verified in CI.** 60 files compile; unit tests pass; debug + release APKs build |
 | APK packaging | **Verified in CI.** 25 pack ZIPs, 40 game entries, `index.json` present |
 | In-app APK export | **Verified in CI.** Exports a signed standalone game APK; `apksigner` verifies it, `aapt2` confirms the rewritten package, label and version |
 | Native Android build | **Not built** — no NDK, no `cmake`; the C++ core builds on the host only |
-| The four games on a device | **Not played** — no Android runtime here |
+| The twelve games on a device | **Not played** — no Android runtime here |
 
 The Kotlin is compiled and unit-tested, but only on CI — this sandbox has no JDK,
 so nothing here can build it. That distinction matters: a green local run says
@@ -107,6 +120,6 @@ are listed explicitly in [docs/03-EDITOR.md §7](docs/03-EDITOR.md#7-features-th
 
 24 of the 25 asset packs are bundled. `Super Pixel Objects Sample` is indexed but
 **not** bundled: its licence excludes game-making tools, and this is one.
-`FreeCharactersAnimationsAssetPack` forbids redistribution yet is used by three of
-the four games — a tension flagged in
+`FreeCharactersAnimationsAssetPack` forbids redistribution yet is used by two of
+the twelve games — a tension flagged in
 [docs/05-ASSET-STORE.md §5](docs/05-ASSET-STORE.md#5-licensing) rather than buried.

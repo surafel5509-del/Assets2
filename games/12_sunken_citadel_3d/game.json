@@ -1,0 +1,474 @@
+{
+  "id": "12_sunken_citadel_3d",
+  "title": "Sunken Citadel",
+  "genre": "3D action arena combat",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "Knight.js",
+    "Citadel.js",
+    "Hollow.js",
+    "Revenant.js",
+    "Warden.js",
+    "Combat.js",
+    "Pickup.js",
+    "Fx.js",
+    "Hud.js"
+  ],
+  "controls": {
+    "axis": "left stick / WASD",
+    "Attack": "A / space (light combo)",
+    "Heavy": "heavy attack action",
+    "Dodge": "dodge action (roll)",
+    "Jump": "rise again after the knight falls"
+  },
+  "systems": [
+    "third-person camera",
+    "three-step light combo plus a heavy swing",
+    "dodge roll with invulnerability frames",
+    "stamina economy",
+    "wave director with rest phases",
+    "telegraph/strike/recover enemy AI",
+    "a boss with three ranged-by-distance attacks and a rage phase",
+    "loot pickups",
+    "HUD with health and stamina bars",
+    "pooled combat FX",
+    "brazier point lights"
+  ],
+  "engineNotes": {
+    "notes": [
+      "3D kit: kenney_nature_kit, dressed as a citadel instead of a valley -- the same pack supplies the walls (cliff cells), the bridges, the moat (water plates), the keep (stone platforms) and the statues.",
+      "One colour per mesh object (Meshes.loadObj ignores mtllib/usemtl), so every tint is the model's face-dominant material mapped through this game's palette; see tools/biggames/kit3d.py.",
+      "Motion is script-owned rather than Rigidbody3D/Collider3D.  The offline harness (tools/run_games.js) does not run PhysicsWorld3D, so a physics-driven combat game could not be verified before shipping; the scripts own position, and reach is resolved as a cone in Combat.js.",
+      "Combat resolves in one place: Combat.strike(attacker, damage, reach, facing) hits whichever side the attacker is not on, so a Hollow, a Revenant, the Warden and the knight all share one definition of a hit.",
+      "The engine keeps the four point lights nearest the camera (Renderer3D.setupLights), which is why the braziers are many and small rather than a few large ones."
+    ]
+  },
+  "assets": [
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/ground_grass.obj",
+      "as": "ground_grass.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/ground_pathOpen.obj",
+      "as": "ground_pathOpen.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/ground_riverOpen.obj",
+      "as": "ground_riverOpen.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/platform_beach.obj",
+      "as": "platform_beach.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/platform_grass.obj",
+      "as": "platform_grass.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/platform_stone.obj",
+      "as": "platform_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_stone.obj",
+      "as": "cliff_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_large_stone.obj",
+      "as": "cliff_large_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockHalf_stone.obj",
+      "as": "cliff_blockHalf_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_steps_stone.obj",
+      "as": "cliff_steps_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_cornerInner_stone.obj",
+      "as": "cliff_cornerInner_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_block_stone.obj",
+      "as": "cliff_block_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_corner_stone.obj",
+      "as": "cliff_corner_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockSlope_stone.obj",
+      "as": "cliff_blockSlope_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_cave_stone.obj",
+      "as": "cliff_cave_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_diagonal_stone.obj",
+      "as": "cliff_diagonal_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockSlopeWalls_stone.obj",
+      "as": "cliff_blockSlopeWalls_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_largeA.obj",
+      "as": "stone_largeA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_largeC.obj",
+      "as": "stone_largeC.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_smallA.obj",
+      "as": "stone_smallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_smallD.obj",
+      "as": "stone_smallD.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_tallA.obj",
+      "as": "stone_tallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_tallC.obj",
+      "as": "stone_tallC.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_tallF.obj",
+      "as": "stone_tallF.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_smallB.obj",
+      "as": "rock_smallB.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_tallA.obj",
+      "as": "rock_tallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/path_stone.obj",
+      "as": "path_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/path_stoneCircle.obj",
+      "as": "path_stoneCircle.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/path_stoneCorner.obj",
+      "as": "path_stoneCorner.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/path_stoneEnd.obj",
+      "as": "path_stoneEnd.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_stone.obj",
+      "as": "bridge_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_stoneNarrow.obj",
+      "as": "bridge_stoneNarrow.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_center_stone.obj",
+      "as": "bridge_center_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_side_stone.obj",
+      "as": "bridge_side_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_planks.obj",
+      "as": "fence_planks.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_planksDouble.obj",
+      "as": "fence_planksDouble.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_gate.obj",
+      "as": "fence_gate.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_simpleLow.obj",
+      "as": "fence_simpleLow.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_column.obj",
+      "as": "statue_column.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_columnDamaged.obj",
+      "as": "statue_columnDamaged.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_obelisk.obj",
+      "as": "statue_obelisk.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_ring.obj",
+      "as": "statue_ring.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_head.obj",
+      "as": "statue_head.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_block.obj",
+      "as": "statue_block.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bed.obj",
+      "as": "bed.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bed_floor.obj",
+      "as": "bed_floor.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/sign.obj",
+      "as": "sign.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/pot_large.obj",
+      "as": "pot_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/pot_small.obj",
+      "as": "pot_small.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bush.obj",
+      "as": "plant_bush.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_flatTall.obj",
+      "as": "plant_flatTall.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/grass_leafsLarge.obj",
+      "as": "grass_leafsLarge.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/lily_large.obj",
+      "as": "lily_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/lily_small.obj",
+      "as": "lily_small.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/hanging_moss.obj",
+      "as": "hanging_moss.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_pineSmallB.obj",
+      "as": "tree_pineSmallB.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stump_round.obj",
+      "as": "stump_round.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log.obj",
+      "as": "log.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log_stack.obj",
+      "as": "log_stack.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/campfire_stones.obj",
+      "as": "campfire_stones.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/campfire_logs.obj",
+      "as": "campfire_logs.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/canoe.obj",
+      "as": "canoe.obj"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/fire_01.png",
+      "as": "fx_fire.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_02.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/spark_04.png",
+      "as": "fx_spark.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/magic_05.png",
+      "as": "fx_magic.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_02.png",
+      "as": "fx_ring.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/star_04.png",
+      "as": "fx_star.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/dirt_02.png",
+      "as": "fx_dust.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragon9SlicesA.png",
+      "as": "hud_panel.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragon9SlicesB.png",
+      "as": "hud_gem.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "PNG/Grey/Default/button_square_border.png",
+      "as": "ui_slot.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "PNG/Grey/Default/arrow_basic_e.png",
+      "as": "ui_arrow.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_hit.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_step.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-b.ogg",
+      "as": "sfx_heavy.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_slam.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-b.ogg",
+      "as": "sfx_hurt.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_dodge.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_wave.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_loot.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_win.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-b.ogg",
+      "as": "sfx_lose.ogg"
+    }
+  ]
+}

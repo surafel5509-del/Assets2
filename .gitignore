@@ -12,3 +12,6 @@ build/
 *.keystore
 .asset-cache/
 native/build-host/
+
+# Python bytecode from the offline tools
+__pycache__/

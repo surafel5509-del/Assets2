@@ -24,6 +24,35 @@ object ProjectManager {
     fun exists(ctx: Context, name: String) = File(root(ctx), name).exists()
 
     fun create(ctx: Context, name: String, template: Templates.Template): Project {
+        // A game template is the shipped game: materialise it (scenes, scripts,
+        // asset imports) instead of running a Kotlin builder, then give it the
+        // name the user typed.  Importing a game's assets takes a moment, which
+        // is why the library offers the same work behind a progress callback --
+        // here it simply runs before the editor opens.
+        val gameId = template.gameId
+        if (gameId != null) {
+            val game = GameLibrary.byId(gameId)
+                ?: GameLibrary.load(ctx).firstOrNull { it.id == gameId }
+            if (game != null) {
+                val target = File(root(ctx), name)
+                val titled = File(root(ctx), game.title)
+                if (titled.exists() && titled != target) {
+                    // materialize() always writes under the game's own title, so a
+                    // game that already has a project is copied rather than
+                    // rewritten -- creating "My Heist" must not clobber the
+                    // project someone else made from the same game.
+                    titled.copyRecursively(target)
+                    return Project(target)
+                }
+                val made = GameLibrary.materialize(ctx, game).project
+                if (made != null) {
+                    if (made.dir != target && !target.exists() && made.dir.renameTo(target)) {
+                        return Project(target)
+                    }
+                    return made
+                }
+            }
+        }
         val p = Project(File(root(ctx), name))
         p.saveMeta()
         template.build(p)

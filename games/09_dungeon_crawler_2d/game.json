@@ -1,0 +1,844 @@
+{
+  "id": "09_dungeon_crawler_2d",
+  "title": "Crypt of the Ember Sigil",
+  "genre": "2D top-down dungeon crawler / action-RPG",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "Warden.js",
+    "Grunt.js",
+    "Ghost.js",
+    "Crawler.js",
+    "Spit.js",
+    "Bolt.js",
+    "Fx.js",
+    "DeepDelve.js"
+  ],
+  "controls": {
+    "move": "virtual joystick (8-direction)",
+    "attack": "action button A (sword arc)",
+    "restart": "action button A on the end screen"
+  },
+  "systems": [
+    "level: generated at runtime from an 11-room grammar on a 72x56 tile grid",
+    "rendering: 8x8 tile chunks (63 chunk sprites + overlays) instead of 4032 tile objects",
+    "collision: wall runs merged into ~200 axis-aligned colliders",
+    "enemy AI: melee patrol/chase/attack, a wall-phasing hunter, a ranged kiter",
+    "combat: cone sword arcs, hit-stop, knockback via velocity, out-of-combat regeneration",
+    "objectives: 3 sigils to claim, waves escalate while they are missing"
+  ],
+  "engineNotes": {
+    "notes": [
+      "The tile atlas is Penusbmic's Dungeon_Tileset.png.  The store refuses to guess a grid for opaque art, so the 10x10/16px grid and the specific cells used are declared in game.json and were verified by rendering the atlas with tools/probe_png.py.",
+      "Enemies come from the same pack's monster idle frames (4 per monster).  The engine's Animator plays one texture per clip, so the four frames are four assets and the scripts advance them on a timer rather than shipping a fake sheet.",
+      "The hero is the High Forest knight (80x96) rather than the dungeon pack's wizard, because the forest pack is the only one in the store with a full run/attack/death set.",
+      "There is no 2D lighting or fog in the renderer (Renderer3D owns both), so the level carries no Light component at all: the warm pools around torches and the warden's ember are additive ParticleEmitters.  A Light in a 2D scene would be inert -- which is why one is not declared here."
+    ]
+  },
+  "assets": [
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "character and tileset/Dungeon_Tileset.png",
+      "as": "tiles_atlas.png",
+      "clips": {
+        "tile_floor": {
+          "frames": [
+            6
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_floor_alt": {
+          "frames": [
+            22
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_carpet": {
+          "frames": [
+            9
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_wall": {
+          "frames": [
+            1
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_wall_alt": {
+          "frames": [
+            3
+          ],
+          "fps": 1.0,
+          "loop": false
+        }
+      },
+      "tileset": {
+        "tileSize": 16,
+        "columns": 10,
+        "rows": 10
+      }
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/torch/torch_1.png",
+      "as": "prop_torch.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/box_1/box_1_1.png",
+      "as": "prop_crate.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/chest/chest_1.png",
+      "as": "prop_chest.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/coin/coin_1.png",
+      "as": "prop_coin.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/keys/keys_1_1.png",
+      "as": "prop_key.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/flasks/flasks_1_1.png",
+      "as": "prop_flask.png"
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_idle.png",
+      "as": "grunt_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6
+      },
+      "clips": {
+        "grunt_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 6.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_movement.png",
+      "as": "grunt_walk.png",
+      "anim": {
+        "columns": 10,
+        "rows": 1,
+        "frames": 10
+      },
+      "clips": {
+        "grunt_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 10.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_attack.png",
+      "as": "grunt_attack.png",
+      "anim": {
+        "columns": 9,
+        "rows": 1,
+        "frames": 9
+      },
+      "clips": {
+        "grunt_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "fps": 12.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_take_damage.png",
+      "as": "grunt_hurt.png",
+      "anim": {
+        "columns": 5,
+        "rows": 1,
+        "frames": 5
+      },
+      "clips": {
+        "grunt_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton1_death.png",
+      "as": "grunt_death.png",
+      "anim": {
+        "columns": 17,
+        "rows": 1,
+        "frames": 17
+      },
+      "clips": {
+        "grunt_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_idle.png",
+      "as": "ghost_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6
+      },
+      "clips": {
+        "ghost_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 6.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_movement.png",
+      "as": "ghost_walk.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8
+      },
+      "clips": {
+        "ghost_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 9.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_attack.png",
+      "as": "ghost_attack.png",
+      "anim": {
+        "columns": 16,
+        "rows": 1,
+        "frames": 16
+      },
+      "clips": {
+        "ghost_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "fps": 12.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_take_damage.png",
+      "as": "ghost_hurt.png",
+      "anim": {
+        "columns": 5,
+        "rows": 1,
+        "frames": 5
+      },
+      "clips": {
+        "ghost_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-vampire_death.png",
+      "as": "ghost_death.png",
+      "anim": {
+        "columns": 14,
+        "rows": 1,
+        "frames": 14
+      },
+      "clips": {
+        "ghost_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton2_idle.png",
+      "as": "crawler_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6
+      },
+      "clips": {
+        "crawler_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 6.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton2_movemen.png",
+      "as": "crawler_walk.png",
+      "anim": {
+        "columns": 10,
+        "rows": 1,
+        "frames": 10
+      },
+      "clips": {
+        "crawler_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "fps": 10.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton2_attack.png",
+      "as": "crawler_attack.png",
+      "anim": {
+        "columns": 15,
+        "rows": 1,
+        "frames": 15
+      },
+      "clips": {
+        "crawler_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "fps": 12.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "enemy_animations_set",
+      "path": "enemies-skeleton2_take_damage.png",
+      "as": "crawler_hurt.png",
+      "anim": {
+        "columns": 5,
+        "rows": 1,
+        "frames": 5
+      },
+      "clips": {
+        "crawler_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Character/Idle/Idle-Sheet.png",
+      "as": "hero_idle.png",
+      "anim": {
+        "columns": 4,
+        "rows": 1,
+        "frames": 4
+      },
+      "clips": {
+        "hero_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 6.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Character/Run/Run-Sheet.png",
+      "as": "hero_walk.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8
+      },
+      "clips": {
+        "hero_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Character/Attack-01/Attack-01-Sheet.png",
+      "as": "hero_attack.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8
+      },
+      "clips": {
+        "hero_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 14.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Character/Dead/Dead-Sheet.png",
+      "as": "hero_death.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8
+      },
+      "clips": {
+        "hero_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Character/Idle/Idle-Sheet.png",
+      "as": "hero_start.png",
+      "anim": {
+        "columns": 4,
+        "rows": 1,
+        "frames": 4
+      },
+      "clips": {
+        "hero_idle": {
+          "frames": [
+            0
+          ],
+          "fps": 6.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Assets/Tiles.png",
+      "as": "forest_tiles.png"
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Assets/Props-Rocks.png",
+      "as": "forest_rocks.png"
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Assets/Buildings.png",
+      "as": "forest_buildings.png"
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Trees/Green-Tree.png",
+      "as": "forest_tree.png"
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "Background/Background.png",
+      "as": "forest_sky.png"
+    },
+    {
+      "pack": "legacy_fantasy_high_forest_2_0",
+      "path": "HUD/Base-01.png",
+      "as": "hud_frame.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-sword.png",
+      "as": "icon_sword.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-shield.png",
+      "as": "icon_shield.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-helmet.png",
+      "as": "icon_helmet.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-pouch.png",
+      "as": "icon_pouch.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-food.png",
+      "as": "icon_food.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-redbook.png",
+      "as": "icon_book.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-goblet.png",
+      "as": "icon_potion.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-chest.png",
+      "as": "icon_chest.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-crown.png",
+      "as": "icon_crown.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-clock.png",
+      "as": "icon_clock.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-axe.png",
+      "as": "icon_axe.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_icon-pickaxe.png",
+      "as": "icon_pickaxe.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_foodbar.png",
+      "as": "ui_healthbar.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_mapicons.png",
+      "as": "ui_mapicons.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_smallbutton.png",
+      "as": "ui_button.png"
+    },
+    {
+      "pack": "all_assets",
+      "path": "dfgui_portraitframe.png",
+      "as": "ui_portrait.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragon9SlicesA.png",
+      "as": "ui_panel.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragonHeaderA.png",
+      "as": "ui_header.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/fire_01.png",
+      "as": "fx_fire.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_02.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_02.png",
+      "as": "fx_slash.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/spark_04.png",
+      "as": "fx_spark.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/dirt_02.png",
+      "as": "fx_dust.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_hit.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_step.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_swing.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-b.ogg",
+      "as": "sfx_hurt.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-b.ogg",
+      "as": "sfx_spit.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_sigil.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_death.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_win.ogg"
+    }
+  ],
+  "spriteDirections": {
+    "note": "Hero sheets are single rows; direction is chosen by swapping the clip and mirroring, never by spinning the sprite.",
+    "clips": {
+      "idle": [
+        "Character/Idle/Idle-Sheet.png",
+        4,
+        6,
+        true
+      ],
+      "walk": [
+        "Character/Run/Run-Sheet.png",
+        8,
+        12,
+        true
+      ],
+      "attack": [
+        "Character/Attack-01/Attack-01-Sheet.png",
+        8,
+        14,
+        false
+      ],
+      "death": [
+        "Character/Dead/Dead-Sheet.png",
+        8,
+        10,
+        false
+      ]
+    }
+  }
+}

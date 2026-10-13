@@ -17,17 +17,45 @@ import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
 
 object Templates {
-    class Template(val name: String, val description: String, val build: (Project) -> Unit)
+    /**
+     * A starting point offered in the New Project dialog.
+     *
+     * [gameId] marks a template that *is* one of the shipped games: rather than
+     * rebuilding the level in Kotlin, creating the project hands off to
+     * [GameLibrary.materialize], which copies the same scene text, scripts and
+     * asset imports the library plays.  One source of truth, in `games/`.
+     */
+    class Template(val name: String, val description: String, val build: (Project) -> Unit,
+                   val gameId: String? = null)
 
         /**
      * Templates offered when creating a project.
      *
      * Platformer and Space Shooter demos were removed: they are explicitly out
-     * of scope for this engine.  The four shipped games in `games/` are loaded
-     * by [GameLibrary] instead of being listed here, because they are complete
-     * games with imported store assets rather than code-only starting points.
+     * of scope for this engine.
+     *
+     * The shipped games come last, and each one materialises the game itself
+     * through [ProjectManager.create] rather than a Kotlin copy of it -- a
+     * code-only starting point cannot ship four hundred objects of level data,
+     * and a second copy would drift from the one the validator checks.
      */
-    val all: List<Template> by lazy { listOf(empty, physics, demo3d, blueprintDemo) }
+    val games: List<Template> by lazy {
+        listOf(
+            shipped("09_dungeon_crawler_2d", "Crypt of the Ember Sigil",
+                "2D top-down dungeon crawler / action-RPG"),
+            shipped("10_blackout_heist_2d", "Blackout Heist",
+                "2D top-down stealth heist through a darkened depot"),
+            shipped("11_emberfall_valley_3d", "Emberfall Valley",
+                "open-world 3D survival exploration, low-poly"),
+            shipped("12_sunken_citadel_3d", "Sunken Citadel",
+                "3D action arena combat in a drowned citadel, low-poly"),
+        )
+    }
+
+    private fun shipped(id: String, name: String, description: String) =
+        Template(name, description, { _ -> }, gameId = id)
+
+    val all: List<Template> by lazy { listOf(empty, physics, demo3d, blueprintDemo) + games }
 
     /** Look up a template by display name.  Callers must use this rather than
      *  indexing [all]: positions shift whenever a template is added or removed. */

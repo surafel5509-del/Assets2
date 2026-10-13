@@ -1,0 +1,620 @@
+{
+  "id": "11_emberfall_valley_3d",
+  "title": "Emberfall Valley",
+  "genre": "open world 3D survival exploration",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "Ranger.js",
+    "Valley.js",
+    "Forage.js",
+    "Beacon.js",
+    "Camp.js",
+    "Wildlife.js",
+    "Hud.js",
+    "Fx.js"
+  ],
+  "controls": {
+    "axis": "left stick / WASD",
+    "Jump": "A / space",
+    "Interact": "B / enter",
+    "Sprint": "Sprint action (hold)"
+  },
+  "systems": [
+    "third-person camera",
+    "day/night cycle with a real directional sun",
+    "weather states",
+    "forage + resource economy",
+    "objective chain",
+    "herds with flee behaviour",
+    "fires as light + warmth sources",
+    "HUD",
+    "pooled particle FX"
+  ],
+  "engineNotes": {
+    "notes": [
+      "3D kit: kenney_nature_kit. All 329 models are OBJs with flat materials and no textures; Meshes.loadObj ignores mtllib/usemtl and normalises every model to a unit cube centred on its origin, so each object here is scaled to its intended size and placed at y = size / 2 to stand on the ground.",
+      "One colour per mesh object, by design: each tint is the face-dominant material of that model read out of the pack's own .mtl files (see tools/biggames/nature.py). Canopied trees therefore render with a green trunk -- the canopy is 2-4x the trunk's faces -- so they are used as a back-lit belt at the valley edge; the near ground uses the kit's shrubs, logs and standing stones, which read cleanly in one colour.",
+      "The ranger's gravity is script-owned rather than Rigidbody3D: the terrain is a flat plane with a script-clamped boundary, and a script-owned arc behaves identically in the engine and in the offline harness (tools/run_games.js), which is where the game is tested.",
+      "The sun, the sky gradient and the fog colours are driven from Valley.js through the Light and Camera3D APIs, so the day/night cycle is real lighting rather than a screen tint.",
+      "Audio aliases: the store ships six UI sounds in kenney_ui_pack; every cue in this game is one of those six under a name that says what it means."
+    ]
+  },
+  "assets": [
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/ground_grass.obj",
+      "as": "ground_grass.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/ground_pathOpen.obj",
+      "as": "ground_pathOpen.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/ground_riverOpen.obj",
+      "as": "ground_riverOpen.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/platform_beach.obj",
+      "as": "platform_beach.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_stone.obj",
+      "as": "cliff_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_large_stone.obj",
+      "as": "cliff_large_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_corner_stone.obj",
+      "as": "cliff_corner_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_cornerInner_stone.obj",
+      "as": "cliff_cornerInner_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_diagonal_stone.obj",
+      "as": "cliff_diagonal_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockHalf_stone.obj",
+      "as": "cliff_blockHalf_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_cave_stone.obj",
+      "as": "cliff_cave_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_steps_stone.obj",
+      "as": "cliff_steps_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockSlope_stone.obj",
+      "as": "cliff_blockSlope_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_rock.obj",
+      "as": "cliff_rock.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_cave_rock.obj",
+      "as": "cliff_cave_rock.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_blockSlope_rock.obj",
+      "as": "cliff_blockSlope_rock.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_cornerInnerLarge_rock.obj",
+      "as": "cliff_cornerInnerLarge_rock.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cliff_large_rock.obj",
+      "as": "cliff_large_rock.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_smallA.obj",
+      "as": "rock_smallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_smallC.obj",
+      "as": "rock_smallC.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_smallE.obj",
+      "as": "rock_smallE.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_smallG.obj",
+      "as": "rock_smallG.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_tallA.obj",
+      "as": "rock_tallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_tallC.obj",
+      "as": "rock_tallC.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/rock_largeA.obj",
+      "as": "rock_largeA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_smallA.obj",
+      "as": "stone_smallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_smallD.obj",
+      "as": "stone_smallD.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_tallA.obj",
+      "as": "stone_tallA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_tallD.obj",
+      "as": "stone_tallD.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stone_largeA.obj",
+      "as": "stone_largeA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bush.obj",
+      "as": "plant_bush.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bushDetailed.obj",
+      "as": "plant_bushDetailed.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bushLarge.obj",
+      "as": "plant_bushLarge.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bushLargeTriangle.obj",
+      "as": "plant_bushLargeTriangle.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_bushSmall.obj",
+      "as": "plant_bushSmall.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_flatShort.obj",
+      "as": "plant_flatShort.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/plant_flatTall.obj",
+      "as": "plant_flatTall.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/grass.obj",
+      "as": "grass.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/grass_large.obj",
+      "as": "grass_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/grass_leafs.obj",
+      "as": "grass_leafs.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/grass_leafsLarge.obj",
+      "as": "grass_leafsLarge.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/hanging_moss.obj",
+      "as": "hanging_moss.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_default.obj",
+      "as": "tree_default.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_pineTallB.obj",
+      "as": "tree_pineTallB.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_pineRoundC.obj",
+      "as": "tree_pineRoundC.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_oak.obj",
+      "as": "tree_oak.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_thin.obj",
+      "as": "tree_thin.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tree_default_fall.obj",
+      "as": "tree_default_fall.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stump_round.obj",
+      "as": "stump_round.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/stump_oldTall.obj",
+      "as": "stump_oldTall.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log.obj",
+      "as": "log.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log_stack.obj",
+      "as": "log_stack.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/log_large.obj",
+      "as": "log_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/mushroom_red.obj",
+      "as": "mushroom_red.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/mushroom_redGroup.obj",
+      "as": "mushroom_redGroup.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/mushroom_tan.obj",
+      "as": "mushroom_tan.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/flower_redA.obj",
+      "as": "flower_redA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/flower_yellowA.obj",
+      "as": "flower_yellowA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/flower_purpleA.obj",
+      "as": "flower_purpleA.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cactus_short.obj",
+      "as": "cactus_short.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/cactus_tall.obj",
+      "as": "cactus_tall.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tent_detailedOpen.obj",
+      "as": "tent_detailedOpen.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/tent_smallClosed.obj",
+      "as": "tent_smallClosed.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bed.obj",
+      "as": "bed.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/campfire_logs.obj",
+      "as": "campfire_logs.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/campfire_stones.obj",
+      "as": "campfire_stones.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/campfire_planks.obj",
+      "as": "campfire_planks.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_planks.obj",
+      "as": "fence_planks.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_planksDouble.obj",
+      "as": "fence_planksDouble.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/fence_gate.obj",
+      "as": "fence_gate.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_stone.obj",
+      "as": "bridge_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_stoneNarrow.obj",
+      "as": "bridge_stoneNarrow.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/path_stone.obj",
+      "as": "path_stone.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/path_stoneCircle.obj",
+      "as": "path_stoneCircle.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/sign.obj",
+      "as": "sign.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/pot_large.obj",
+      "as": "pot_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/pot_small.obj",
+      "as": "pot_small.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/platform_grass.obj",
+      "as": "platform_grass.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bridge_center_wood.obj",
+      "as": "bridge_center_wood.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/crops_dirtSingle.obj",
+      "as": "crops_dirtSingle.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/crops_dirtRow.obj",
+      "as": "crops_dirtRow.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/crops_wheatStageB.obj",
+      "as": "crops_wheatStageB.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/crops_cornStageD.obj",
+      "as": "crops_cornStageD.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/crop_pumpkin.obj",
+      "as": "crop_pumpkin.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/crop_carrot.obj",
+      "as": "crop_carrot.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_ring.obj",
+      "as": "statue_ring.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_obelisk.obj",
+      "as": "statue_obelisk.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_column.obj",
+      "as": "statue_column.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/statue_head.obj",
+      "as": "statue_head.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/canoe.obj",
+      "as": "canoe.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/lily_small.obj",
+      "as": "lily_small.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/lily_large.obj",
+      "as": "lily_large.obj"
+    },
+    {
+      "pack": "kenney_nature_kit",
+      "path": "Models/OBJ format/bed_floor.obj",
+      "as": "bed_floor.obj"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_02.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/fire_01.png",
+      "as": "fx_fire.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/spark_04.png",
+      "as": "fx_spark.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/dirt_02.png",
+      "as": "fx_dust.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/star_04.png",
+      "as": "fx_star.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/magic_05.png",
+      "as": "fx_magic.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_02.png",
+      "as": "fx_ring.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragon9SlicesA.png",
+      "as": "hud_panel.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragonHeaderA.png",
+      "as": "hud_header.png"
+    },
+    {
+      "pack": "tinyrpg_dragonregaliagui_v1_0",
+      "path": "20240707dragon9SlicesB.png",
+      "as": "hud_gem.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "PNG/Grey/Default/arrow_basic_e.png",
+      "as": "ui_arrow.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "PNG/Grey/Default/button_square_border.png",
+      "as": "ui_slot.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_pick.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_step.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-b.ogg",
+      "as": "sfx_place.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_fire.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-b.ogg",
+      "as": "sfx_deny.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_win.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_dawn.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_night.ogg"
+    }
+  ]
+}

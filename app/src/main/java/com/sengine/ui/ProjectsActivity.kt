@@ -80,7 +80,9 @@ class ProjectsActivity : AppCompatActivity() {
                 // see working.  Names come from GameLibrary, and lookups are by
                 // name -- indexing Templates.all positionally silently creates the
                 // wrong project whenever the registry changes.
-                val seed = GameLibrary.entries.firstOrNull()
+                // load() is what reads the index; without it `entries` is empty
+                // and the shipped games never seed a first run.
+                val seed = GameLibrary.load(this).firstOrNull()
                 if (seed != null) {
                     GameLibrary.materialize(this, seed)
                 } else {

@@ -1,0 +1,526 @@
+{
+  "id": "10_blackout_heist_2d",
+  "title": "Blackout Heist",
+  "genre": "2D top-down stealth heist",
+  "orientation": 0,
+  "startScene": "Main",
+  "scenes": [
+    "Main"
+  ],
+  "networking": false,
+  "ai_assist": false,
+  "scripts": [
+    "Thief.js",
+    "Guard.js",
+    "Cam.js",
+    "Loot.js",
+    "Terminal.js",
+    "Exit.js",
+    "Heist.js",
+    "Hud.js",
+    "Burst.js",
+    "Puff.js"
+  ],
+  "controls": {
+    "axis": "left stick / WASD -- move (push further to run)",
+    "Sneak": "toggle -- creep, quiet and much harder to spot",
+    "Interact": "hold to take the keycard, crack a crate or safe, cut the camera feed, or climb into the van",
+    "Interact (aftermath)": "start the run again"
+  },
+  "systems": [
+    "grid-locked movement with script-owned collision and prop blocking",
+    "guard vision: range, cone (wider up close), and an exact line of sight walk over the level grid",
+    "per-guard detection meter drawn above the guard, feeding a shared alarm",
+    "light as a gameplay value: a lamp pool is the radius guards can see you in",
+    "noise: running is heard through walls, creeping is not",
+    "three sweeping eyes -- two cameras and the dock searchlight -- and one terminal that blinds the grid for the rest of the run",
+    "hold-to-interact chain: keycard, three vault crates, the van",
+    "procedurally carved rooms with a connectivity proof in the builder"
+  ],
+  "engineNotes": {
+    "notes": [
+      "The level grid is baked into Thief.js, Guard.js and Cam.js as a string table -- '.' open, 'x' blocked by a prop, '#' wall -- and all three are written from the same grid by tools/build_heist.py, so they cannot drift.",
+      "The builder refuses to emit a level whose rooms are not connected, whose props block a patrol point, or whose objectives cannot be reached.",
+      "There are no Light components in this scene: Scene.Light is read by Renderer3D only, so every lamp is an additive emitter whose drawn size is the radius the scripts test -- one number, one meaning, visible on screen.",
+      "Movement is script-owned.  Wall runs carry Collider2D for the editor, but the actors test the baked grid, because exact collision is what a stealth game is played on.",
+      "Character animation comes from the RPG Top-Down pack's 128x256 sheets: rows 0-3 are the idle poses for down/left/right/up and rows 4-7 the walk cycle for the same directions; the fourth cell of each row repeats the first, so the clips are three frames long.",
+      "The HUD is laid out inside +/-6.6 x +/-4.8 because the runtime draws screen-space objects through a fixed +/-5-unit view, independent of the game camera (see SceneRenderer.drawScreenUI).",
+      "Cast: the thief, Rook, Vale, Sable, and three sweeping eyes."
+    ]
+  },
+  "assets": [
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "character and tileset/Dungeon_Tileset.png",
+      "as": "tiles_atlas.png",
+      "clips": {
+        "tile_floor": {
+          "frames": [
+            6
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_masonry": {
+          "frames": [
+            22
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_planks": {
+          "frames": [
+            56
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_wall": {
+          "frames": [
+            1
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_wall_alt": {
+          "frames": [
+            3
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_cratewall": {
+          "frames": [
+            36
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_shelf": {
+          "frames": [
+            66
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_stack": {
+          "frames": [
+            49
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_bones": {
+          "frames": [
+            64
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_coin": {
+          "frames": [
+            86
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_table": {
+          "frames": [
+            94
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_stool": {
+          "frames": [
+            96
+          ],
+          "fps": 1.0,
+          "loop": false
+        },
+        "tile_pillar": {
+          "frames": [
+            47
+          ],
+          "fps": 1.0,
+          "loop": false
+        }
+      },
+      "tileset": {
+        "tileSize": 16,
+        "columns": 10,
+        "rows": 10
+      }
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/torch/torch_1.png",
+      "as": "prop_torch.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/torch/candlestick_1_1.png",
+      "as": "prop_candle.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/chest/chest_1.png",
+      "as": "prop_chest.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/chest/chest_open_1.png",
+      "as": "prop_chest_open.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/coin/coin_1.png",
+      "as": "prop_coin.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/keys/keys_1_1.png",
+      "as": "prop_keys.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/flasks/flasks_1_1.png",
+      "as": "prop_flask.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/box_1/box_1_1.png",
+      "as": "prop_box.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/mini_box_1/mini_box_1_1.png",
+      "as": "prop_minibox.png"
+    },
+    {
+      "pack": "2d_pixel_dungeon_asset_pack_v2_0",
+      "path": "items and trap_animation/flag/flag_1.png",
+      "as": "prop_flag.png"
+    },
+    {
+      "pack": "rpg_top_down_character_asset_pack_free",
+      "path": "RPG Top Down Characters - Free Version/Blonde Man/blonde_man.png",
+      "as": "thief.png",
+      "clips": {
+        "thief_idle_down": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "thief_walk_down": {
+          "frames": [
+            16,
+            17,
+            18
+          ],
+          "fps": 9.0,
+          "loop": true
+        },
+        "thief_idle_left": {
+          "frames": [
+            4,
+            5
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "thief_walk_left": {
+          "frames": [
+            20,
+            21,
+            22
+          ],
+          "fps": 9.0,
+          "loop": true
+        },
+        "thief_idle_right": {
+          "frames": [
+            8,
+            9
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "thief_walk_right": {
+          "frames": [
+            24,
+            25,
+            26
+          ],
+          "fps": 9.0,
+          "loop": true
+        },
+        "thief_idle_up": {
+          "frames": [
+            12,
+            13
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "thief_walk_up": {
+          "frames": [
+            28,
+            29,
+            30
+          ],
+          "fps": 9.0,
+          "loop": true
+        }
+      },
+      "tileset": {
+        "tileSize": 32,
+        "columns": 4,
+        "rows": 8
+      }
+    },
+    {
+      "pack": "rpg_top_down_character_asset_pack_free",
+      "path": "RPG Top Down Characters - Free Version/Blue Haired Woman/blue_haired_woman.png",
+      "as": "guard.png",
+      "clips": {
+        "guard_idle_down": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "guard_walk_down": {
+          "frames": [
+            16,
+            17,
+            18
+          ],
+          "fps": 9.0,
+          "loop": true
+        },
+        "guard_idle_left": {
+          "frames": [
+            4,
+            5
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "guard_walk_left": {
+          "frames": [
+            20,
+            21,
+            22
+          ],
+          "fps": 9.0,
+          "loop": true
+        },
+        "guard_idle_right": {
+          "frames": [
+            8,
+            9
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "guard_walk_right": {
+          "frames": [
+            24,
+            25,
+            26
+          ],
+          "fps": 9.0,
+          "loop": true
+        },
+        "guard_idle_up": {
+          "frames": [
+            12,
+            13
+          ],
+          "fps": 3.0,
+          "loop": true
+        },
+        "guard_walk_up": {
+          "frames": [
+            28,
+            29,
+            30
+          ],
+          "fps": 9.0,
+          "loop": true
+        }
+      },
+      "tileset": {
+        "tileSize": 32,
+        "columns": 4,
+        "rows": 8
+      }
+    },
+    {
+      "pack": "all_cars",
+      "path": "car_116.png",
+      "as": "car_van.png"
+    },
+    {
+      "pack": "all_cars",
+      "path": "car_001.png",
+      "as": "car_a.png"
+    },
+    {
+      "pack": "all_cars",
+      "path": "car_057.png",
+      "as": "car_b.png"
+    },
+    {
+      "pack": "all_cars",
+      "path": "car_090.png",
+      "as": "car_c.png"
+    },
+    {
+      "pack": "super_pixel_objects_sample",
+      "path": "outline_light/key_large/key_A_blue.png",
+      "as": "keycard.png"
+    },
+    {
+      "pack": "super_pixel_objects_sample",
+      "path": "outline_light/chest_large/frame0000.png",
+      "as": "crate.png"
+    },
+    {
+      "pack": "super_pixel_objects_sample",
+      "path": "outline_light/chest_large/frame0007.png",
+      "as": "crate_open.png"
+    },
+    {
+      "pack": "super_pixel_objects_sample",
+      "path": "outline_light/potion_large/potion_A_blue_full.png",
+      "as": "mug.png"
+    },
+    {
+      "pack": "super_pixel_objects_sample",
+      "path": "outline_light/meat_large/meat.png",
+      "as": "meat.png"
+    },
+    {
+      "pack": "super_pixel_objects_sample",
+      "path": "outline_light/gem_large/frame0000.png",
+      "as": "gem.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/grey.png",
+      "as": "ui_panel.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/space.png",
+      "as": "ui_dark.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/red.png",
+      "as": "ui_alert.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/yellow.png",
+      "as": "ui_gold.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/green.png",
+      "as": "ui_green.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Colored/blue.png",
+      "as": "ui_screen.png"
+    },
+    {
+      "pack": "kenney_pixel_ui_pack",
+      "path": "9-Slice/Outline/blue.png",
+      "as": "ui_frame.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/circle_02.png",
+      "as": "fx_glow.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/light_01.png",
+      "as": "fx_light.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/flare_01.png",
+      "as": "fx_flare.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/spark_04.png",
+      "as": "fx_spark.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/dirt_02.png",
+      "as": "fx_dust.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/smoke_02.png",
+      "as": "fx_smoke.png"
+    },
+    {
+      "pack": "kenney_particle_pack",
+      "path": "PNG (Transparent)/fire_01.png",
+      "as": "fx_flame.png"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-a.ogg",
+      "as": "sfx_step.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_ui.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-b.ogg",
+      "as": "sfx_pick.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_alarm.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-b.ogg",
+      "as": "sfx_door.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/tap-b.ogg",
+      "as": "sfx_win.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_caught.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/click-a.ogg",
+      "as": "sfx_cam.ogg"
+    }
+  ]
+}

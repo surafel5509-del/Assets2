@@ -22,7 +22,16 @@
  * would let a bug ship.
  *
  * Usage:
- *   node tools/run_games.js [slug-substring] [--frames N] [--repo DIR]
+ * It can also dump the world it built, so the result can be looked at:
+ *
+ *   node tools/run_games.js 09_dungeon --dump /tmp/world
+ *   python3 tools/preview_scene.py 09_dungeon_crawler_2d --world /tmp/world/09_dungeon_crawler_2d.json --out level.png
+ *
+ * The dump is the world *after* the run, which is what makes it useful for art:
+ * a tilemap a script built, a wave of spawned enemies, a procedurally placed
+ * forest -- none of that is in the .scene.json, and all of it is in the dump.
+ *
+ *   node tools/run_games.js [slug-substring] [--frames N] [--repo DIR] [--dump DIR] [--every N]
  */
 
 'use strict';
@@ -39,10 +48,14 @@ const argv = process.argv.slice(2);
 let filter = '';
 let frames = 240;                       // four seconds at 60 Hz
 let repo = path.resolve(__dirname, '..');
+let dumpDir = '';
+let dumpEvery = 0;   // 0 = only the final frame
 
 for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--frames') frames = parseInt(argv[++i], 10);
     else if (argv[i] === '--repo') repo = path.resolve(argv[++i]);
+    else if (argv[i] === '--dump') dumpDir = path.resolve(argv[++i]);
+    else if (argv[i] === '--every') dumpEvery = parseInt(argv[++i], 10);
     else if (!argv[i].startsWith('--')) filter = argv[i];
 }
 
@@ -248,8 +261,20 @@ class GameObj {
                 this.gravityScale = c['Gravity Scale'] === undefined ? 1 : c['Gravity Scale'];
                 this.drag = c['Linear Drag'] === undefined ? 0 : c['Linear Drag'];
             }
-            if (c.type === 'SpriteRenderer' && c.Texture) this._texture = c.Texture;
-            if (c.type === 'TextRenderer' && c.Text !== undefined) this.text = c.Text;
+            if (c.type === 'SpriteRenderer') {
+                if (c.Texture) this._texture = c.Texture;
+                // The component's own colour and the script's colour are the same
+                // field on the object, so a tinted tile has to arrive here or the
+                // dump (and every still rendered from it) draws it white.
+                if (c.Color) this.color = c.Color;
+            }
+            if (c.type === 'TextRenderer') {
+                if (c.Text !== undefined) this.text = c.Text;
+                if (c.Color) this.color = c.Color;
+                if (c['Size'] !== undefined) this.size = c['Size'];
+                this._align = c['Align'] || 'Left';
+            }
+            if (c.type === 'MeshRenderer' && c.Color) this.color = c.Color;
             if (c.type === 'Animator') { this._animFrames = 8; }
         }
     }
@@ -425,6 +450,26 @@ function num(v, what, go) {
 // World
 // ---------------------------------------------------------------------------
 
+/**
+ * Animator.resetRuntime(): an Animator with a Clip and Play On Start shows that
+ * clip from the first frame -- which is how a scene paints a tile or holds an
+ * idle pose with no script at all.  The harness has to do the same or every
+ * static frame in a dumped world renders as an undivided sheet.
+ */
+function applyAnimatorRuntime(go) {
+    const def = go._def;
+    if (!def) return;
+    for (const c of (def.components || [])) {
+        if (c.type !== 'Animator') continue;
+        go._animFrames = 8;
+        const info = go._world.clipInfo && go._world.clipInfo[c.Clip];
+        if (!info) continue;
+        go._animFrames = info.frames || 1;
+        go._animFps = info.fps || 8;
+        if (c['Play On Start'] !== false) go.animation = c.Clip;
+    }
+}
+
 class World {
     constructor(scene, gameDir, declaredAudio) {
         this.objects = [];
@@ -445,10 +490,15 @@ class World {
         this.shakeCount = 0;
         this.clips = new Set();
         this.missingFinds = new Set();
+        this.namedActions = new Set();     // every literal name passed to actionPressed()
         this.foundNames = new Set();
 
         for (const def of scene.objects) {
             const go = new GameObj(def.id, def, this);
+            // Every object knows the definition it came from, not just the ones
+            // that carry a script: the dump needs component data (a particle
+            // emitter's colour and size) for objects that have no script at all.
+            go._def = def;
             this.objects.push(go);
             this.byId.set(go._id, go);
             this.byName.set(go.name, go);
@@ -459,6 +509,39 @@ class World {
     proxyFor(go) {
         if (!this.proxies.has(go._id)) this.proxies.set(go._id, makeSObject(go, this));
         return this.proxies.get(go._id);
+    }
+
+    /** Mirrors GameObject.isActiveInHierarchy(): a child of a hidden parent is off. */
+    isActive(go) {
+        let cur = go;
+        while (cur) {
+            if (!cur.active || cur._destroyed) return false;
+            cur = cur.parent === null || cur.parent === undefined ? null : this.byId.get(cur.parent);
+        }
+        return true;
+    }
+
+    /**
+     * Copy one child definition under a freshly spawned parent, walking its own
+     * children -- the harness's stand-in for Scene.duplicate().
+     */
+    cloneChild(childDef, parentClone) {
+        const id = this.nextId++;
+        const proto = this.byId.get(childDef.id);
+        const go = new GameObj(id, Object.assign({}, childDef, {
+            name: childDef.name + '_' + id, parent: parentClone._id,
+        }), this);
+        go._def = childDef;
+        if (proto) go._texture = proto._texture;
+        this.objects.push(go);
+        this.byId.set(id, go);
+        go._isClone = true;
+        for (const grand of (this.sceneDefs || [])) {
+            if (grand.parent !== childDef.id) continue;
+            this.cloneChild(grand, go);
+        }
+        if (this.onSpawn) this.onSpawn(go, go);
+        return go;
     }
 
     /** Route a send() to the target's script scope. */
@@ -519,11 +602,21 @@ class World {
                     scaleX: proto.scaleX, scaleY: proto.scaleY, scaleZ: proto.scaleZ,
                     components: [],
                 }, self);
+                go._def = proto._def;
                 go._texture = proto._texture;
+                applyAnimatorRuntime(go);
                 self.objects.push(go);
                 self.byId.set(id, go);
                 self.spawnedCount++;
                 go._isClone = true;
+                // Child objects, exactly as Scene.duplicate() walks the hierarchy:
+                // a spawned enemy carries its body parts with it, and a spawned
+                // effect carries its light.  Without this the harness would run
+                // scripts against invisible objects -- right numbers, no body.
+                for (const childDef of (self.sceneDefs || [])) {
+                    if (childDef.parent !== proto._def.id) continue;
+                    self.cloneChild(childDef, go);
+                }
                 if (self.onSpawn) self.onSpawn(go, proto);
                 return self.proxyFor(go);
             },
@@ -573,8 +666,15 @@ function parseParams(str) {
         if (eq < 0) continue;
         const k = part.slice(0, eq).trim();
         const v = part.slice(eq + 1).trim();
+        // Type coercion mirrors ScriptSystem.applyParams: a number when it parses
+        // as one, a real boolean for true/false, otherwise the string with any
+        // surrounding quotes stripped.  Without the boolean case every
+        // `locked=false` in the data stayed truthy in here and read as locked.
         const n = Number(v);
-        out[k] = (v !== '' && Number.isFinite(n)) ? n : v;
+        if (v !== '' && Number.isFinite(n)) out[k] = n;
+        else if (v.toLowerCase() === 'true') out[k] = true;
+        else if (v.toLowerCase() === 'false') out[k] = false;
+        else out[k] = v.replace(/^["']|["']$/g, '');
     }
     return out;
 }
@@ -619,12 +719,30 @@ function runGame(gameDir) {
                           .map(a => a.as)
     );
 
-    const world = new World(scene, gameDir, declaredAudio);
-    // Every clip name GameLibrary will materialise as "<name>.anim".
+    // Every clip name GameLibrary will materialise as "<name>.anim", plus the
+    // grid each one samples.  Built before the world so Animator.resetRuntime()
+    // can be mirrored while the objects are constructed.
+    const declaredGrids = {};
     for (const a of (meta.assets || [])) {
-        for (const k of Object.keys(a.clips || {})) world.clips.add(k);
+        const grid = a.anim || a.tileset;
+        for (const [name, c] of Object.entries(a.clips || {})) {
+            declaredGrids[name] = {
+                texture: a.as, columns: (grid && grid.columns) || 1, rows: (grid && grid.rows) || 1,
+                frame: (c.frames || [0])[0], frames: (c.frames || [0]).length,
+                fps: c.fps === undefined ? 8 : c.fps,
+                loop: c.loop !== false,
+            };
+        }
     }
+
+    const world = new World(scene, gameDir, declaredAudio);
+    world.sceneDefs = scene.objects;
+    for (const k of Object.keys(declaredGrids)) world.clips.add(k);
     world.clipsExpected = (meta.assets || []).some(a => a.clips);
+    // Stamp and apply: a static tile with an Animator shows its clip from frame
+    // one, exactly as resetRuntime() arranges on device.
+    world.clipInfo = declaredGrids;
+    for (const go of world.objects) applyAnimatorRuntime(go);
     const sceneApi = world.makeSceneApi();
     const input = {
         axisX: 0, axisY: 0, a: false, b: false, aDown: false, bDown: false,
@@ -755,6 +873,9 @@ function runGame(gameDir) {
                 fail(`${id}/${file}: failed to evaluate -- ${e.message}`);
                 continue;
             }
+            for (const m of src.matchAll(/actionPressed\(\s*"([^"]+)"\s*\)/g)) {
+                world.namedActions.add(m[1]);
+            }
             const proxy = world.proxyFor(go);
             sandbox.self = proxy;
             sandbox.transform = proxy;
@@ -777,7 +898,11 @@ function runGame(gameDir) {
     };
 
     // --- start()
+    // Scene templates are parked inactive; attaching their scripts is harmless,
+    // but starting them is not -- a template that spawns on start() would litter
+    // the world with a unit nobody asked for.
     for (const a of attached) {
+        if (!world.isActive(a.go)) continue;
         if (typeof a.sandbox.start === 'function') {
             try {
                 a.sandbox.start.apply(a.sandbox.selfRef, []);
@@ -800,6 +925,22 @@ function runGame(gameDir) {
         { axisX: 0, axisY: 0, actionsHeld: { jump: true }, actionsPressed: { jump: true } },
         { axisX: 0, axisY: 0, actionsHeld: { fire: true }, actionsPressed: { 'ui.play': true } },
     ];
+
+    // Named actions: the shared list above only knows the legacy names, so a game
+    // that reads its own ("Attack", "Dodge") would never take a swing here.  Any
+    // name a script asks for that the shared list does not already press gets its
+    // own profiles -- games 01-08 keep exactly the profiles they had.
+    const covered = new Set();
+    for (const p of INPUTS) {
+        for (const k of Object.keys(p.actionsHeld || {})) covered.add(k);
+        for (const k of Object.keys(p.actionsPressed || {})) covered.add(k);
+    }
+    for (const name of [...world.namedActions].sort()) {
+        if (covered.has(name)) continue;
+        INPUTS.push({ axisX: 0, axisY: 0, actionsPressed: { [name]: true } });
+        INPUTS.push({ axisX: 0.55, axisY: 0.45, actionsHeld: { [name]: true },
+                      actionsPressed: { [name]: true } });
+    }
 
     const thrown = new Set();
     for (let f = 0; f < frames; f++) {
@@ -830,8 +971,40 @@ function runGame(gameDir) {
             }
         }
 
+        if (process.env.TRACE) {
+            const row = attached.filter(x => x.file === process.env.TRACE);
+            if (f % 30 === 0) {
+                for (const a of row) {
+                    const sc = a.sandbox;
+                    const bits = [];
+                    for (const k of Object.keys(sc)) {
+                        const v = sc[k];
+                        if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') bits.push(k + '=' + v);
+                        // Zero-argument getters (getAlive(), getWave() ...) as well:
+                        // the interesting state is often only reachable that way.
+                        else if (typeof v === 'function' && /^get[A-Z]/.test(k) && v.length === 0) {
+                            try { bits.push(k + '()=' + v.call(sc.selfRef)); } catch (e) { bits.push(k + '()!'); }
+                        }
+                    }
+                    console.log(`f${f} ${a.go.name} @${a.go.x.toFixed(2)},${a.go.z.toFixed(2)} ${bits.join(' ')}`);
+                }
+            }
+        }
         for (const a of attached) {
-            if (a.go._destroyed || !a.go.active) continue;
+            if (a.go._destroyed || !world.isActive(a.go)) continue;
+            // ScriptSystem starts an instance on the first frame its object is
+            // active in the hierarchy, not only at scene load -- a car parked
+            // behind a menu starts when the menu lets it go.
+            if (!a.started && typeof a.sandbox.start === 'function') {
+                try {
+                    a.sandbox.start.apply(a.sandbox.selfRef, []);
+                    a.started = true;
+                } catch (e) {
+                    const key = 'start:' + a.file + ':' + e.message;
+                    if (!thrown.has(key)) { thrown.add(key); fail(`${id}/${a.file}: start() threw on frame ${f} -- ${e.message}`); }
+                    a.started = true;
+                }
+            }
             if (typeof a.sandbox.update !== 'function') continue;
             try {
                 a.sandbox.update.apply(a.sandbox.selfRef, [DT]);
@@ -865,6 +1038,113 @@ function runGame(gameDir) {
         }
 
         world.time += DT * world.timeScale;
+
+        // --every N: a filmstrip of the run, for checking motion rather than
+        // just the end state (a runner's track only exists mid-run).
+        if (dumpEvery > 0 && f % dumpEvery === 0) snapshot(f);
+    }
+
+    /** The MeshRenderer / Light / Camera3D component of an object, or null. */
+    function compOf(def, type) {
+        if (!def || !def.components) return null;
+        return def.components.find(c => c.type === type) || null;
+    }
+
+    function camera3dOf(def) {
+        const c = compOf(def, 'Camera3D');
+        if (!c) return null;
+        return {
+            fov: c['Field of View'] === undefined ? 60 : c['Field of View'],
+            near: c['Near'], far: c['Far'],
+            skyTop: c['Sky Top'] || '#FF3B7BD4', skyHorizon: c['Sky Horizon'] || '#FFBFD8F0',
+            follow: c['Follow Target'] || '', lookAt: c['Look At Target'] !== false,
+            offsetX: c['Offset X'] || 0, offsetY: c['Offset Y'] || 0, offsetZ: c['Offset Z'] || 0,
+        };
+    }
+
+    function lightOf(def) {
+        const c = compOf(def, 'Light');
+        if (!c) return null;
+        return { kind: c['Type'] || 'Directional', color: c['Color'] || '#FFFFFFFF',
+                 intensity: c['Intensity'] === undefined ? 1 : c['Intensity'],
+                 range: c['Range'] === undefined ? 10 : c['Range'] };
+    }
+
+    function screenSpaceOf(def) {
+        const sr = compOf(def, 'SpriteRenderer');
+        const tr = compOf(def, 'TextRenderer');
+        return (sr && sr['Screen Space UI'] === true) || (tr && tr['Screen Space UI'] === true);
+    }
+
+    function meshOf(def) {
+        const c = compOf(def, 'MeshRenderer');
+        if (!c) return null;
+        return {
+            kind: c['Mesh'] || 'Cube', model: c['Model (.obj)'] || '',
+            color: c['Color'] || '#FFD0D4DC', texture: c['Texture'] || '',
+            tiling: c['Tiling'] === undefined ? 1 : c['Tiling'],
+            specular: c['Specular'] === undefined ? 0.35 : c['Specular'],
+            shininess: c['Shininess'] === undefined ? 32 : c['Shininess'],
+            emission: c['Emission'] === undefined ? 0 : c['Emission'],
+            unlit: c['Unlit'] === true,
+        };
+    }
+
+    function emittersOf(def) {
+        if (!def || !def.components) return [];
+        return def.components.filter(c => c.type === 'ParticleEmitter');
+    }
+
+    // --- world dump, for tools/preview_scene.py ---------------------------
+    // Everything the renderer needs to draw the scene the scripts produced:
+    // transform, sprite texture, current clip, colour and draw order.  Nothing
+    // here is inferred -- it is read back off the objects after the run.
+    function snapshot(label) {
+        const objects = world.objects
+            .filter(o => !o._destroyed && o.active)
+            .map(o => ({
+                id: o._id, name: o.name, tag: o.tag, order: o.order,
+                parent: o.parent === undefined ? -1 : o.parent,
+                x: o.x, y: o.y, z: o.z,
+                rotation: o.rotation, rotX: o.rotX, rotY: o.rotY, rotZ: o.rotZ,
+                scaleX: o.scaleX, scaleY: o.scaleY, scaleZ: o.scaleZ,
+                texture: o._texture || '', animation: o.animation || '',
+                color: o.color, visible: o.visible !== false, text: o.text || '',
+                // Screen-space UI is drawn by SceneRenderer.drawScreenUI through
+                // its own fixed +/-5-unit view, not through the game camera, so
+                // the previewer has to be told which objects those are.
+                screen: screenSpaceOf(o._def),
+                // Particle emitters: the previewer draws a steady emitter as a
+                // soft pool, which is what tells it a torch is a light source.
+                // Particle emitters: a steady emitter is drawn by the previewer
+                // as a soft pool of its start colour, which is how a torch reads
+                // as a light source in a renderer that has no 2D lighting.
+                // 3D: mesh, light and camera components, verbatim as declared,
+                // so the offline renderer can draw the scene the engine draws.
+                mesh: meshOf(o._def), light: lightOf(o._def), camera3d: camera3dOf(o._def),
+                _emitting: emittersOf(o._def).some(pe => pe['Emitting'] || (pe['Rate'] || 0) > 0),
+                _size: (emittersOf(o._def)[0] || {})['Start Size'] || 0,
+                _color: (emittersOf(o._def)[0] || {})['Start Color'] || '#FFFFFFFF',
+            }));
+        const file = dumpEvery > 0
+            ? path.join(dumpDir, id, `frame_${String(label).padStart(4, '0')}.json`)
+            : path.join(dumpDir, id + '.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify({
+            id, frames, spawned: world.spawnedCount, objects,
+            // Scene-level render state: ambient tint, fog band.  Both are read
+            // by Renderer3D, and both change what a 3D frame looks like.
+            ambient: scene.ambient || '#FF404040',
+            fog: !!scene.fog, fogColor: scene.fogColor || '#FF808080',
+            fogStart: scene.fogStart === undefined ? 0 : scene.fogStart,
+            fogEnd: scene.fogEnd === undefined ? 0 : scene.fogEnd,
+            // The declared clips, so the renderer can resolve a clip name to a
+            // sheet cell without re-deriving GameLibrary's rules.  Each clip
+            // carries its own grid, because a `tileset`-declared grid (hand
+            // authored, for opaque atlases the store will not guess at) is not
+            // reported in the store manifest at all.
+            clips: declaredGrids,
+        }, null, 1));
     }
 
     // --- post-run assertions
@@ -888,10 +1168,10 @@ function runGame(gameDir) {
         if (!hasStart && !hasUpdate) {
             fail(`${id}/${a.file}: defines neither start() nor update() -- dead script`);
         }
-        if (hasStart) ok(a.started, `${id}/${a.file}: start() was never called`);
-        // Inactive prototypes (scene.spawn templates) are never ticked by design;
-        // only clones and ordinary active objects must run update().
+        // Inactive prototypes (scene.spawn templates) are neither started nor
+        // ticked by design; only clones and ordinary active objects run.
         const isTemplate = !a.go._isClone && a.go._def && a.go._def.active === false;
+        if (hasStart && !isTemplate) ok(a.started, `${id}/${a.file}: start() was never called`);
         if (hasUpdate && !isTemplate) ok(a.ticks > 0, `${id}/${a.file}: update() was never called`);
     }
 
@@ -900,6 +1180,8 @@ function runGame(gameDir) {
     for (const t of world.usedTextures) {
         ok(declaredImages.has(t), `${id}: setTexture('${t}') is not a declared asset`);
     }
+
+    if (dumpDir && dumpEvery === 0) snapshot('final');
 
     // Transforms must stay finite and within a sane range.
     for (const go of world.objects) {
@@ -1009,6 +1291,13 @@ function runGame(gameDir) {
            `${id}: neither the Player moved nor any zombie spawned`);
         const wave = stateOf('ZombieDirector.js', 'wave');
         ok(typeof wave === 'number' && wave >= 1, `${id}: wave counter is not valid (${wave})`);
+    }
+
+    if (dumpDir) {
+        fs.mkdirSync(dumpDir, { recursive: true });
+        fs.writeFileSync(path.join(dumpDir, id + '.assets.json'), JSON.stringify({
+            id, title: meta.title, assets: meta.assets || [], scenes: meta.scenes || [],
+        }, null, 1));
     }
 
     return {
