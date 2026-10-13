@@ -76,11 +76,16 @@ node tools/run_games.js
 The Android build (`./gradlew assembleDebug`) needs a JDK and the Android SDK; the
 native Android build needs the NDK and `cmake`. Neither exists in the sandbox this
 was developed in, so **CI does the Android build** — see
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml). Every push and pull request
-compiles the Kotlin, runs the unit tests, builds debug *and* release APKs, and
-uploads them as an artifact. Pushing a `v*` tag additionally attaches the release
-APK to a GitHub Release via
-[`.github/workflows/release.yml`](.github/workflows/release.yml).
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). Every push to `main` or an
+`arena/*` branch and every pull request compiles the Kotlin, runs the unit tests,
+builds debug *and* release APKs, checks that the store and all twelve games are
+inside them, and uploads the APKs as an artifact. Pushing a `v*` tag additionally
+attaches the release APK to a GitHub Release via
+[`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+**[v1.1.0 → SEngine-v1.1.0.apk](https://github.com/surafel5509-del/Assets2/releases/download/v1.1.0/SEngine-v1.1.0.apk)**
+(65 577 518 bytes, signed with the debug key so it installs straight from the
+download; `minSdk 26`, `targetSdk 34`).
 
 ## Verification status — read this
 
@@ -91,7 +96,8 @@ APK to a GitHub Release via
 | Games vs. store vs. engine | **Verified.** 58 206 checks, 0 errors |
 | Game scripts, executed | **Verified.** `run_games.js` — 77 scripts × 240 frames, 304 checks |
 | Kotlin / Gradle | **Verified in CI.** 60 files compile; unit tests pass; debug + release APKs build |
-| APK packaging | **Verified in CI.** 25 pack ZIPs, 40 game entries, `index.json` present |
+| APK packaging | **Verified in CI.** 25 pack ZIPs, all twelve games (114 entries), `index.json` present — in the debug *and* the release APK |
+| Downloadable APK | **Released.** [`v1.1.0`](https://github.com/surafel5509-del/Assets2/releases/tag/v1.1.0) — 62.5 MiB, versionCode 3, versionName 1.1.0 |
 | In-app APK export | **Verified in CI.** Exports a signed standalone game APK; `apksigner` verifies it, `aapt2` confirms the rewritten package, label and version |
 | Native Android build | **Not built** — no NDK, no `cmake`; the C++ core builds on the host only |
 | The twelve games on a device | **Not played** — no Android runtime here |

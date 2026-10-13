@@ -192,7 +192,14 @@ jobs:
       - name: Verify the store and games were packaged
         run: |
           set -e
-          apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          # Both variants: the release APK is the one people install, and an
+          # assets.srcDir that only reached the debug variant would look fine
+          # here and ship an empty game library to the download page.
+          for apk in $(find app/build/outputs/apk -name '*.apk' | sort); do
+            echo "::notice file=apk::checking $apk"
+          done
+          apk=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          [ -n "$apk" ] || apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
           listing=$(unzip -l "$apk")
           # Layout, per AssetStore.kt and app/build.gradle.kts:
           #   assets/store/store_manifest.json   the catalogue
@@ -218,6 +225,15 @@ jobs:
           [ "$packs" -ge 20 ] || { echo "::error file=apk::only $packs pack ZIPs staged"; exit 1; }
           [ "$games" -gt 10 ] || { echo "::error file=apk::only $games game entries staged"; exit 1; }
           printf '%s\n' "$listing" | grep -E 'assets/games/index.json|assets/store/store_manifest.json'
+          # Named games, not just a count: a grep for all twelve directories is
+          # the difference between "enough entries" and "the twelve games".
+          for g in 01_topdown_rpg 02_fighting_2d 03_action_3d 04_runner_3d \
+                   05_shooter_lowpoly_3d 06_open_world_3d 07_motorbike_2d 08_zombie_topdown \
+                   09_dungeon_crawler_2d 10_blackout_heist_2d 11_emberfall_valley_3d 12_sunken_citadel_3d; do
+            printf '%s\n' "$listing" | grep -q "assets/games/$g/game.json" \
+              || { echo "::error file=apk::$g is missing from $apk"; exit 1; }
+          done
+          echo "::notice file=apk::all twelve game directories are in $apk"
 
       - uses: actions/upload-artifact@v4
         with:
