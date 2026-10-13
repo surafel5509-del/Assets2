@@ -61,4 +61,4 @@ jobs:
           name: SEngine-release-apk
           path: dist/*.apk
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 92
