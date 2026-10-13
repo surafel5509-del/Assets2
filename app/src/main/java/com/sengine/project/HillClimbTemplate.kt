@@ -103,7 +103,7 @@ object HillClimbTemplate {
         obj(scene, "RPM Needle", 0f, -2.55f, 0.07f, 0.40f).also { it.order = 102 }
             .add(SpriteRenderer().also { it.color = 0xFFFF7043.toInt(); it.screenSpace = true })
         screenText(scene, "Speed Text", "0 km/h", 0f, -2.82f, 0.19f, 0xFFFFFFFF, align = 1, order = 103)
-        screenText(scene, "Controls Hint", "HOLD  GAS  /  BRAKE", 0f, -1.63f, 0.17f, 0xCCFFFFFF.toInt(), align = 1, order = 100)
+        screenText(scene, "Controls Hint", "HOLD  GAS  /  BRAKE", 0f, -1.63f, 0.17f, 0xCCFFFFFFL, align = 1, order = 100)
 
         val gameOverPanel = obj(scene, "Game Over Panel", 0f, 0f).also {
             it.active = false; it.order = 200
