@@ -11,7 +11,7 @@
 // state change means a new texture plus a new clip.
 
 var state = "patrol";
-var hp = 30;
+var hp = typeof hp === "undefined" ? 30 : hp;
 var hitFlash = 0;
 var attackTimer = 0;
 var patrolTimer = 0;
@@ -31,7 +31,6 @@ var SKIN = {
 
 function start() {
     homeX = self.x; homeY = self.y;
-    hp = maxHp === undefined ? hp : maxHp;
     pickPatrolDirection();
     setSkin("idle");
 }

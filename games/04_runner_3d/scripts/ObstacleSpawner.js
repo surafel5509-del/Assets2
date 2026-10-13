@@ -13,7 +13,7 @@
 
 var pool = [];
 var poolIndex = 0;
-var carHalfWidth = 0.9;
+var carHalfWidth = typeof carHalfWidth === "undefined" ? 0.9 : carHalfWidth;
 var lastPattern = -1;
 var lastZ = [];            // per-lane z of the last obstacle placed, for minGap
 

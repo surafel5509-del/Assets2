@@ -396,7 +396,7 @@ GRUNT_JS = r"""
 //         skin=skeleton
 
 var state = "patrol";
-var hp = 34;
+var hp = typeof hp === "undefined" ? 34 : hp;
 var attackCd = 0;
 var homeX = 0, homeY = 0;
 var patrolT = 0;
@@ -532,7 +532,7 @@ GHOST_JS = r"""
 //
 // Params: hp=26, speed=2.55, damage=12, sight=9, reach=1.05, cooldown=1.5
 
-var hp = 26;
+var hp = typeof hp === "undefined" ? 26 : hp;
 var attackCd = 0;
 var dead = false;
 var phase = 0;
@@ -634,7 +634,7 @@ CRAWLER_JS = r"""
 //
 // Params: hp=20, speed=2.05, damage=7, range=6.4, keepAway=3.2, cooldown=1.9
 
-var hp = 20;
+var hp = typeof hp === "undefined" ? 20 : hp;
 var fireCd = 0;
 var dead = false;
 var backoff = false;
@@ -748,7 +748,7 @@ SPIT_JS = r"""
 // interesting part: without it a ranged enemy shoots through the level and the
 // player cannot use cover at all.
 
-var life = 2.4;
+var life = typeof life === "undefined" ? 2.4 : life;
 
 function update(dt) {
     life -= dt;
@@ -1122,6 +1122,12 @@ function placeSigils() {
         s.order = 9;
         s.setEmitting(true);
         sigils.push(s);
+        var arch = scene.spawn("SigilArch", s.x, s.y - 0.35);
+        if (arch) arch.order = 7;
+        if (spots[i][0] === "Deep Vault") {
+            var door = scene.spawn("VaultDoor", s.x + 1.0, s.y - 0.1);
+            if (door) door.order = 7;
+        }
     }
 }
 
@@ -1221,6 +1227,9 @@ function update(dt) {
         toSpawn = waveBase + wave * waveStep;
         toast = 2.2;
         msg("WAVE " + wave + " -- they are coming");
+        // Every third wave the Blood Monster walks in.  It is the same AI with
+        // twelve times the health, so the threat curve gets a step, not a slope.
+        if (wave % 3 === 0) spawnBoss();
     }
     if (toast > 0) { toast -= dt; if (toast <= 0) msg(""); }
 
@@ -1260,6 +1269,19 @@ function spawnOne() {
         e.active = true;
         spawned++;
     }
+}
+
+function spawnBoss() {
+    var spot = freeSpot(11.0);
+    if (!spot) return;
+    var b = scene.spawn("BloodMonster", spot[0], spot[1]);
+    if (!b) return;
+    b.tag = "Enemy";
+    b.active = true;
+    spawned++;
+    toast = 2.4;
+    msg("BLOOD MONSTER");
+    audio.play("sfx_boss.ogg", 0.5);
 }
 
 function onEnemyKilled(name, x, y) {
@@ -1324,6 +1346,17 @@ FOREST_PACK = "legacy_fantasy_high_forest_2_0"
 UI_PACK = "all_assets"
 KENNEY_UI = "kenney_ui_pack"
 TINY_UI = "tinyrpg_dragonregaliagui_v1_0"
+# The boss: the demon pack's Blood Monster.  Five single-row strips of 100px
+# frames -- the same shape as the Penzilla skins, which is what lets the same
+# Grunt.js drive it instead of a second AI to keep in sync.
+BOSS_PACK = "tiny_rpg_character_asset_pack_02_v1_01_free_demon_a_blood_monster_a"
+BOSS_DIR = "Characters(100x100 split)/Blood Monster_A/Blood Monster_A/Blood Monster_A"
+BOSS_SHEETS = {"idle": ("Idle", 6, 5, True), "walk": ("Walk", 8, 9, True),
+               "attack": ("Attack01", 8, 11, False), "hurt": ("Hurt", 4, 10, False),
+               "death": ("Death", 4, 8, False)}
+# The crypt's HUD furniture and two dungeon props.  These are 32px UI icons and
+# a stone door/arch, not tiles: at HUD scale a tile reads as scenery.
+MEDIEVAL_UI = "free_medieval_fantasy_ui_pack"
 ENEMY_PACK = "enemy_animations_set"
 
 # Hero: Legacy Fantasy's own 80x96 knight, which is the character that ships with
@@ -1413,6 +1446,21 @@ def build():
                                 anim={"columns": frames, "rows": 1, "frames": frames},
                                 clips={f"{alias}_{state}": clip(list(range(frames)), fps, loop)}))
 
+    # Boss strips, one asset per state, clip names namespaced by "boss".
+    for state, (tail, frames, fps, loop) in BOSS_SHEETS.items():
+        assets.append(asset(BOSS_PACK, f"{BOSS_DIR}_{tail}.png",
+                            f"boss_{state}.png",
+                            anim={"columns": frames, "rows": 1, "frames": frames},
+                            clips={f"boss_{state}": clip(list(range(frames)), fps, loop)}))
+
+    # HUD furniture and props from the medieval UI pack.
+    for tail, alias in (("UI Icons 2/icon6.png", "ui_skull.png"),
+                        ("UI Icons 2/icon8.png", "ui_chest.png"),
+                        ("UI Icons 2/icon13.png", "ui_frame.png"),
+                        ("UI Icons 2/icon32.png", "prop_door.png"),
+                        ("UI Icons 2/icon56.png", "prop_arch.png")):
+        assets.append(asset(MEDIEVAL_UI, tail, alias))
+
     # Hero: the forest pack's own knight sheets.  One asset per sheet, with the
     # clip named "<skin>_<state>" -- see the scripts for why the prefix matters.
     for name, (path, frames, fps, loop) in HERO_SHEETS.items():
@@ -1489,6 +1537,7 @@ def build():
         ("Sounds/click-a.ogg", "sfx_sigil.ogg"),
         ("Sounds/switch-b.ogg", "sfx_death.ogg"),
         ("Sounds/tap-a.ogg", "sfx_win.ogg"),
+        ("Sounds/switch-a.ogg", "sfx_boss.ogg"),
     ):
         assets.append(asset(KENNEY_UI, tail, alias))
 
@@ -1554,6 +1603,18 @@ def build():
           comps=[sprite("crawler_idle.png", order=8), animator(),
                  collider2d("Box", 0.7, 0.8, trigger=True),
                  script("Crawler.js", "skin=crawler, hp=20, speed=2.05, range=6.4, keepAway=3.2, cooldown=1.9")])
+    # The boss.  Same script as the grunt with twelve times the health, a longer
+    # reach and a slower walk: a wave that spikes instead of a wave that queues.
+    s.add("BloodMonster", tag="Template", active=False, order=8, sx=2.3, sy=2.3,
+          comps=[sprite("boss_idle.png", order=8), animator(),
+                 collider2d("Box", 1.1, 1.2, trigger=True),
+                 script("Grunt.js", "skin=boss, hp=420, speed=1.45, damage=20, sight=9.5, reach=1.75, cooldown=1.9")])
+    # A shrine is a place, not a pickup lying on the floor: every sigil is
+    # spawned under a stone arch, and the Deep Vault's behind a shut door.
+    s.add("SigilArch", tag="Template", active=False, order=7, sx=1.7, sy=2.0,
+          comps=[sprite("prop_arch.png", order=7)])
+    s.add("VaultDoor", tag="Template", active=False, order=7, sx=1.2, sy=1.4,
+          comps=[sprite("prop_door.png", order=7)])
     s.add("Spit", tag="Template", active=False, order=12,
           comps=[sprite("prop_flask.png", "#FFA8FF6A", order=12),
                  script("Spit.js", "damage=7, life=2.4")])
@@ -1577,6 +1638,7 @@ def build():
 
     # ---- HUD
     hud = [
+        ("HUD_Frame", -7.2, 4.25, 2.9, 1.3, "ui_frame.png", 89),
         ("HUD_Panel", -7.2, 4.25, 2.4, 1.0, "ui_panel.png", 90),
         ("HUD_Icon", -6.6, 4.3, 0.55, 0.55, "icon_sword.png", 92),
         ("HUD_Icon2", -6.6, 3.9, 0.55, 0.55, "icon_shield.png", 92),
@@ -1584,6 +1646,8 @@ def build():
         ("HUD_SigilIcon", 5.4, 4.3, 0.6, 0.6, "icon_crown.png", 92),
         ("HUD_Potion", 6.6, 4.3, 0.5, 0.5, "icon_potion.png", 92),
         ("HUD_MapIcon", 7.4, 4.3, 0.5, 0.5, "ui_mapicons.png", 92),
+        ("HUD_Skull", 4.4, 4.3, 0.45, 0.45, "ui_skull.png", 92),
+        ("HUD_Chest", 7.3, 3.9, 0.5, 0.5, "ui_chest.png", 92),
     ]
     for name, x, y, sx, sy, tex, order in hud:
         s.add(name, x, y, sx=sx, sy=sy, order=order,

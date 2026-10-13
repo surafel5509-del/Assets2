@@ -30550,7 +30550,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "Guard.js",
-          "Params": "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, hearing=3.2, hearRate=0.75, catchRange=0.62, wp=-24.5:-12.5|-12.5:-12.5|-12.5:-17.5|-24.5:-17.5"
+          "Params": "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, hearing=3.2, hearRate=0.75, catchRange=0.62, route=-24.5:-12.5|-12.5:-12.5|-12.5:-17.5|-24.5:-17.5"
         }
       ]
     },
@@ -30623,7 +30623,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "Guard.js",
-          "Params": "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, hearing=3.2, hearRate=0.75, catchRange=0.62, wp=-4.5:-0.5|23.5:-0.5|23.5:-1.5|-4.5:-1.5"
+          "Params": "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, hearing=3.2, hearRate=0.75, catchRange=0.62, route=-4.5:-0.5|23.5:-0.5|23.5:-1.5|-4.5:-1.5"
         }
       ]
     },
@@ -30696,7 +30696,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "Guard.js",
-          "Params": "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, hearing=3.2, hearRate=0.75, catchRange=0.62, wp=-2.5:7.5|5.5:7.5|5.5:3.5|-2.5:3.5"
+          "Params": "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, hearing=3.2, hearRate=0.75, catchRange=0.62, route=-2.5:7.5|5.5:7.5|5.5:3.5|-2.5:3.5"
         }
       ]
     },

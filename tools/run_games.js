@@ -1041,7 +1041,7 @@ function runGame(gameDir) {
 
         // --every N: a filmstrip of the run, for checking motion rather than
         // just the end state (a runner's track only exists mid-run).
-        if (dumpEvery > 0 && f % dumpEvery === 0) snapshot(f);
+        if (dumpDir && dumpEvery > 0 && f % dumpEvery === 0) snapshot(f);
     }
 
     /** The MeshRenderer / Light / Camera3D component of an object, or null. */
@@ -1100,6 +1100,11 @@ function runGame(gameDir) {
     // transform, sprite texture, current clip, colour and draw order.  Nothing
     // here is inferred -- it is read back off the objects after the run.
     function snapshot(label) {
+        // No --dump, no dump.  path.join('', id, 'frame_...') is a *relative*
+        // path, so a bare `--every 60` used to write 09_dungeon/frame_0060.json
+        // into whatever directory node was started from -- an argument that
+        // reads as "show me the motion" quietly dirtied the working tree.
+        if (!dumpDir) return;
         const objects = world.objects
             .filter(o => !o._destroyed && o.active)
             .map(o => ({

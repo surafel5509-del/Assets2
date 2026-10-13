@@ -9,7 +9,7 @@
   "fogColor": "#FF1A1622",
   "fogStart": 40.0,
   "fogEnd": 120.0,
-  "nextId": 33,
+  "nextId": 39,
   "objects": [
     {
       "id": 1,
@@ -613,6 +613,120 @@
     },
     {
       "id": 15,
+      "name": "BloodMonster",
+      "tag": "Template",
+      "active": false,
+      "order": 8,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.3,
+      "scaleY": 2.3,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "boss_idle.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        },
+        {
+          "type": "Animator",
+          "enabled": true,
+          "Clip": "",
+          "Play On Start": false,
+          "Speed": 1.0
+        },
+        {
+          "type": "Collider2D",
+          "enabled": true,
+          "Shape": "Box",
+          "Width": 1.1,
+          "Height": 1.2,
+          "Radius": 0.5,
+          "Offset X": 0.0,
+          "Offset Y": 0.0,
+          "Is Trigger": true
+        },
+        {
+          "type": "Script",
+          "enabled": true,
+          "Script": "Grunt.js",
+          "Params": "skin=boss, hp=420, speed=1.45, damage=20, sight=9.5, reach=1.75, cooldown=1.9"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "SigilArch",
+      "tag": "Template",
+      "active": false,
+      "order": 7,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.7,
+      "scaleY": 2.0,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "prop_arch.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "VaultDoor",
+      "tag": "Template",
+      "active": false,
+      "order": 7,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 1.2,
+      "scaleY": 1.4,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "prop_door.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": false
+        }
+      ]
+    },
+    {
+      "id": 18,
       "name": "Spit",
       "tag": "Template",
       "active": false,
@@ -648,7 +762,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 19,
       "name": "Bolt",
       "tag": "Template",
       "active": false,
@@ -678,7 +792,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 20,
       "name": "SplatFx",
       "tag": "Template",
       "active": false,
@@ -720,7 +834,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 21,
       "name": "HitFx",
       "tag": "Template",
       "active": false,
@@ -762,7 +876,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 22,
       "name": "SlashFx",
       "tag": "Template",
       "active": false,
@@ -804,7 +918,37 @@
       ]
     },
     {
-      "id": 20,
+      "id": 23,
+      "name": "HUD_Frame",
+      "tag": "Untagged",
+      "active": true,
+      "order": 89,
+      "x": -7.2,
+      "y": 4.25,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 2.9,
+      "scaleY": 1.3,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "ui_frame.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 24,
       "name": "HUD_Panel",
       "tag": "Untagged",
       "active": true,
@@ -834,7 +978,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 25,
       "name": "HUD_Icon",
       "tag": "Untagged",
       "active": true,
@@ -864,7 +1008,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 26,
       "name": "HUD_Icon2",
       "tag": "Untagged",
       "active": true,
@@ -894,7 +1038,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 27,
       "name": "HUD_Bar",
       "tag": "Untagged",
       "active": true,
@@ -924,7 +1068,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 28,
       "name": "HUD_SigilIcon",
       "tag": "Untagged",
       "active": true,
@@ -954,7 +1098,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 29,
       "name": "HUD_Potion",
       "tag": "Untagged",
       "active": true,
@@ -984,7 +1128,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 30,
       "name": "HUD_MapIcon",
       "tag": "Untagged",
       "active": true,
@@ -1014,7 +1158,67 @@
       ]
     },
     {
-      "id": 27,
+      "id": 31,
+      "name": "HUD_Skull",
+      "tag": "Untagged",
+      "active": true,
+      "order": 92,
+      "x": 4.4,
+      "y": 4.3,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.45,
+      "scaleY": 0.45,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "ui_skull.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "HUD_Chest",
+      "tag": "Untagged",
+      "active": true,
+      "order": 92,
+      "x": 7.3,
+      "y": 3.9,
+      "z": 0.0,
+      "rotX": 0.0,
+      "rotY": 0.0,
+      "rotation": 0.0,
+      "scaleX": 0.5,
+      "scaleY": 0.5,
+      "scaleZ": 1.0,
+      "components": [
+        {
+          "type": "SpriteRenderer",
+          "enabled": true,
+          "Shape": "Square",
+          "Color": "#FFFFFFFF",
+          "Texture": "ui_chest.png",
+          "Flip X": false,
+          "Flip Y": false,
+          "Shader": "",
+          "Shader Param": 1.0,
+          "Screen Space UI": true
+        }
+      ]
+    },
+    {
+      "id": 33,
       "name": "HUD_Hp",
       "tag": "Untagged",
       "active": true,
@@ -1042,7 +1246,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 34,
       "name": "HUD_Wave",
       "tag": "Untagged",
       "active": true,
@@ -1070,7 +1274,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 35,
       "name": "HUD_Sigils",
       "tag": "Untagged",
       "active": true,
@@ -1098,7 +1302,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 36,
       "name": "HUD_Score",
       "tag": "Untagged",
       "active": true,
@@ -1126,7 +1330,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 37,
       "name": "HUD_Hint",
       "tag": "Untagged",
       "active": true,
@@ -1154,7 +1358,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 38,
       "name": "HUD_Msg",
       "tag": "Untagged",
       "active": true,

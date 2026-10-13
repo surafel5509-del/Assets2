@@ -9,9 +9,9 @@
 //         slamReach=4.6, sweepReach=5.4, chargeReach=3.0, windup=0.85,
 //         recover=1.05, sight=34.0
 
-var hp = 420;
+var hp = typeof hp === "undefined" ? 420 : hp;
 var maxHp = 420;
-var speed = 3.2;
+var speed = typeof speed === "undefined" ? 3.2 : speed;
 var state = "idle";
 var timer = 2.0;
 var dead = false;

@@ -3,7 +3,7 @@
 // interesting part: without it a ranged enemy shoots through the level and the
 // player cannot use cover at all.
 
-var life = 2.4;
+var life = typeof life === "undefined" ? 2.4 : life;
 
 function update(dt) {
     life -= dt;

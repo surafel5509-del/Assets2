@@ -8,9 +8,9 @@
 // Params: hp=46, speed=3.1, damage=13, reach=2.3, windup=0.55, recover=0.7,
 //         sight=26.0, kind=hollow
 
-var hp = 46;
+var hp = typeof hp === "undefined" ? 46 : hp;
 var maxHp = 46;
-var speed = 3.1;
+var speed = typeof speed === "undefined" ? 3.1 : speed;
 var state = "hunt";          // hunt -> windup -> strike -> recover
 var timer = 0.0;
 var dead = false;

@@ -8,7 +8,7 @@
 //
 // Params: hp=26, speed=2.55, damage=12, sight=9, reach=1.05, cooldown=1.5
 
-var hp = 26;
+var hp = typeof hp === "undefined" ? 26 : hp;
 var attackCd = 0;
 var dead = false;
 var phase = 0;

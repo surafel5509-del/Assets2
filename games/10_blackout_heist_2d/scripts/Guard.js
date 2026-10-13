@@ -14,7 +14,7 @@
 //
 // Params: speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160,
 //         nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45,
-//         hearing=3.2, hearRate=0.75, catchRange=0.62, wp=...
+//         hearing=3.2, hearRate=0.75, catchRange=0.62, route=x:y|x:y|...
 
 var MAP = [
   "############################################################",
@@ -64,7 +64,8 @@ var MAP = [
 ];
 var MAP_W = 60;
 var MAP_H = 44;
-var wp = [];
+var wp = [];                                   // waypoint pairs, parsed in start()
+var route = typeof route === "undefined" ? "" : route;
 var wpi = 0;
 var facing = 0.0;
 var state = "patrol";
@@ -89,7 +90,7 @@ function blocked(x, y) {
 }
 
 function start() {
-    var parts = ("" + wp).split("|");
+    var parts = ("" + route).split("|");
     for (var i = 0; i < parts.length; i++) {
         var xy = parts[i].split(":");
         wp.push([parseFloat(xy[0]), parseFloat(xy[1])]);

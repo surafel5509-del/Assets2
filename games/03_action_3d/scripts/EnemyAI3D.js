@@ -12,7 +12,7 @@
 //         moveSpeed=3.2, hp=40, damage=10, patrolRadius=8
 
 var state = "patrol";
-var hp = 40;
+var hp = typeof hp === "undefined" ? 40 : hp;
 var patrolTarget = null;
 var cooldown = 0;
 var stagger = 0;
@@ -23,7 +23,6 @@ var dead = false;
 
 function start() {
     homeX = self.x; homeZ = self.z;
-    hp = maxHp !== undefined ? maxHp : hp;
     pickPatrolTarget();
     playClip("idle");
 }

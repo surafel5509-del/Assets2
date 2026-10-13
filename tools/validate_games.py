@@ -20,6 +20,9 @@ What it verifies (each check is a real assertion, not a lint):
   5. Every `audio.play("x")` target is a declared audio asset.
   6. No game declares a Space Shooter or Platformer template -- both are
      explicitly out of scope for this engine.
+  7. Every value on a Script component is actually consumed: the script refers
+     to the name, and no top-level `var <name> = ...` overwrites it before the
+     body runs.
 
 Exit code 0 means every game is consistent with the store and the engine.
 """
@@ -397,6 +400,14 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
             code = re.sub(r"//[^\n]*", "", code)
             code = re.sub(r"/\*.*?\*/", "", code, flags=re.S)
             code = re.sub(r'"[^"\n]*"', "''", code)
+            # The string blanking above is right for the reference check (a name
+            # that only appears in a message is not a use) but wrong for the
+            # shadow check below, because the accepted guard is written with a
+            # string literal: `typeof x === "undefined"`.  So the shadow check
+            # gets the same source with comments stripped and literals intact.
+            unquoted = re.sub(r"/\*.*?\*/", "",
+                              re.sub(r"//[^\n]*", "", open(src_path, encoding="utf-8").read()),
+                              flags=re.S)
             where = f"{gid}/{name}: {o.get('name', '?')} ({c['Script']})"
             for kv in re.split(r"[,\n;]", c.get("Params", "") or ""):
                 if "=" not in kv:
@@ -406,6 +417,27 @@ def check_scene(scene_path, scripts_dir, rep, gid, declared_scripts):
                     continue
                 rep.ok(re.search(r"(?<![.\w])" + re.escape(key) + r"(?![\w])", code) is not None,
                        f"{where}: param '{key}' is never referenced by the script -- dead value")
+                # ...and referencing it is not enough: a top-level
+                # `var hp = 34;` initialises over the value applyParams() just
+                # bound, so the param is read by the engine, written onto the
+                # scope, and then thrown away by the script's own body.  The
+                # game runs, the number is simply wrong -- the boss with
+                # hp=420 on its Script component walked around with 34.
+                # `typeof hp === "undefined"` is the guard that keeps both
+                # paths working: the initializer only supplies a default.
+                decl = re.search(r"^var\b[^;\n]*?(?<![\w.])" + re.escape(key)
+                                 + r"\s*=(?!=)\s*([^;\n]*)", unquoted, re.M)
+                # The accepted shape is `var x = typeof x === "undefined" ? d : x;`
+                # which is a default, not an overwrite: the initializer reads the
+                # bound value first and only falls back when nothing was bound.
+                guarded = decl is None or re.match(
+                    r"typeof\s+" + re.escape(key) + r"\s*(?:===|!==|==|!=)\s*[\"']undefined[\"']",
+                    decl.group(1).strip())
+                rep.ok(guarded,
+                       f"{where}: param '{key}' is shadowed by a top-level 'var {key} = ...' "
+                       f"in the script -- the initializer overwrites the bound value, so the "
+                       f"param never takes effect (guard it: "
+                       f"var {key} = typeof {key} === \"undefined\" ? <default> : {key};)")
 
     # Object names must be unique.  scene.find() returns the first match, so a
     # duplicate does not error -- it silently resolves to whichever object the

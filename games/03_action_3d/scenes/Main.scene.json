@@ -344,7 +344,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "EnemyAI3D.js",
-          "Params": "sightRange=14, hearRange=7, attackRange=2.2, attackCooldown=1.4, moveSpeed=3.2, hp=40, maxHp=40, damage=10, patrolRadius=8, skin=creature, states=idle|attack"
+          "Params": "sightRange=14, hearRange=7, attackRange=2.2, attackCooldown=1.4, moveSpeed=3.2, hp=40, damage=10, patrolRadius=8, skin=creature, states=idle|attack"
         }
       ]
     },
@@ -398,7 +398,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "EnemyAI3D.js",
-          "Params": "sightRange=18, hearRange=9, attackRange=2.6, attackCooldown=1.2, moveSpeed=3.6, hp=65, maxHp=65, damage=16, patrolRadius=10, skin=guard, states=idle|walk|attack|death"
+          "Params": "sightRange=18, hearRange=9, attackRange=2.6, attackCooldown=1.2, moveSpeed=3.6, hp=65, damage=16, patrolRadius=10, skin=guard, states=idle|walk|attack|death"
         }
       ]
     },

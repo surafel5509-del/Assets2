@@ -32,7 +32,7 @@ games/
 | 6 | Skyline Drift | 3D open-world driving | 0 (primitives) | 0 | 3 | — |
 | 7 | Dirt Rush | 2D motorbike | 0 (primitives) | 0 | 2 | — |
 | 8 | Dead Blocks | Top-down zombie survival | 0 (primitives) | 0 | 5 | — |
-| 9 | Crypt of the Ember Sigil | 2D top-down dungeon crawler | 64 | 7 | 8 | 32 + runtime chunks |
+| 9 | Crypt of the Ember Sigil | 2D top-down dungeon crawler | 75 | 9 | 8 | 38 + runtime chunks |
 | 10 | Blackout Heist | 2D top-down stealth heist | 45 | 7 | 10 | 799 |
 | 11 | Emberfall Valley | 3D open-world survival, low-poly | 114 | 4 | 8 | 1 143 |
 | 12 | Sunken Citadel | 3D action arena, low-poly | 84 | 4 | 9 | 662 |
@@ -48,7 +48,11 @@ of them are deterministic (fixed seeds), so a re-run produces the same scene.
   dominant-tile chunks with minority overlays, so a 40×30 map is 63 objects
   instead of 1 200; a single wall sprite is stretched up to three tiles and merged
   colliders do the blocking. Eight torch lights is the budget, and the `.anim`
-  clips are authored in `game.json` rather than generated in code.
+  clips are authored in `game.json` rather than generated in code. Every third
+  wave the Blood Monster walks in from `tiny_rpg_character_asset_pack_02` -- the
+  same three-state AI with twelve times the health -- and the HUD furniture
+  (skull, chest, carved frame) plus the stone arch over each sigil come from
+  `free_medieval_fantasy_ui_pack`.
 - **Blackout Heist (10).** The depot is a 60×44 grid carved out of solid rock and
   baked into the scripts as a string table (`.` open, `x` prop-blocked, `#` wall);
   the scene is only the dressing, so collision, patrol routes and reachability all
@@ -72,6 +76,17 @@ that never existed, and a loot script that read an optional `openTex` parameter 
 a bare global and threw the moment a keycard was picked up. All three passed
 `node --check` and the validator; none of them would have been visible in a
 screenshot.
+
+The mirror image of those failures is the one validator rule 7 now exists for: a
+Script param that the script *also* declares at the top level. `applyParams()`
+binds `hp=420` onto the script scope, then `var hp = 34;` runs and overwrites it,
+so the param is read by the engine, written to the scope, and thrown away -- the
+game runs with the wrong number and nothing errors. It was real: the Blood
+Monster (hp=420), Hollow Ridge's ridge guard (hp=65), Emberfall's vampire
+(hp=55) and all three Blackout Heist guards (`route=...`) had never applied, so
+the guards had been standing still since the day they shipped. The rule accepts
+the guarded shape `var hp = typeof hp === "undefined" ? 34 : hp;`, which is a
+default rather than an overwrite.
 
 ## 2b. Games 5–8 — design decisions
 
@@ -164,7 +179,7 @@ effective speed feedback available.
 ## 2. What the validator caught
 
 `tools/validate_games.py` cross-checks every game against the store manifest and the
-engine's `ComponentRegistry`: 57 535 checks, 0 errors. It found real defects, not
+engine's `ComponentRegistry`: 58 206 checks, 0 errors. It found real defects, not
 stylistic ones:
 
 1. **Nine enemy sheet paths still carried a stripped wrapper folder.** The
@@ -205,7 +220,7 @@ The games are **not run**. There is no Android runtime here, so nothing confirms
 that they play correctly, that frame timings feel right, or that the cameras are
 framed well. What is verified is that they are internally consistent and reference
 only assets that exist, and execute headlessly (304 harness checks). That
-distinction matters: a game can pass 57 535 validator checks and still be no fun.
+distinction matters: a game can pass 58 206 validator checks and still be no fun.
 
 Games 5–8 have no store art. Their 3D and 2D models are engine primitives, so they
 show the systems working, not final art.

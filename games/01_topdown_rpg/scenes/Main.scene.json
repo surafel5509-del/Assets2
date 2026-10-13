@@ -210,7 +210,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "EnemyAI.js",
-          "Params": "skin=skeleton, hp=30, maxHp=30, speed=1.6, sight=4.5, attackRange=0.9, attackCooldown=1.1, damage=8, xp=12, gold=5"
+          "Params": "skin=skeleton, hp=30, speed=1.6, sight=4.5, attackRange=0.9, attackCooldown=1.1, damage=8, xp=12, gold=5"
         }
       ]
     },
@@ -269,7 +269,7 @@
           "type": "Script",
           "enabled": true,
           "Script": "EnemyAI.js",
-          "Params": "skin=vampire, hp=55, maxHp=55, speed=2.4, sight=6.0, attackRange=1.0, attackCooldown=0.9, damage=14, xp=25, gold=12"
+          "Params": "skin=vampire, hp=55, speed=2.4, sight=6.0, attackRange=1.0, attackCooldown=0.9, damage=14, xp=25, gold=12"
         }
       ]
     },

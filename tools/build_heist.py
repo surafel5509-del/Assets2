@@ -465,12 +465,13 @@ GUARD_JS = r"""
 //
 // Params: speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160,
 //         nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45,
-//         hearing=3.2, hearRate=0.75, catchRange=0.62, wp=...
+//         hearing=3.2, hearRate=0.75, catchRange=0.62, route=x:y|x:y|...
 
 var MAP = __MAP__;
 var MAP_W = __MAPW__;
 var MAP_H = __MAPH__;
-var wp = [];
+var wp = [];                                   // waypoint pairs, parsed in start()
+var route = typeof route === "undefined" ? "" : route;
 var wpi = 0;
 var facing = 0.0;
 var state = "patrol";
@@ -495,7 +496,7 @@ function blocked(x, y) {
 }
 
 function start() {
-    var parts = ("" + wp).split("|");
+    var parts = ("" + route).split("|");
     for (var i = 0; i < parts.length; i++) {
         var xy = parts[i].split(":");
         wp.push([parseFloat(xy[0]), parseFloat(xy[1])]);
@@ -1571,7 +1572,7 @@ def build_scene(b, grid, mats):
                             "speed=2.4, chaseSpeed=4.2, sight=7.5, cone=95, nearCone=160, "
                             "nearSight=2.6, litBonus=1.45, detectRate=0.8, decay=0.45, "
                             "hearing=3.2, hearRate=0.75, catchRange=0.62, "
-                            "wp=" + "|".join(cells))])
+                            "route=" + "|".join(cells))])
         s.add(f"{name}Mark", x=wx, y=wy + 0.95, tag="Mark", order=12,
               active=False,
               comps=[sprite("fx_flare.png", "#FFEDE08A", order=12)])

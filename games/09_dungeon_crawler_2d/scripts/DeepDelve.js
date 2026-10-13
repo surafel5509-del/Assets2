@@ -308,6 +308,12 @@ function placeSigils() {
         s.order = 9;
         s.setEmitting(true);
         sigils.push(s);
+        var arch = scene.spawn("SigilArch", s.x, s.y - 0.35);
+        if (arch) arch.order = 7;
+        if (spots[i][0] === "Deep Vault") {
+            var door = scene.spawn("VaultDoor", s.x + 1.0, s.y - 0.1);
+            if (door) door.order = 7;
+        }
     }
 }
 
@@ -407,6 +413,9 @@ function update(dt) {
         toSpawn = waveBase + wave * waveStep;
         toast = 2.2;
         msg("WAVE " + wave + " -- they are coming");
+        // Every third wave the Blood Monster walks in.  It is the same AI with
+        // twelve times the health, so the threat curve gets a step, not a slope.
+        if (wave % 3 === 0) spawnBoss();
     }
     if (toast > 0) { toast -= dt; if (toast <= 0) msg(""); }
 
@@ -446,6 +455,19 @@ function spawnOne() {
         e.active = true;
         spawned++;
     }
+}
+
+function spawnBoss() {
+    var spot = freeSpot(11.0);
+    if (!spot) return;
+    var b = scene.spawn("BloodMonster", spot[0], spot[1]);
+    if (!b) return;
+    b.tag = "Enemy";
+    b.active = true;
+    spawned++;
+    toast = 2.4;
+    msg("BLOOD MONSTER");
+    audio.play("sfx_boss.ogg", 0.5);
 }
 
 function onEnemyKilled(name, x, y) {

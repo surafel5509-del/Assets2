@@ -11,7 +11,7 @@
 //         staminaRegen=22, dodgeSpeed=15.5, dodgeTime=0.34, iframes=0.42
 
 var yaw = 0.0;
-var hp = 120;
+var hp = typeof hp === "undefined" ? 120 : hp;
 var stamina = 100.0;
 var swing = 0.0;             // time left in the current swing
 var combo = 0;               // 0..2 within the light chain

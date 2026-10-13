@@ -503,6 +503,151 @@
       }
     },
     {
+      "pack": "tiny_rpg_character_asset_pack_02_v1_01_free_demon_a_blood_monster_a",
+      "path": "Characters(100x100 split)/Blood Monster_A/Blood Monster_A/Blood Monster_A_Idle.png",
+      "as": "boss_idle.png",
+      "anim": {
+        "columns": 6,
+        "rows": 1,
+        "frames": 6
+      },
+      "clips": {
+        "boss_idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "fps": 5.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "tiny_rpg_character_asset_pack_02_v1_01_free_demon_a_blood_monster_a",
+      "path": "Characters(100x100 split)/Blood Monster_A/Blood Monster_A/Blood Monster_A_Walk.png",
+      "as": "boss_walk.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8
+      },
+      "clips": {
+        "boss_walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 9.0,
+          "loop": true
+        }
+      }
+    },
+    {
+      "pack": "tiny_rpg_character_asset_pack_02_v1_01_free_demon_a_blood_monster_a",
+      "path": "Characters(100x100 split)/Blood Monster_A/Blood Monster_A/Blood Monster_A_Attack01.png",
+      "as": "boss_attack.png",
+      "anim": {
+        "columns": 8,
+        "rows": 1,
+        "frames": 8
+      },
+      "clips": {
+        "boss_attack": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 11.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "tiny_rpg_character_asset_pack_02_v1_01_free_demon_a_blood_monster_a",
+      "path": "Characters(100x100 split)/Blood Monster_A/Blood Monster_A/Blood Monster_A_Hurt.png",
+      "as": "boss_hurt.png",
+      "anim": {
+        "columns": 4,
+        "rows": 1,
+        "frames": 4
+      },
+      "clips": {
+        "boss_hurt": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 10.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "tiny_rpg_character_asset_pack_02_v1_01_free_demon_a_blood_monster_a",
+      "path": "Characters(100x100 split)/Blood Monster_A/Blood Monster_A/Blood Monster_A_Death.png",
+      "as": "boss_death.png",
+      "anim": {
+        "columns": 4,
+        "rows": 1,
+        "frames": 4
+      },
+      "clips": {
+        "boss_death": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 8.0,
+          "loop": false
+        }
+      }
+    },
+    {
+      "pack": "free_medieval_fantasy_ui_pack",
+      "path": "UI Icons 2/icon6.png",
+      "as": "ui_skull.png"
+    },
+    {
+      "pack": "free_medieval_fantasy_ui_pack",
+      "path": "UI Icons 2/icon8.png",
+      "as": "ui_chest.png"
+    },
+    {
+      "pack": "free_medieval_fantasy_ui_pack",
+      "path": "UI Icons 2/icon13.png",
+      "as": "ui_frame.png"
+    },
+    {
+      "pack": "free_medieval_fantasy_ui_pack",
+      "path": "UI Icons 2/icon32.png",
+      "as": "prop_door.png"
+    },
+    {
+      "pack": "free_medieval_fantasy_ui_pack",
+      "path": "UI Icons 2/icon56.png",
+      "as": "prop_arch.png"
+    },
+    {
       "pack": "legacy_fantasy_high_forest_2_0",
       "path": "Character/Idle/Idle-Sheet.png",
       "as": "hero_idle.png",
@@ -810,6 +955,11 @@
       "pack": "kenney_ui_pack",
       "path": "Sounds/tap-a.ogg",
       "as": "sfx_win.ogg"
+    },
+    {
+      "pack": "kenney_ui_pack",
+      "path": "Sounds/switch-a.ogg",
+      "as": "sfx_boss.ogg"
     }
   ],
   "spriteDirections": {

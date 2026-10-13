@@ -407,7 +407,7 @@ KNIGHT_JS = r"""
 //         staminaRegen=22, dodgeSpeed=15.5, dodgeTime=0.34, iframes=0.42
 
 var yaw = 0.0;
-var hp = 120;
+var hp = typeof hp === "undefined" ? 120 : hp;
 var stamina = 100.0;
 var swing = 0.0;             // time left in the current swing
 var combo = 0;               // 0..2 within the light chain
@@ -802,9 +802,9 @@ HOLLOW_JS = r"""
 // Params: hp=46, speed=3.1, damage=13, reach=2.3, windup=0.55, recover=0.7,
 //         sight=26.0, kind=hollow
 
-var hp = 46;
+var hp = typeof hp === "undefined" ? 46 : hp;
 var maxHp = 46;
-var speed = 3.1;
+var speed = typeof speed === "undefined" ? 3.1 : speed;
 var state = "hunt";          // hunt -> windup -> strike -> recover
 var timer = 0.0;
 var dead = false;
@@ -941,8 +941,8 @@ REVENANT_JS = r"""
 // Params: hp=74, speed=3.9, damage=17, reach=2.7, windup=0.42, recover=0.55,
 //         sight=30.0, strafeTime=1.4
 
-var hp = 74;
-var speed = 3.9;
+var hp = typeof hp === "undefined" ? 74 : hp;
+var speed = typeof speed === "undefined" ? 3.9 : speed;
 var state = "hunt";
 var timer = 0.0;
 var strafe = 1.0;
@@ -1071,9 +1071,9 @@ WARDEN_JS = r"""
 //         slamReach=4.6, sweepReach=5.4, chargeReach=3.0, windup=0.85,
 //         recover=1.05, sight=34.0
 
-var hp = 420;
+var hp = typeof hp === "undefined" ? 420 : hp;
 var maxHp = 420;
-var speed = 3.2;
+var speed = typeof speed === "undefined" ? 3.2 : speed;
 var state = "idle";
 var timer = 2.0;
 var dead = false;

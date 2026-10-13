@@ -7,8 +7,8 @@
 // Params: hp=74, speed=3.9, damage=17, reach=2.7, windup=0.42, recover=0.55,
 //         sight=30.0, strafeTime=1.4
 
-var hp = 74;
-var speed = 3.9;
+var hp = typeof hp === "undefined" ? 74 : hp;
+var speed = typeof speed === "undefined" ? 3.9 : speed;
 var state = "hunt";
 var timer = 0.0;
 var strafe = 1.0;

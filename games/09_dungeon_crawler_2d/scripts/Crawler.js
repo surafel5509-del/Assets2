@@ -6,7 +6,7 @@
 //
 // Params: hp=20, speed=2.05, damage=7, range=6.4, keepAway=3.2, cooldown=1.9
 
-var hp = 20;
+var hp = typeof hp === "undefined" ? 20 : hp;
 var fireCd = 0;
 var dead = false;
 var backoff = false;

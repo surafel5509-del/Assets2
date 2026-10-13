@@ -9,7 +9,7 @@
 //         skin=skeleton
 
 var state = "patrol";
-var hp = 34;
+var hp = typeof hp === "undefined" ? 34 : hp;
 var attackCd = 0;
 var homeX = 0, homeY = 0;
 var patrolT = 0;

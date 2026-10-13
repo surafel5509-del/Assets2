@@ -66,7 +66,7 @@ python3 tools/build_asset_store.py
 
 # Validate all twelve games against the store manifest and the engine
 python3 tools/validate_games.py
-#   → 57 535 checks, 0 errors — RESULT: PASS
+#   → 58 206 checks, 0 errors — RESULT: PASS
 
 # Actually execute every game script headlessly (240 frames each)
 node tools/run_games.js
@@ -88,7 +88,7 @@ APK to a GitHub Release via
 |---|---|
 | Native C++ core | **Verified.** `make` → 219 checks, 0 failures |
 | Asset store generation | **Verified.** 25 packs, 5 008 files, 154 sprite sheets |
-| Games vs. store vs. engine | **Verified.** 57 535 checks, 0 errors |
+| Games vs. store vs. engine | **Verified.** 58 206 checks, 0 errors |
 | Game scripts, executed | **Verified.** `run_games.js` — 77 scripts × 240 frames, 304 checks |
 | Kotlin / Gradle | **Verified in CI.** 60 files compile; unit tests pass; debug + release APKs build |
 | APK packaging | **Verified in CI.** 25 pack ZIPs, 40 game entries, `index.json` present |
