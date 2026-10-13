@@ -7,6 +7,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
+import android.graphics.RectF
 import android.graphics.Shader
 import com.sengine.engine.anim.AnimationClip
 import com.sengine.engine.blueprint.Blueprint
@@ -77,7 +78,14 @@ object AssetLibrary {
         list += tex("Ice", "Ice.png", "Frozen surface, 64×64") { noiseTex(64, 0xFFBEE7F5.toInt(), 0xFF8CCBE6.toInt(), 2) }
         list += tex("Sky Gradient", "Sky.png", "Background gradient, 256×256") { sky(0xFF2E6FD8.toInt(), 0xFFBFE3FF.toInt(), false) }
         list += tex("Night Sky", "NightSky.png", "Stars background, 256×256") { sky(0xFF050A1E.toInt(), 0xFF1D2B5A.toInt(), true) }
+        list += tex("Desert Sky", "DesertSky.png", "Warm dusk sky for desert stages", "Textures") { sky(0xFFDA815C.toInt(), 0xFFFFD59A.toInt(), false) }
+        list += tex("Arctic Sky", "ArcticSky.png", "Cool glacier sky for snow stages", "Textures") { sky(0xFF559AD4.toInt(), 0xFFE3F5FF.toInt(), false) }
+        list += tex("Moon Sky", "MoonSky.png", "Deep violet starfield for the moon", "Textures") { sky(0xFF111437.toInt(), 0xFF4B4E83.toInt(), true) }
         list += tex("Mountains", "Mountains.png", "Parallax mountains, 256×128") { mountains() }
+        list += tex("Off-Road Buggy", "BuggyBody.png", "Original cartoon 4×4 body sprite, side view", "Sprites") { buggyBody() }
+        list += tex("Off-Road Wheel", "OffroadWheel.png", "Layered rubber tyre and alloy rim", "Sprites") { offroadWheel() }
+        list += tex("Gold Coin Icon", "GoldCoin.png", "Glossy collectible coin with a raised center", "Sprites") { goldCoin() }
+        list += tex("Fuel Can Icon", "FuelCan.png", "Bright red fuel pickup with a lightning mark", "Sprites") { fuelCan() }
         // ---------------------------------------------------------------- sprites (pixel art)
         list += tex("Hero", "Hero.png", "16×16 pixel hero", "Sprites") { pixel(HERO_IDLE, PAL) }
         list += tex("Slime", "Slime.png", "16×16 slime enemy", "Sprites") { pixel(SLIME[0], PAL) }
@@ -139,6 +147,8 @@ object AssetLibrary {
             listOf("Low-Poly Tree", "Rock", "House", "Crystal", "Checker", "Grass Tile", "Stone", "Player3D", "Rotator", "Toon"))
         pack("VFX Pack", "Particles, fire, shaders and power-up sound",
             listOf("Soft Particle", "Spark", "Fire (6 frames)", "Dissolve", "Hit Flash", "Rainbow", "Hologram", "Power Up"))
+        pack("Hill Climb Racer Pack", "Original off-road vehicle art, stage skies and arcade pickup sounds",
+            listOf("Off-Road Buggy", "Off-Road Wheel", "Gold Coin Icon", "Fuel Can Icon", "Sky Gradient", "Desert Sky", "Arctic Sky", "Moon Sky", "Mountains", "Cloud", "Coin Pickup", "Power Up", "Game Over"))
         return list
     }
 
@@ -289,6 +299,121 @@ object AssetLibrary {
     private fun shade(c: Int, f: Float): Int {
         fun ch(s: Int) = (((c shr s) and 0xFF) * f).toInt().coerceIn(0, 255)
         return (c and 0xFF000000.toInt()) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+    }
+
+    private fun buggyBody(): Bitmap {
+        val b = Bitmap.createBitmap(192, 112, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        c.drawOval(RectF(15f, 84f, 178f, 105f), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x330E1720 })
+
+        // Visible roll cage and chassis rails sit behind the painted body panels.
+        p.color = 0xFF263747.toInt(); p.style = Paint.Style.STROKE; p.strokeWidth = 7f; p.strokeCap = Paint.Cap.ROUND
+        c.drawLine(53f, 61f, 64f, 24f, p); c.drawLine(64f, 24f, 126f, 24f, p)
+        c.drawLine(126f, 24f, 145f, 62f, p); c.drawLine(48f, 62f, 151f, 62f, p)
+        p.style = Paint.Style.FILL
+        c.drawRoundRect(RectF(19f, 56f, 175f, 76f), 8f, 8f, p)
+
+        val body = Path().apply {
+            moveTo(14f, 55f); lineTo(24f, 39f); lineTo(54f, 34f); lineTo(69f, 17f)
+            lineTo(119f, 17f); lineTo(139f, 34f); lineTo(163f, 38f); lineTo(180f, 52f)
+            lineTo(176f, 69f); lineTo(160f, 75f); lineTo(30f, 75f); lineTo(15f, 68f); close()
+        }
+        p.color = 0xFF263747.toInt(); c.drawPath(body, p)
+        p.shader = LinearGradient(0f, 31f, 0f, 75f, intArrayOf(0xFFFF8055.toInt(), 0xFFE34732.toInt(), 0xFFB92E29.toInt()), null, Shader.TileMode.CLAMP)
+        val inner = Path().apply {
+            moveTo(20f, 55f); lineTo(29f, 43f); lineTo(56f, 39f); lineTo(72f, 22f)
+            lineTo(116f, 22f); lineTo(135f, 39f); lineTo(160f, 42f); lineTo(173f, 53f)
+            lineTo(169f, 66f); lineTo(155f, 70f); lineTo(32f, 70f); lineTo(21f, 65f); close()
+        }
+        c.drawPath(inner, p); p.shader = null
+
+        // Window glass, roof, and a friendly helmeted driver.
+        val glass = Path().apply { moveTo(66f, 36f); lineTo(77f, 23f); lineTo(97f, 23f); lineTo(97f, 37f); close() }
+        p.color = 0xFFB5E9F3.toInt(); c.drawPath(glass, p)
+        val windscreen = Path().apply { moveTo(102f, 23f); lineTo(115f, 23f); lineTo(131f, 37f); lineTo(102f, 37f); close() }
+        p.color = 0xFF75C4DD.toInt(); c.drawPath(windscreen, p)
+        p.color = 0xFF263747.toInt(); p.style = Paint.Style.STROKE; p.strokeWidth = 3f
+        c.drawPath(glass, p); c.drawPath(windscreen, p); p.style = Paint.Style.FILL
+        p.color = 0xFFFFD2A0.toInt(); c.drawCircle(94f, 31f, 9f, p)
+        p.color = 0xFF3E5669.toInt(); c.drawArc(RectF(84f, 20f, 103f, 38f), 180f, 180f, true, p)
+        p.color = 0xFFFFFFFF.toInt(); c.drawCircle(97f, 31f, 1.5f, p)
+
+        // Door panel, rally stripe, latch, headlamp, tail lamp and bumpers.
+        p.color = 0x66FFE6B8; c.drawRoundRect(RectF(42f, 43f, 46f, 64f), 2f, 2f, p)
+        p.color = 0xFFFFD166.toInt(); c.drawRoundRect(RectF(23f, 48f, 166f, 52f), 2f, 2f, p)
+        p.color = 0xFF7D2830.toInt(); c.drawRoundRect(RectF(112f, 46f, 126f, 50f), 2f, 2f, p)
+        p.color = 0xFFFFF2BB.toInt(); c.drawRoundRect(RectF(165f, 45f, 174f, 53f), 3f, 3f, p)
+        p.color = 0xFFFF5A45.toInt(); c.drawRoundRect(RectF(17f, 50f, 23f, 58f), 2f, 2f, p)
+        p.color = 0xFF283747.toInt(); c.drawRoundRect(RectF(8f, 59f, 24f, 68f), 3f, 3f, p)
+        c.drawRoundRect(RectF(169f, 58f, 186f, 67f), 3f, 3f, p)
+        p.color = 0xFF7E2E24.toInt(); c.drawRoundRect(RectF(28f, 66f, 160f, 72f), 2f, 2f, p)
+        return b
+    }
+
+    private fun offroadWheel(): Bitmap {
+        val b = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.color = 0xFF101820.toInt(); c.drawCircle(64f, 64f, 61f, p)
+        p.color = 0xFF26313A.toInt(); p.style = Paint.Style.STROKE; p.strokeWidth = 5f
+        for (i in 0 until 16) {
+            val a = i * Math.PI / 8.0
+            val x1 = 64f + (kotlin.math.cos(a) * 51.0).toFloat()
+            val y1 = 64f + (kotlin.math.sin(a) * 51.0).toFloat()
+            val x2 = 64f + (kotlin.math.cos(a) * 59.0).toFloat()
+            val y2 = 64f + (kotlin.math.sin(a) * 59.0).toFloat()
+            c.drawLine(x1, y1, x2, y2, p)
+        }
+        p.style = Paint.Style.FILL; p.color = 0xFF596775.toInt(); c.drawCircle(64f, 64f, 42f, p)
+        p.color = 0xFFB6C5CF.toInt(); c.drawCircle(64f, 64f, 34f, p)
+        p.color = 0xFF637583.toInt(); p.style = Paint.Style.STROKE; p.strokeWidth = 5f; c.drawCircle(64f, 64f, 29f, p)
+        p.style = Paint.Style.FILL; p.color = 0xFF293946.toInt()
+        for (i in 0 until 6) {
+            val a = i * Math.PI / 3.0
+            c.drawCircle(64f + (kotlin.math.cos(a) * 22.0).toFloat(), 64f + (kotlin.math.sin(a) * 22.0).toFloat(), 3f, p)
+        }
+        p.color = 0xFFE1B553.toInt(); c.drawCircle(64f, 64f, 13f, p)
+        p.color = 0xFFFFE4A0.toInt(); c.drawCircle(60f, 60f, 4f, p)
+        return b
+    }
+
+    private fun goldCoin(): Bitmap {
+        val b = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.shader = RadialGradient(34f, 29f, 82f,
+            intArrayOf(0xFFFFFFA8.toInt(), 0xFFFFD34F.toInt(), 0xFFE99A20.toInt()),
+            null, Shader.TileMode.CLAMP)
+        c.drawCircle(48f, 48f, 45f, p); p.shader = null
+        p.color = 0xFFFFF0A3.toInt(); p.style = Paint.Style.STROKE; p.strokeWidth = 4f
+        c.drawCircle(48f, 48f, 36f, p)
+        p.style = Paint.Style.FILL; p.color = 0xFFFFF4BB.toInt()
+        val star = Path().apply {
+            moveTo(48f, 27f); lineTo(54f, 41f); lineTo(69f, 42f); lineTo(58f, 51f)
+            lineTo(62f, 66f); lineTo(48f, 58f); lineTo(34f, 66f); lineTo(38f, 51f)
+            lineTo(27f, 42f); lineTo(42f, 41f); close()
+        }
+        c.drawPath(star, p)
+        p.color = 0x66FFFFFF; c.drawOval(RectF(24f, 12f, 47f, 26f), p)
+        return b
+    }
+
+    private fun fuelCan(): Bitmap {
+        val b = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        c.drawOval(RectF(18f, 81f, 79f, 90f), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x440E1720 })
+        p.color = 0xFF74282B.toInt(); c.drawRoundRect(RectF(21f, 20f, 79f, 82f), 12f, 12f, p)
+        p.shader = LinearGradient(24f, 24f, 77f, 80f, 0xFFFF6C55.toInt(), 0xFFD82E37.toInt(), Shader.TileMode.CLAMP)
+        c.drawRoundRect(RectF(25f, 25f, 75f, 78f), 9f, 9f, p); p.shader = null
+        p.color = 0xFF8D2630.toInt(); c.drawRoundRect(RectF(39f, 13f, 64f, 30f), 4f, 4f, p)
+        p.color = 0xFFFFB7A3.toInt(); c.drawRoundRect(RectF(43f, 13f, 60f, 19f), 3f, 3f, p)
+        p.color = 0xFFFFE6A6.toInt()
+        val bolt = Path().apply { moveTo(55f, 32f); lineTo(39f, 54f); lineTo(49f, 54f); lineTo(43f, 70f); lineTo(62f, 47f); lineTo(52f, 47f); close() }
+        c.drawPath(bolt, p)
+        p.color = 0xFFFFA08D.toInt(); c.drawRoundRect(RectF(29f, 34f, 35f, 66f), 3f, 3f, p)
+        return b
     }
 
     private fun brick(): Bitmap {

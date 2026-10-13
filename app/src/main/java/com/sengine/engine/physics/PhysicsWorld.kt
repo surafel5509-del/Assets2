@@ -5,12 +5,14 @@ import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.Scene
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Lightweight impulse-based 2D physics: axis-aligned boxes and circles,
+ * Lightweight impulse-based 2D physics: oriented boxes and circles,
  * gravity, restitution, friction, triggers and collision callbacks.
  */
 class PhysicsWorld {
@@ -30,7 +32,8 @@ class PhysicsWorld {
         val rb: Rigidbody2D?,
         val col: Collider2D,
         var cx: Float = 0f, var cy: Float = 0f,
-        var hw: Float = 0f, var hh: Float = 0f, var r: Float = 0f
+        var hw: Float = 0f, var hh: Float = 0f, var r: Float = 0f,
+        var rotation: Float = 0f
     ) {
         val isCircle get() = col.shape == 1
         val invMass: Float
@@ -138,6 +141,7 @@ class PhysicsWorld {
         b.hw = b.col.width * sx * 0.5f
         b.hh = b.col.height * sy * 0.5f
         b.r = b.col.radius * max(sx, sy)
+        b.rotation = Math.toRadians(w.rotationDeg.toDouble()).toFloat()
     }
 
     private class Manifold(val nx: Float, val ny: Float, val depth: Float)
@@ -152,15 +156,37 @@ class PhysicsWorld {
         }
     }
 
+    /** Separating-axis test for two oriented rectangles. Normal points from a to b. */
     private fun boxBox(a: Body, b: Body): Manifold? {
+        val ac = cos(a.rotation); val sinA = sin(a.rotation)
+        val axx = ac; val axy = sinA
+        val ayx = -sinA; val ayy = ac
+        val bc = cos(b.rotation); val sinB = sin(b.rotation)
+        val bxx = bc; val bxy = sinB
+        val byx = -sinB; val byy = bc
         val dx = b.cx - a.cx
-        val ox = a.hw + b.hw - abs(dx)
-        if (ox <= 0f) return null
         val dy = b.cy - a.cy
-        val oy = a.hh + b.hh - abs(dy)
-        if (oy <= 0f) return null
-        return if (ox < oy) Manifold(if (dx < 0) -1f else 1f, 0f, ox)
-        else Manifold(0f, if (dy < 0) -1f else 1f, oy)
+        var bestDepth = Float.MAX_VALUE
+        var bestX = 0f; var bestY = 0f
+
+        fun testAxis(x: Float, y: Float): Boolean {
+            val centerDistance = dx * x + dy * y
+            val ra = a.hw * abs(axx * x + axy * y) + a.hh * abs(ayx * x + ayy * y)
+            val rb = b.hw * abs(bxx * x + bxy * y) + b.hh * abs(byx * x + byy * y)
+            val overlap = ra + rb - abs(centerDistance)
+            if (overlap <= 0f) return false
+            if (overlap < bestDepth) {
+                val sign = if (centerDistance < 0f) -1f else 1f
+                bestDepth = overlap
+                bestX = x * sign
+                bestY = y * sign
+            }
+            return true
+        }
+
+        if (!testAxis(axx, axy) || !testAxis(ayx, ayy) ||
+            !testAxis(bxx, bxy) || !testAxis(byx, byy)) return null
+        return Manifold(bestX, bestY, bestDepth)
     }
 
     private fun circleCircle(a: Body, b: Body): Manifold? {
@@ -174,22 +200,33 @@ class PhysicsWorld {
     }
 
     private fun boxCircle(box: Body, c: Body): Manifold? {
-        val px = (c.cx).coerceIn(box.cx - box.hw, box.cx + box.hw)
-        val py = (c.cy).coerceIn(box.cy - box.hh, box.cy + box.hh)
-        var dx = c.cx - px
-        var dy = c.cy - py
-        val d2 = dx * dx + dy * dy
+        val co = cos(box.rotation); val si = sin(box.rotation)
+        val ux = co; val uy = si
+        val vx = -si; val vy = co
+        val dx = c.cx - box.cx
+        val dy = c.cy - box.cy
+        val localX = dx * ux + dy * uy
+        val localY = dx * vx + dy * vy
+        val closestX = localX.coerceIn(-box.hw, box.hw)
+        val closestY = localY.coerceIn(-box.hh, box.hh)
+        var nx = localX - closestX
+        var ny = localY - closestY
+        val d2 = nx * nx + ny * ny
         if (d2 > c.r * c.r) return null
         if (d2 < 1e-8f) {
-            // centre inside box: push out along smallest axis
-            val ox = box.hw - abs(c.cx - box.cx)
-            val oy = box.hh - abs(c.cy - box.cy)
-            return if (ox < oy) Manifold(if (c.cx < box.cx) -1f else 1f, 0f, ox + c.r)
-            else Manifold(0f, if (c.cy < box.cy) -1f else 1f, oy + c.r)
+            // Circle center is inside the box: eject through the nearest face.
+            val ox = box.hw - abs(localX)
+            val oy = box.hh - abs(localY)
+            if (ox < oy) {
+                nx = if (localX < 0f) -1f else 1f; ny = 0f
+                return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, ox + c.r)
+            }
+            nx = 0f; ny = if (localY < 0f) -1f else 1f
+            return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, oy + c.r)
         }
         val d = sqrt(d2)
-        dx /= d; dy /= d
-        return Manifold(dx, dy, c.r - d)
+        nx /= d; ny /= d
+        return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, c.r - d)
     }
 
     private fun resolve(a: Body, b: Body, m: Manifold) {
@@ -246,9 +283,15 @@ class PhysicsWorld {
             val col = go.get<Collider2D>() ?: continue
             val b = Body(go, null, col)
             refresh(b)
+            val dx = x - b.cx; val dy = y - b.cy
             val hit = if (b.isCircle) {
-                val dx = x - b.cx; val dy = y - b.cy; dx * dx + dy * dy <= b.r * b.r
-            } else abs(x - b.cx) <= b.hw && abs(y - b.cy) <= b.hh
+                dx * dx + dy * dy <= b.r * b.r
+            } else {
+                val co = cos(b.rotation); val si = sin(b.rotation)
+                val localX = dx * co + dy * si
+                val localY = -dx * si + dy * co
+                abs(localX) <= b.hw && abs(localY) <= b.hh
+            }
             if (hit) return go
         }
         return null

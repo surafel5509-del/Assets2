@@ -76,6 +76,7 @@ class ProjectsActivity : AppCompatActivity() {
             if (ProjectManager.list(this).isEmpty()) {
                 ProjectManager.create(this, "Platformer Demo", Templates.all[1])
                 ProjectManager.create(this, "Space Shooter", Templates.all[2])
+                ProjectManager.create(this, "Hill Climb Racer", Templates.all.first { it.name == "Hill Climb Racer" })
             }
         }
     }

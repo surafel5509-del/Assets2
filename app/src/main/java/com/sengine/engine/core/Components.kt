@@ -88,6 +88,8 @@ class Camera2D : Component() {
     var size = 5f
     var background = 0xFF1B2533.toInt()
     var follow = ""
+    var offsetX = 0f
+    var offsetY = 0f
     var smoothing = 5f
     var postFx = 0
     var postIntensity = 1f
@@ -98,6 +100,8 @@ class Camera2D : Component() {
         Prop.F("Size", { size }, { size = it.coerceAtLeast(0.1f) }),
         Prop.Color("Background", { background }, { background = it }),
         Prop.S("Follow Target", { follow }, { follow = it }),
+        Prop.F("Offset X", { offsetX }, { offsetX = it }),
+        Prop.F("Offset Y", { offsetY }, { offsetY = it }),
         Prop.F("Follow Smoothing", { smoothing }, { smoothing = it.coerceAtLeast(0f) }),
         Prop.Choice("Post FX", ComponentRegistry.POST_FX, { postFx }, { postFx = it }),
         Prop.F("FX Intensity", { postIntensity }, { postIntensity = it.coerceIn(0f, 4f) }, 0.05f),

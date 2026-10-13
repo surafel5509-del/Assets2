@@ -229,6 +229,8 @@ class SInput(private val engine: Engine) {
     @JvmField var b = false
     @JvmField var aDown = false
     @JvmField var bDown = false
+    @JvmField var upgrade = false
+    @JvmField var upgradeDown = false
     @JvmField var touching = false
     @JvmField var tapped = false
     @JvmField var touchX = 0.0
@@ -238,8 +240,32 @@ class SInput(private val engine: Engine) {
         val i = engine.input
         axisX = i.axisX.toDouble(); axisY = i.axisY.toDouble()
         a = i.a; b = i.b; aDown = i.aDown; bDown = i.bDown
+        upgrade = i.upgrade; upgradeDown = i.upgradeDown
         touching = i.touching; tapped = i.tapped
         touchX = i.touchX.toDouble(); touchY = i.touchY.toDouble()
+    }
+}
+
+class SStorage(private val project: com.sengine.project.Project) {
+    /** Read a scalar value using [fallback]'s type to preserve JS strings, numbers and booleans. */
+    fun get(key: String, fallback: Any?): Any? {
+        val stored = project.userData(key) ?: return fallback
+        return when (fallback) {
+            is Number -> (stored as? Number)?.toDouble() ?: fallback
+            is Boolean -> stored as? Boolean ?: fallback
+            is String -> stored as? String ?: fallback
+            else -> stored
+        }
+    }
+
+    fun set(key: String, value: Any?) {
+        val safe = when (value) {
+            null -> org.json.JSONObject.NULL
+            is Number -> value.toDouble()
+            is Boolean, is String -> value
+            else -> Context.toString(value)
+        }
+        project.putUserData(key, safe)
     }
 }
 

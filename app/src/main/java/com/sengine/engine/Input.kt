@@ -10,6 +10,7 @@ class Input {
     @Volatile var joyY = 0f
     @Volatile var rawA = false
     @Volatile var rawB = false
+    @Volatile var rawUpgrade = false
     @Volatile var rawTouching = false
     @Volatile var rawTouchSX = 0f
     @Volatile var rawTouchSY = 0f
@@ -23,6 +24,8 @@ class Input {
     var b = false; private set
     var aDown = false; private set
     var bDown = false; private set
+    var upgrade = false; private set
+    var upgradeDown = false; private set
     var touching = false; private set
     var tapped = false; private set
     var touchX = 0f; private set
@@ -39,9 +42,11 @@ class Input {
         axisY = (joyY + ky).coerceIn(-1f, 1f)
         val na = rawA || KeyEvent.KEYCODE_SPACE in keys || KeyEvent.KEYCODE_BUTTON_A in keys
         val nb = rawB || KeyEvent.KEYCODE_ENTER in keys || KeyEvent.KEYCODE_BUTTON_B in keys
+        val nu = rawUpgrade
         aDown = na && !a
         bDown = nb && !b
-        a = na; b = nb
+        upgradeDown = nu && !upgrade
+        a = na; b = nb; upgrade = nu
         touching = rawTouching
         tapped = tapPending
         tapPending = false
@@ -50,8 +55,8 @@ class Input {
     }
 
     fun clear() {
-        joyX = 0f; joyY = 0f; rawA = false; rawB = false; rawTouching = false; tapPending = false
+        joyX = 0f; joyY = 0f; rawA = false; rawB = false; rawUpgrade = false; rawTouching = false; tapPending = false
         keys.clear()
-        a = false; b = false; aDown = false; bDown = false; tapped = false; touching = false
+        a = false; b = false; aDown = false; bDown = false; upgrade = false; upgradeDown = false; tapped = false; touching = false
     }
 }

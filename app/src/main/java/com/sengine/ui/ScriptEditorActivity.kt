@@ -267,7 +267,7 @@ SELF  (self / transform / gameObject)
 
 INPUT
   axisX axisY (-1..1)  a b aDown bDown
-  touching tapped touchX touchY (world)
+  upgrade upgradeDown (game UI)  touching tapped touchX touchY (world)
 
 SCENE
   find(name) findAll(tag) count(tag)
@@ -284,6 +284,9 @@ SCENE
 TIME   time.time time.frame time.fps
 AUDIO  audio.play("file.wav") audio.beep()
        audio.stopAll()
+
+SAVE DATA  storage.get(key, fallback)  storage.set(key, value)
+            project-scoped strings, numbers and booleans
 
 HELPERS
   log(...) warn(m) error(m)

@@ -259,7 +259,7 @@ class Engine(val project: Project, initialScene: Scene) {
         val cam = camGo.get<Camera2D>()!!
         if (cam.follow.isBlank()) return
         val t = scene.find(cam.follow) ?: return
-        camGo.setWorldPosition(t.world.tx, t.world.ty)
+        camGo.setWorldPosition(t.world.tx + cam.offsetX, t.world.ty + cam.offsetY)
     }
 
     private fun updateCameraFollow(dt: Float) {
@@ -269,7 +269,9 @@ class Engine(val project: Project, initialScene: Scene) {
         val t = scene.find(cam.follow) ?: return
         val w = camGo.computeWorld()
         val k = if (cam.smoothing <= 0f) 1f else (1f - exp(-cam.smoothing * dt))
-        camGo.setWorldPosition(w.tx + (t.world.tx - w.tx) * k, w.ty + (t.world.ty - w.ty) * k)
+        val tx = t.world.tx + cam.offsetX
+        val ty = t.world.ty + cam.offsetY
+        camGo.setWorldPosition(w.tx + (tx - w.tx) * k, w.ty + (ty - w.ty) * k)
     }
 
     fun updateGameView() {

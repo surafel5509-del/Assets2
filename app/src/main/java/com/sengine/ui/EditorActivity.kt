@@ -253,7 +253,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         controller = ViewportController(this, engine, state)
         glView.setOnTouchListener(controller)
         vp.addView(glView)
-        controls = GameControlsView(this) { engine.input }
+        controls = GameControlsView(this, { engine.input }, driveMode = project.controlScheme == "drive")
         vp.addView(controls)
         statsText = label("", 11f, 0xCCFFFFFF.toInt()).apply {
             setPadding(dp(8), dp(3), dp(8), dp(3)); background = round(0x88000000.toInt(), dp(4).toFloat())

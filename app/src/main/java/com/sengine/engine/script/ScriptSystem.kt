@@ -48,6 +48,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         put(g, "time", STime(engine))
         put(g, "scene", SScene(engine, this))
         put(g, "audio", SAudio(engine))
+        put(g, "storage", SStorage(engine.project))
         put(g, "console", SConsole(engine))
         c.evaluateString(g, PRELUDE, "prelude", 1, null)
         compiled.clear()

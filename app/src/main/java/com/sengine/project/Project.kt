@@ -16,6 +16,11 @@ class Project(val dir: File) {
     var startScene = "Main"
     var created = System.currentTimeMillis()
     var orientation = 0 // 0 landscape, 1 portrait
+    /** Preferred runtime overlay: "classic" joystick/buttons or "drive" pedals. */
+    var controlScheme = "classic"
+
+    private val userDataLock = Any()
+    private val userDataFile = File(dir, ".sengine_user_data.json")
 
     init {
         if (metaFile.exists()) {
@@ -24,6 +29,7 @@ class Project(val dir: File) {
                 startScene = o.optString("startScene", "Main")
                 created = o.optLong("created", created)
                 orientation = o.optInt("orientation", 0)
+                controlScheme = o.optString("controlScheme", "classic")
             } catch (_: Exception) {
             }
         }
@@ -37,7 +43,35 @@ class Project(val dir: File) {
         o.put("startScene", startScene)
         o.put("created", created)
         o.put("orientation", orientation)
+        o.put("controlScheme", controlScheme)
         metaFile.writeText(o.toString(2))
+    }
+
+    /** Small project-scoped save store used by games for wallets, upgrades and high scores. */
+    fun userData(key: String): Any? = synchronized(userDataLock) {
+        if (!userDataFile.exists()) return@synchronized null
+        try {
+            val value = JSONObject(userDataFile.readText()).opt(key)
+            if (value == null || value === JSONObject.NULL) null else value
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun putUserData(key: String, value: Any?) {
+        synchronized(userDataLock) {
+            val data = try {
+                if (userDataFile.exists()) JSONObject(userDataFile.readText()) else JSONObject()
+            } catch (_: Exception) { JSONObject() }
+            data.put(key, value ?: JSONObject.NULL)
+            dir.mkdirs()
+            val temp = File(dir, ".sengine_user_data.tmp")
+            temp.writeText(data.toString())
+            if (!temp.renameTo(userDataFile)) {
+                userDataFile.writeText(data.toString())
+                temp.delete()
+            }
+        }
     }
 
     fun sceneFile(n: String) = File(scenesDir, "$n.scene.json")

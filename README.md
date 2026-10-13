@@ -17,7 +17,7 @@
 | **Undo / Redo** | Snapshot-based history for every edit |
 | **Play mode** | Play / Pause / Step frame inside the editor; scene is restored when you stop (like Unity) |
 | **Rendering** | Squares, circles, triangles, textured sprites (PNG/JPG/WebP) with flip, text, particles, sorting order, camera background |
-| **Physics 2D** | Dynamic / Kinematic / Static rigidbodies, box & circle colliders, gravity, bounciness, friction, drag, triggers, collision & trigger callbacks, `grounded` detection |
+| **Physics 2D** | Dynamic / Kinematic / Static rigidbodies, oriented box & circle colliders, gravity, bounciness, friction, drag, triggers, collision & trigger callbacks, `grounded` detection |
 | **Scripting** | JavaScript (ES6 subset via Rhino) with `start`, `update(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging |
 | **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference |
 | **Assets** | Import images and sounds from the device, create scripts, preview / assign / attach from the Assets panel |
@@ -34,6 +34,7 @@
 * **Platformer Demo** – run, jump, moving platform, coins with particle bursts, score UI
 * **Space Shooter** – spawning enemies, bullets, explosions, score, game over
 * **Physics Sandbox** – tap to drop bouncy balls and crates onto a pyramid
+* **Hill Climb Racer** – an original endless off-road game with springy 4×4 handling, generated rolling terrain, coins, fuel, local high scores, persistent garage upgrades, four changing biomes, touch pedals and keyboard controls. It is created automatically on first launch and is also available from **New Project**.
 
 ---
 
@@ -68,8 +69,9 @@ function onTrigger(other) {
 
 * **Lifecycle:** `start()`, `update(dt)`, `onCollision(other)`, `onTrigger(other)`, `onTriggerExit(other)`, `onTap()`, `onDestroy()`, `onStop()`
 * **self / transform:** `name tag active order x y rotation scaleX scaleY worldX worldY vx vy grounded color visible flipX text size`, `setPosition() move() rotate() addForce() setVelocity() destroy() child() parent distanceTo() overlaps() send() burst() setEmitting() setTexture() hasComponent() setComponentEnabled()`
-* **input:** `axisX axisY a b aDown bDown touching tapped touchX touchY`
+* **input:** `axisX axisY a b aDown bDown upgrade upgradeDown touching tapped touchX touchY`
 * **scene:** `find(name) findAll(tag) count(tag) spawn(name, x, y) load(name) reload() camera gravityX gravityY`
+* **save data:** `storage.get(key, fallback)` / `storage.set(key, value)` for project-scoped numbers, booleans and strings
 * **time:** `time.time time.frame time.fps` — **audio:** `play(file) beep() stopAll()`
 * **helpers:** `log() warn() error() after(sec, fn) every(sec, fn) random() randomInt() clamp() lerp()`
 
@@ -79,10 +81,7 @@ Inactive objects make great **prefab templates** – `scene.spawn("Enemy", x, y)
 
 ## Download
 
-Every push is built by GitHub Actions. Grab the APK from:
-
-* **Releases → "S Engine – latest build"** → `SEngine.apk`, or
-* **Actions → latest "Build S Engine APK" run → Artifacts → `SEngine-debug-apk`**
+Every push and pull request runs the Android tests and builds both installable APK variants. Download them from **Actions → Build S Engine APK → latest successful run → Artifacts → `SEngine-Android-APKs`**. The artifact contains `app-debug.apk` and `app-release.apk` (the release variant is currently debug-key signed for convenient testing; replace the signing config before publishing).
 
 Enable "Install unknown apps" for your browser / file manager, then open the APK.
 
