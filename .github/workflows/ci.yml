@@ -1,11 +1,13 @@
 name: CI
 
 # Runs on every PR (so a push to an open PR branch rebuilds the APK), on main,
+# on any arena/* working branch (so a session that cannot dispatch workflows --
+# the GitHub App has no actions:write -- still gets an APK built for every push),
 # and on demand.  Also callable from release.yml so a tagged build cannot ship
 # an APK that skipped the checks.
 on:
   push:
-    branches: [main]
+    branches: [main, 'arena/**']
   pull_request:
   workflow_dispatch:
   workflow_call:
