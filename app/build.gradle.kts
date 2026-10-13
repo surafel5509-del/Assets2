@@ -11,8 +11,11 @@ android {
         applicationId = "com.sengine.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.1"
+        // 1.1.0 ships the four new games (09-12) and the twelve-game template
+        // library.  versionCode must move with it or Android refuses to install
+        // the APK over 1.0.1.
+        versionCode = 3
+        versionName = "1.1.0"
     }
 
     buildTypes {
