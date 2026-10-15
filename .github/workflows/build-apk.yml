@@ -16,24 +16,49 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Install Android SDK
-        run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GitHub's Ubuntu runner already provides Android command-line tools.
+          # Use JDK 21 for current sdkmanager; Gradle still uses JDK 17 below.
+          JAVA_HOME="$JAVA_HOME_21_X64" "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-34' 'build-tools;34.0.0' 2>&1 | tee sdk-setup.log
       - name: Compile, test, lint and package
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace --no-daemon 2>&1 | tee verification.log
+      - name: Annotate build failures
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PYCODE'
+          import pathlib, re
+          for name in ("sdk-setup.log", "verification.log"):
+              path = pathlib.Path(name)
+              if not path.exists():
+                  continue
+              lines = path.read_text(errors="replace").splitlines()
+              indices = set()
+              for i, line in enumerate(lines):
+                  if re.search(r"(^e:|error|failed|failure|what went wrong|exception)", line, re.I):
+                      indices.update(range(max(0, i - 2), min(len(lines), i + 5)))
+              report = "\n".join(lines[i] for i in sorted(indices))[:40000]
+              if not report:
+                  report = "\n".join(lines[-60:])[:40000]
+              report = report.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title={name}::{report}")
+          PYCODE
       - name: Test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,6 +66,7 @@ jobs:
           name: engine-verification
           path: |
             verification.log
+            sdk-setup.log
             app/build/reports/
             app/build/test-results/
           retention-days: 14
