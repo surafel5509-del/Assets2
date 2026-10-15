@@ -1,0 +1,4 @@
+<resources>
+    <item name="signing_device_key" type="id" />
+    <item name="signing_file_key" type="id" />
+</resources>

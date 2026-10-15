@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import com.sengine.R
 import com.sengine.export.ApkBuilder
 import com.sengine.export.GameBuildConfig
 import com.sengine.export.SigningKeys
@@ -62,7 +63,7 @@ class BuildActivity : AppCompatActivity() {
             contentResolver.openInputStream(uri)!!.use { i -> f.outputStream().use { i.copyTo(it) } }
             keystoreFile = f
             keystoreBtn.text = "Keystore: ${f.name} ✓"
-            keyGroup.check(2)
+            keyGroup.check(R.id.signing_file_key)
         } catch (e: Exception) { toast("Can't read keystore: ${e.message}") }
     }
 
@@ -110,9 +111,9 @@ class BuildActivity : AppCompatActivity() {
 
         section("SIGNING")
         keyGroup = RadioGroup(this)
-        keyGroup.addView(RadioButton(this).apply { id = 1; text = "Device key (automatic, stored in Android KeyStore)"; setTextColor(C.TEXT) })
-        keyGroup.addView(RadioButton(this).apply { id = 2; text = "My keystore file (.p12 / .pfx / .bks)"; setTextColor(C.TEXT) })
-        keyGroup.check(1)
+        keyGroup.addView(RadioButton(this).apply { id = R.id.signing_device_key; text = "Device key (automatic, stored in Android KeyStore)"; setTextColor(C.TEXT) })
+        keyGroup.addView(RadioButton(this).apply { id = R.id.signing_file_key; text = "My keystore file (.p12 / .pfx / .bks)"; setTextColor(C.TEXT) })
+        keyGroup.check(R.id.signing_device_key)
         body.addView(keyGroup)
         keystoreBtn = button("Choose keystore…") { pickKeystore.launch(arrayOf("*/*")) }.apply { textSize = 12f }
         body.addView(keystoreBtn, lp(WRAP, WRAP).margins(dp(30), dp(4), 0, dp(4)))
@@ -162,7 +163,7 @@ class BuildActivity : AppCompatActivity() {
             verNameField.text.toString().trim().ifBlank { "1.0" }, verCodeField.text.toString().toIntOrNull() ?: 1)
         if (cfg.appName.isBlank()) { toast("Enter an app name"); return }
         if (!ApkBuilder.validPackage(cfg.packageName)) { toast("Invalid package name (e.g. com.mystudio.mygame)"); return }
-        val useFile = keyGroup.checkedRadioButtonId == 2
+        val useFile = keyGroup.checkedRadioButtonId == R.id.signing_file_key
         val ks = keystoreFile
         if (useFile && ks == null) { toast("Choose a keystore file first"); return }
         saveSettings()

@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.Gravity
+import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.PopupMenu
@@ -185,16 +186,17 @@ class ProjectsActivity : AppCompatActivity() {
         box.addView(name, lp(MATCH, WRAP).margins(0, dp(4), 0, dp(12)))
         box.addView(label("Template", 12f, C.DIM))
         val group = RadioGroup(this)
+        val templateIds = Templates.all.map { View.generateViewId() }
         Templates.all.forEachIndexed { i, t ->
             group.addView(RadioButton(this).apply {
-                id = 1000 + i
+                id = templateIds[i]
                 text = "${t.name}\n${t.description}"
                 setTextColor(C.TEXT)
                 textSize = 13f
                 setPadding(dp(4), dp(6), 0, dp(6))
             })
         }
-        group.check(1000)
+        group.check(templateIds.first())
         box.addView(group)
         MaterialAlertDialogBuilder(this)
             .setTitle("New Project")
@@ -205,7 +207,7 @@ class ProjectsActivity : AppCompatActivity() {
                     n.isBlank() -> toast("Invalid name")
                     ProjectManager.exists(this, n) -> toast("A project named \"$n\" already exists")
                     else -> {
-                        val p = ProjectManager.create(this, n, Templates.all[group.checkedRadioButtonId - 1000])
+                        val p = ProjectManager.create(this, n, Templates.all[templateIds.indexOf(group.checkedRadioButtonId).coerceAtLeast(0)])
                         open(p)
                     }
                 }
