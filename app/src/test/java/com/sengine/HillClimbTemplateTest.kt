@@ -27,9 +27,9 @@ class HillClimbTemplateTest {
     fun templateCreatesAPlayableDriveProjectAndCompilableScripts() {
         val p = newProject()
         assertEquals("Race", p.startScene)
-        assertEquals("drive", Project(p.dir).controlScheme)
+        assertEquals("driveTilt", Project(p.dir).controlScheme)
         assertTrue(p.sceneExists("Race"))
-        for (name in listOf("Game.js", "Vehicle.js", "Pickup.js")) {
+        for (name in listOf("Game.js", "Vehicle.js", "Pickup.js", "Hazard.js")) {
             val source = p.readAsset(name) ?: error("missing $name")
             val cx = Context.enter()
             try {
@@ -60,6 +60,8 @@ class HillClimbTemplateTest {
         val startX = car.x
         val terrain = engine.scene.objects.count { it.tag == "Terrain" && it.active }
         assertTrue("initial terrain should be generated ahead of the player", terrain > 30)
+        assertTrue("the run should show its rotating challenge", engine.scene.find("Challenge Text") != null)
+        assertTrue("procedural hazards should be seeded ahead", engine.scene.objects.any { it.tag == "Hazard" && it.active })
 
         engine.input.rawA = true
         frames(100)
@@ -79,6 +81,27 @@ class HillClimbTemplateTest {
 
         engine.stop()
         frames(1)
+        engine.release()
+    }
+
+    @Test
+    fun reachingTheNextBiomeUnlocksAndPaysTheStageRewardOnce() {
+        val p = newProject()
+        val engine = Engine(p, p.loadScene(p.startScene))
+        engine.gameView.widthPx = 1600; engine.gameView.heightPx = 900
+        engine.play()
+        fun frames(n: Int) = repeat(n) { synchronized(engine.lock) { engine.tick(1f / 60f) } }
+        frames(2)
+        val car = engine.scene.find("Car")!!
+        synchronized(engine.lock) { engine.scripts.sendMessage(car, "reset", 45.0) }
+        frames(3)
+        val stage = engine.scene.find("Stage Text")!!.getAny<com.sengine.engine.core.TextRenderer>()!!.text
+        assertTrue("crossing 44 m should advance into the desert stage: $stage", stage.startsWith("LEVEL 2 / 4"))
+        val wallet = (Project(p.dir).userData("hcr.wallet") as? Number)?.toInt() ?: 0
+        assertEquals("first level-clear reward", 30, wallet)
+        frames(5)
+        val walletAgain = (Project(p.dir).userData("hcr.wallet") as? Number)?.toInt() ?: 0
+        assertEquals("stage rewards must not repeat while remaining in the biome", 30, walletAgain)
         engine.release()
     }
 

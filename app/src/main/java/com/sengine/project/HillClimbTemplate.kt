@@ -14,9 +14,9 @@ import com.sengine.engine.core.TextRenderer
 object HillClimbTemplate {
     val template = Templates.Template(
         "Hill Climb Racer",
-        "Endless off-road driving with generated hills, fuel, coin pickups, upgrades and four biomes."
+        "Spring-suspended off-road driving with four staged biomes, hazards, fuel, rotating challenges, garage upgrades and phone-tilt balance."
     ) { project ->
-        project.controlScheme = "drive"
+        project.controlScheme = "driveTilt"
         project.orientation = 0
         installAssets(project,
             "Off-Road Buggy", "Off-Road Wheel", "Gold Coin Icon", "Fuel Can Icon", "Sky Gradient",
@@ -25,6 +25,7 @@ object HillClimbTemplate {
         project.writeAsset("Game.js", GAME_SCRIPT)
         project.writeAsset("Vehicle.js", VEHICLE_SCRIPT)
         project.writeAsset("Pickup.js", PICKUP_SCRIPT)
+        project.writeAsset("Hazard.js", HAZARD_SCRIPT)
 
         val scene = Scene("Race")
         scene.gravityY = 0f // The vehicle has a custom suspension model; terrain/pickups use engine colliders.
@@ -65,6 +66,32 @@ object HillClimbTemplate {
         fuel.add(Collider2D().also { it.shape = 1; it.radius = 0.48f; it.isTrigger = true })
         fuel.script("Pickup.js")
 
+        val rock = obj(scene, "Rock Hazard Prefab", 0f, 0f, 0.82f, 0.66f).also {
+            it.active = false; it.order = 6; it.tag = "Hazard"
+        }
+        rock.add(SpriteRenderer().also { it.shape = 2; it.color = 0xFF786E62.toInt(); it.pivotY = 0.15f })
+        rock.add(Collider2D().also { it.width = 0.84f; it.height = 0.66f; it.isTrigger = true })
+        rock.script("Hazard.js")
+
+        val cactus = obj(scene, "Cactus Hazard Prefab", 0f, 0f, 1f, 1f).also {
+            it.active = false; it.order = 6; it.tag = "Hazard"
+        }
+        obj(scene, "Cactus Trunk", 0f, 0.62f, 0.28f, 1.35f, cactus).sprite(0xFF3D9955)
+        obj(scene, "Cactus Left Arm", -0.27f, 0.66f, 0.40f, 0.17f, cactus).sprite(0xFF3D9955)
+        obj(scene, "Cactus Left Rise", -0.44f, 0.85f, 0.16f, 0.48f, cactus).sprite(0xFF3D9955)
+        obj(scene, "Cactus Right Arm", 0.28f, 0.90f, 0.38f, 0.17f, cactus).sprite(0xFF55AE65)
+        obj(scene, "Cactus Right Rise", 0.44f, 1.08f, 0.16f, 0.44f, cactus).sprite(0xFF55AE65)
+        cactus.add(Collider2D().also { it.width = 0.78f; it.height = 1.45f; it.offsetY = 0.72f; it.isTrigger = true })
+        cactus.script("Hazard.js")
+
+        val crash = obj(scene, "Crash Particles", 0f, 0f).also { it.order = 12 }
+        crash.add(ParticleEmitter().also {
+            it.emitting = false; it.rate = 0f; it.maxParticles = 160; it.speed = 3.4f; it.speedVariance = 0.55f
+            it.direction = 90f; it.spread = 360f; it.lifetime = 0.85f; it.startSize = 0.22f; it.endSize = 0.025f
+            it.sizeVariance = 0.45f; it.gravity = 1.6f; it.drag = 1.2f; it.rotationVariance = 180f
+            it.rotationSpeedVariance = 220f; it.startColor = 0xFFFFB341.toInt(); it.endColor = 0x00E64A20
+        })
+
         obj(scene, "Cloud Prefab", 0f, 0f, 3f, 1.55f).also {
             it.active = false; it.order = -60
         }.add(SpriteRenderer().also { it.texture = "Cloud.png" })
@@ -86,6 +113,8 @@ object HillClimbTemplate {
         screenText(scene, "Brand", "HILL  /  CLIMB", 0f, 4.53f, 0.27f, 0xFF10243A, align = 1, order = 100)
         screenText(scene, "Stage Text", "COUNTRYSIDE", 0f, 4.12f, 0.22f, 0xFF31516A, align = 1, order = 100)
         screenText(scene, "Distance Text", "000 m", 0f, 3.44f, 0.37f, 0xFFFFFFFF, align = 1, order = 100)
+        screenText(scene, "Challenge Text", "CHALLENGE  •  COLLECT 3 COINS", 0f, 2.94f, 0.18f, 0xFFFFE39B, align = 1, order = 100)
+        screenText(scene, "Level Toast", "", 0f, 2.48f, 0.24f, 0xFFFFD45A, align = 1, order = 100)
         screenText(scene, "Best Text", "BEST  0 m", 6.95f, 4.38f, 0.22f, 0xFF28435B, align = 2, order = 100)
         screenText(scene, "Wallet Text", "COINS  0", 6.95f, 3.96f, 0.27f, 0xFFFFD45A, align = 2, order = 100)
         screenText(scene, "Fuel Label", "FUEL", -7.9f, 4.27f, 0.22f, 0xFFFFFFFF, align = 0, order = 100)
@@ -103,7 +132,7 @@ object HillClimbTemplate {
         obj(scene, "RPM Needle", 0f, -2.55f, 0.07f, 0.40f).also { it.order = 102 }
             .add(SpriteRenderer().also { it.color = 0xFFFF7043.toInt(); it.screenSpace = true })
         screenText(scene, "Speed Text", "0 km/h", 0f, -2.82f, 0.19f, 0xFFFFFFFF, align = 1, order = 103)
-        screenText(scene, "Controls Hint", "HOLD  GAS  /  BRAKE", 0f, -1.63f, 0.17f, 0xCCFFFFFFL, align = 1, order = 100)
+        screenText(scene, "Controls Hint", "GAS / BRAKE  •  TILT TO BALANCE", 0f, -1.63f, 0.17f, 0xCCFFFFFFL, align = 1, order = 100)
 
         val gameOverPanel = obj(scene, "Game Over Panel", 0f, 0f).also {
             it.active = false; it.order = 200
@@ -199,6 +228,7 @@ var runStartX = 0;
 var startX = 0;
 var nextCoinX = 7;
 var nextFuelX = 54;
+var nextHazardX = 34;
 var nextCloudX = 10;
 var nextHillX = -4;
 var fuel = 100;
@@ -208,6 +238,12 @@ var best = 0;
 var distance = 0;
 var speedKmh = 0;
 var currentStage = -1;
+var unlockedStage = 0;
+var challengeIndex = 0;
+var challengeValue = 0;
+var airTime = 0;
+var challengeDone = false;
+var levelToastTimer = 0;
 var running = true;
 var gameOver = false;
 var upgradeIndex = 0;
@@ -226,13 +262,16 @@ function start() {
     suspensionLevel = Math.max(0, Number(storage.get("hcr.suspension", 0)) || 0);
     tyreLevel = Math.max(0, Number(storage.get("hcr.tyres", 0)) || 0);
     upgradeIndex = Math.floor(Math.max(0, Number(storage.get("hcr.upgradeIndex", 0)) || 0)) % 3;
+    challengeIndex = Math.floor(Math.max(0, Number(storage.get("hcr.challengeIndex", 0)) || 0)) % 3;
+    unlockedStage = Math.floor(Math.max(0, Number(storage.get("hcr.unlockedStage", 0)) || 0));
     runStartX = 0;
     startX = 0;
     fuel = fuelCapacity;
     applyStage(0);
     ensureWorld(0);
+    updateChallenge();
     updateHud();
-    log("Hill Climb Racer ready — hold GAS to climb, BRAKE to balance.");
+    log("Hill Climb Racer ready — gas and brake pedals; tilt your phone to balance in the air.");
 }
 
 function terrainHeight(x) {
@@ -251,15 +290,34 @@ function stageFor(x) {
     return 3;
 }
 function stageName(i) { return ["COUNTRYSIDE", "SUNSET DESERT", "FROST RIDGE", "MOON VALLEY"][i]; }
+function stageLabel(i) { return "LEVEL " + (i + 1) + " / 4  •  " + stageName(i); }
 function stageDirt(i) { return ["#FF80502D", "#FF9A6037", "#FF607C91", "#FF4F4867"][i]; }
 function stageGrass(i) { return ["#FF67C64B", "#FFFFC24A", "#FFE7F6F8", "#FF9582AE"][i]; }
 function stageFar(i) { return ["#FF72B6A0", "#FFD89A74", "#FFA5D3E2", "#FF575B89"][i]; }
 function stageNear(i) { return ["#FF559879", "#FFC57B53", "#FF78B6CC", "#FF41496D"][i]; }
 function skyName(i) { return ["Sky.png", "DesertSky.png", "ArcticSky.png", "MoonSky.png"][i]; }
 
+function completeStage(level) {
+    if (level < 0 || level > 2) return;
+    var key = "hcr.level" + level + ".cleared";
+    if (storage.get(key, false)) return;
+    var reward = [30, 45, 65][level];
+    wallet += reward;
+    storage.set(key, true);
+    storage.set("hcr.wallet", wallet);
+    audio.play("powerup.wav");
+    log("LEVEL " + (level + 1) + " COMPLETE  •  GARAGE BONUS +" + reward);
+    var toast = scene.find("Level Toast");
+    if (toast) toast.text = "LEVEL " + (level + 1) + " CLEARED  •  +" + reward + " COINS";
+    levelToastTimer = 3.8;
+}
+
 function applyStage(index) {
     if (index < 0 || index > 3 || currentStage == index) return;
+    var previous = currentStage;
     currentStage = index;
+    if (index > previous) for (var level = Math.max(0, previous); level < index && level < 3; level++) completeStage(level);
+    if (index > unlockedStage) { unlockedStage = index; storage.set("hcr.unlockedStage", unlockedStage); }
     var dirt = scene.find("Dirt Tile"); if (dirt) dirt.color = stageDirt(index);
     var grass = scene.find("Grass Tile"); if (grass) grass.color = stageGrass(index);
     var far = scene.find("Far Hill"); if (far) far.color = stageFar(index);
@@ -273,7 +331,7 @@ function applyStage(index) {
         if (scenery[k].name.indexOf("Near Hill") == 0) scenery[k].color = stageNear(index);
         if (scenery[k].name.indexOf("Pine Tree") == 0) scenery[k].active = index == 0 || index == 2;
     }
-    var label = scene.find("Stage Text"); if (label) label.text = stageName(index);
+    var label = scene.find("Stage Text"); if (label) label.text = stageLabel(index);
 }
 
 function addTerrainSegment() {
@@ -319,6 +377,24 @@ function spawnCoinCluster(baseX) {
     }
 }
 
+function spawnHazard(atX) {
+    var stage = stageFor(atX);
+    var cactus = stage == 1;
+    var item = scene.spawn(cactus ? "Cactus Hazard Prefab" : "Rock Hazard Prefab", atX,
+        terrainHeight(atX) + (cactus ? 0.02 : 0.27));
+    if (!item) return;
+    item.tag = "Hazard";
+    if (cactus) {
+        var scale = random(0.78, 1.08);
+        item.scaleX = scale; item.scaleY = scale;
+    } else {
+        item.scaleX = random(0.78, 1.18); item.scaleY = random(0.78, 1.12);
+        item.color = ["#FF786E62", "#FFB97950", "#FFA5C1CF", "#FFAAA1C9"][stage];
+        item.rotation = random(-12, 12);
+    }
+    scenery.push(item);
+}
+
 function ensureWorld(x) {
     while (terrainCursor < x + 34) addTerrainSegment();
     while (nextCoinX < x + 48) {
@@ -328,6 +404,11 @@ function ensureWorld(x) {
     while (nextFuelX < x + 50) {
         spawnPickup("Fuel", nextFuelX, terrainHeight(nextFuelX) + 1.15);
         nextFuelX += random(52, 76);
+    }
+    while (nextHazardX < x + 44) {
+        spawnHazard(nextHazardX);
+        var difficulty = stageFor(nextHazardX);
+        nextHazardX += random(23, 31) - difficulty * 1.6;
     }
     while (nextCloudX < x + 50) {
         var cloud = scene.spawn("Cloud Prefab", nextCloudX, random(2.4, 4.4));
@@ -362,6 +443,31 @@ function pruneWorld(x) {
     if (cans) for (var j = 0; j < cans.length; j++) if (cans[j].x < x - 22) cans[j].destroy();
 }
 
+function challengeLabel() {
+    var names = ["COLLECT 3 COINS", "REACH 55 METRES", "AIRTIME 2.0 SECONDS"];
+    return names[challengeIndex] || names[0];
+}
+
+function updateChallenge() {
+    var targets = [3, 55, 2.0];
+    var value = challengeIndex == 0 ? runCoins : challengeIndex == 1 ? distance : airTime;
+    var target = targets[challengeIndex] || 3;
+    if (!challengeDone && value >= target) {
+        challengeDone = true;
+        wallet += 25;
+        storage.set("hcr.wallet", wallet);
+        storage.set("hcr.challengeIndex", (challengeIndex + 1) % 3);
+        audio.play("powerup.wav");
+        log("CHALLENGE COMPLETE  •  GARAGE BONUS +25");
+    }
+    var label = scene.find("Challenge Text");
+    if (label) {
+        var progress = challengeIndex == 2 ? (Math.floor(airTime * 10) / 10).toFixed(1) : Math.floor(value);
+        label.text = challengeDone ? "CHALLENGE COMPLETE  •  +25 COINS" : "CHALLENGE  •  " + challengeLabel() + "  " + progress + "/" + target;
+        label.color = challengeDone ? "#FF8EE3B2" : "#FFFFE39B";
+    }
+}
+
 function update(dt) {
     if (!car) return;
     var worldX = car.x;
@@ -369,14 +475,19 @@ function update(dt) {
     applyStage(stage);
     ensureWorld(worldX);
     pruneWorld(worldX);
+    if (levelToastTimer > 0) {
+        levelToastTimer = Math.max(0, levelToastTimer - dt);
+        if (levelToastTimer == 0) { var toast = scene.find("Level Toast"); if (toast) toast.text = ""; }
+    }
 
     if (gameOver && (input.tapped || input.aDown || input.bDown)) startRun();
     if (gameOver && input.upgradeDown) buyUpgrade();
 
     if (running) {
         distance = Math.max(0, Math.floor(worldX - runStartX));
-        fuel = Math.max(0, fuel - dt * (2.9 + speedKmh * 0.022));
         if (distance > best) best = distance;
+        updateChallenge();
+        fuel = Math.max(0, fuel - dt * (2.9 + speedKmh * 0.022));
         if (fuel <= 0) endRun("OUT OF FUEL");
     }
     var zoom = 5.2 + Math.min(1.25, speedKmh / 115);
@@ -399,13 +510,13 @@ function updateHud() {
     var speed = scene.find("Speed Text"); if (speed) speed.text = Math.floor(speedKmh) + " km/h";
     var needle = scene.find("RPM Needle"); if (needle) needle.rotation = -118 + clamp(speedKmh / 85, 0, 1) * 236;
     var tune = scene.find("Controls Hint");
-    if (tune) tune.text = gameOver ? "TAP TO DRIVE AGAIN  •  TUNE TO UPGRADE" : "HOLD  GAS  /  BRAKE";
+    if (tune) tune.text = gameOver ? "TAP TO DRIVE AGAIN  •  TUNE TO UPGRADE" : "GAS / BRAKE  •  TILT TO BALANCE";
     var overTitle = scene.find("Game Over Title");
     var overStats = scene.find("Game Over Stats");
     var overWallet = scene.find("Game Over Bank");
     var overTune = scene.find("Game Over Tune");
     var panel = scene.find("Game Over Panel");
-    if (overTitle && gameOver) overTitle.text = endReason == "OUT OF FUEL" ? "OUT OF FUEL" : "RUN OVER";
+    if (overTitle && gameOver) overTitle.text = endReason == "OUT OF FUEL" ? "OUT OF FUEL" : endReason == "WRECKED" ? "WRECKED" : "RUN OVER";
     if (overStats && gameOver) overStats.text = "DISTANCE  " + distance + " m   •   BEST  " + best + " m";
     if (overWallet && gameOver) overWallet.text = "WALLET  " + wallet + " COINS   •   ENGINE " + engineLevel + " / GRIP " + tyreLevel;
     if (overTune && gameOver) overTune.text = "NEXT  " + getUpgradeName() + "  •  " + getUpgradeCost() + " COINS";
@@ -423,10 +534,12 @@ function collect(kind) {
         fuel = Math.min(fuelCapacity, fuel + 38);
         audio.play("powerup.wav");
     }
+    updateChallenge();
     updateHud();
 }
 
 function setSpeed(v) { speedKmh = Math.max(0, Number(v) * 3.6); }
+function addAirTime(v) { if (running && !gameOver) airTime += Math.max(0, Number(v) || 0); }
 function isRunning() { return running && !gameOver; }
 function getStartX() { return startX; }
 function getEngineLevel() { return engineLevel; }
@@ -469,7 +582,11 @@ function endRun(reason) {
     best = Math.max(best, distance);
     storage.set("hcr.best", best);
     audio.play("lose.wav");
-    scene.shake(0.24);
+    if (reason != "OUT OF FUEL") {
+        var sparks = scene.find("Crash Particles");
+        if (sparks && car) { sparks.x = car.x; sparks.y = car.y; sparks.burst(44); }
+        scene.shake(0.34);
+    }
     updateHud();
 }
 
@@ -478,6 +595,9 @@ function startRun() {
     running = true;
     endReason = "";
     runCoins = 0;
+    airTime = 0;
+    challengeDone = false;
+    challengeIndex = Math.floor(Math.max(0, Number(storage.get("hcr.challengeIndex", challengeIndex)) || 0)) % 3;
     fuel = fuelCapacity;
     startX = Math.max(0, terrainCursor - 31);
     runStartX = startX;
@@ -485,12 +605,13 @@ function startRun() {
     nextCoinX = Math.max(nextCoinX, startX + 6);
     nextFuelX = Math.max(nextFuelX, startX + 35);
     if (car) car.send("reset", startX);
+    updateChallenge();
     updateHud();
 }
 """
 
     private const val VEHICLE_SCRIPT = """
-// Spring-suspended arcade 4x4. Rotation follows slope, with mid-air air-control.
+// Two-wheel spring chassis: gravity, damped suspension, slope traction, angular inertia and phone air-control.
 var manager;
 var rear;
 var front;
@@ -503,6 +624,13 @@ var angle = 0;
 var angularVelocity = 0;
 var wheelSpin = 0;
 var grounded = false;
+var rearCompression = 0;
+var frontCompression = 0;
+var halfWheelBase = 0.78;
+var anchorDrop = 0.24;
+var wheelRadius = 0.36;
+var mass = 1.15;
+var inertia = 1.9;
 
 function start() {
     manager = scene.find("Game Manager");
@@ -515,72 +643,116 @@ function start() {
 function reset(spawnX) {
     x = Number(spawnX) || 0;
     y = Number(manager.send("terrainHeight", x)) + 0.82;
-    vx = 0; vy = 0; angle = 0; angularVelocity = 0; wheelSpin = 0; grounded = true;
+    vx = 0; vy = 0; angle = 0; angularVelocity = 0; wheelSpin = 0;
+    grounded = true; rearCompression = 0.08; frontCompression = 0.08;
     self.x = x; self.y = y; self.rotation = 0;
-    placeWheels();
+    placeWheels(0.08, 0.08, 0.3);
 }
 
 function groundAt(px) { return Number(manager.send("terrainHeight", px)); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-function placeWheels() {
-    if (rear) { rear.x = x - 0.78; rear.y = groundAt(x - 0.78) + 0.36; rear.rotation = wheelSpin; }
-    if (front) { front.x = x + 0.78; front.y = groundAt(x + 0.78) + 0.36; front.rotation = wheelSpin; }
+function placeWheels(rearComp, frontComp, rest) {
+    var c = Math.cos(angle), s = Math.sin(angle);
+    var rearAnchorX = x - c * halfWheelBase + s * anchorDrop;
+    var frontAnchorX = x + c * halfWheelBase + s * anchorDrop;
+    var rearAnchorY = y - s * halfWheelBase - c * anchorDrop;
+    var frontAnchorY = y + s * halfWheelBase - c * anchorDrop;
+    var rot = angle * 57.2957795 + wheelSpin;
+    if (rear) { rear.x = rearAnchorX; rear.y = rearAnchorY - (rest - clamp(rearComp, -0.32, 0.24)); rear.rotation = rot; }
+    if (front) { front.x = frontAnchorX; front.y = frontAnchorY - (rest - clamp(frontComp, -0.32, 0.24)); front.rotation = rot; }
 }
 
 function update(dt) {
     if (!manager || !manager.send("isRunning")) {
         if (exhaust) exhaust.setEmitting(false);
-        manager && manager.send("setSpeed", 0);
+        if (manager) manager.send("setSpeed", 0);
         return;
     }
+    dt = clamp(dt, 0, 0.05);
     var gas = input.a || input.axisX > 0.12;
     var brake = input.b || input.axisX < -0.12;
+    var tilt = Number(input.tiltX) || 0;
     var engine = Number(manager.send("getEngineLevel")) || 0;
     var suspension = Number(manager.send("getSuspensionLevel")) || 0;
     var tyres = Number(manager.send("getTyreLevel")) || 0;
+    var gravity = Math.max(0.5, Number(manager.send("gravityAt", x)) || 9.81);
 
-    if (gas) vx += (5.0 + engine * 0.72) * dt;
-    else if (brake) {
-        if (vx > 0.15) vx = Math.max(0, vx - 9.5 * dt);
-        else vx -= 2.8 * dt;
-    } else vx *= Math.max(0, 1 - 0.72 * dt);
-    vx = clamp(vx, -3.2, 8.7 + engine * 0.5);
+    var rearX = x - halfWheelBase;
+    var frontX = x + halfWheelBase;
+    var rearGround = groundAt(rearX);
+    var frontGround = groundAt(frontX);
+    var slope = Math.atan2(frontGround - rearGround, halfWheelBase * 2);
+    var rest = 0.30 + suspension * 0.025;
+    var springK = gravity * (7.2 + suspension * 0.38);
+    var damper = Math.sqrt(springK * mass * 0.5) * 0.78;
+
+    // Each wheel applies its own damped spring force, allowing the chassis to pitch over uneven ground.
+    var c = Math.cos(angle), s = Math.sin(angle);
+    var rearAnchorY = y - s * halfWheelBase - c * anchorDrop;
+    var frontAnchorY = y + s * halfWheelBase - c * anchorDrop;
+    rearCompression = rearGround + wheelRadius + rest - rearAnchorY;
+    frontCompression = frontGround + wheelRadius + rest - frontAnchorY;
+    var rearAnchorVy = vy - angularVelocity * halfWheelBase;
+    var frontAnchorVy = vy + angularVelocity * halfWheelBase;
+    var rearForce = clamp(rearCompression * springK - rearAnchorVy * damper, 0, mass * gravity * 10);
+    var frontForce = clamp(frontCompression * springK - frontAnchorVy * damper, 0, mass * gravity * 10);
+    grounded = rearForce + frontForce > mass * gravity * 0.12;
+
+    // Drive torque is strongest when the tyres are planted; airborne throttle spins the wheels but has less traction.
+    var traction = grounded ? 1 : 0.22;
+    if (gas) vx += (5.0 + engine * 0.72) * traction * dt;
+    if (brake) {
+        if (vx > 0.15) vx = Math.max(0, vx - (grounded ? 9.5 : 3.0) * dt);
+        else vx -= (grounded ? 2.8 : 0.8) * dt;
+    } else if (!gas) vx *= Math.max(0, 1 - 0.42 * dt);
+    // Gravity also pulls the car down the hill; tyre grip and upgrades temper the slide.
+    vx -= Math.sin(slope) * gravity * (grounded ? 0.36 : 0.08) * dt;
+    var normalForce = rearForce + frontForce;
+    vx += (-Math.sin(slope) * normalForce / mass) * dt;
+    vy += (-gravity + Math.cos(slope) * normalForce / mass) * dt;
+    if (grounded && !gas && !brake) vx *= Math.max(0, 1 - (0.18 + tyres * 0.025) * dt);
+    vx = clamp(vx, -4.2, 9.2 + engine * 0.55);
     x += vx * dt;
+    y += vy * dt;
 
-    var rearGround = groundAt(x - 0.78);
-    var frontGround = groundAt(x + 0.78);
-    var targetY = (rearGround + frontGround) * 0.5 + 0.82 + suspension * 0.035;
-    grounded = y <= targetY + 0.055;
-    if (grounded) {
-        y = targetY;
-        vy = Math.max(0, vy);
-        var targetAngle = Math.atan2(frontGround - rearGround, 1.56);
-        angularVelocity += (targetAngle - angle) * (5.4 + tyres * 0.16) * dt;
-        angularVelocity *= clamp(1 - (3.5 + suspension * 0.32) * dt, 0.25, 1);
-        if (gas) angularVelocity += 0.06 * dt;
-        if (brake) angularVelocity -= 0.08 * dt;
-    } else {
-        vy -= Number(manager.send("gravityAt", x)) * dt;
-        y += vy * dt;
-        if (gas) angularVelocity += 0.78 * dt;
-        if (brake) angularVelocity -= 0.88 * dt;
-        angularVelocity *= Math.max(0.90, 1 - dt * (0.08 + tyres * 0.012));
-    }
-    angularVelocity = clamp(angularVelocity, -3.4, 3.4);
+    var targetAngle = Math.atan2(frontGround - rearGround, halfWheelBase * 2);
+    var pitchFromSprings = (frontForce - rearForce) * 0.055;
+    var align = grounded ? clamp(targetAngle - angle, -0.8, 0.8) * (2.6 + tyres * 0.12) - angularVelocity * (1.0 + suspension * 0.12)
+        : -angularVelocity * 0.13;
+    var driverTorque = grounded
+        ? (gas ? 0.16 : 0) - (brake ? 0.22 : 0) + tilt * 0.55
+        : tilt * 2.55 + (gas ? 0.62 : 0) - (brake ? 0.82 : 0);
+    angularVelocity += (pitchFromSprings / inertia + align + driverTorque) * dt;
+    angularVelocity = clamp(angularVelocity, -3.8, 3.8);
     angle += angularVelocity * dt;
 
-    self.x = x; self.y = y; self.rotation = angle * 180 / Math.PI;
-    wheelSpin -= vx * dt / 0.34 * 57.2958;
-    placeWheels();
+    self.x = x; self.y = y; self.rotation = angle * 57.2957795;
+    wheelSpin -= vx * dt / wheelRadius * 57.2957795;
+    placeWheels(rearCompression, frontCompression, rest);
     if (exhaust) exhaust.setEmitting(gas);
     manager.send("setSpeed", vx);
+    if (!grounded) manager.send("addAirTime", dt);
 
-    // The separate driver's head is the fail point, not an arbitrary distance limit.
-    var headX = x + Math.cos(angle) * 0.04 - Math.sin(angle) * 0.32;
-    var headY = y + Math.sin(angle) * 0.04 + Math.cos(angle) * 0.32;
-    if (headY - 0.14 < groundAt(headX) + 0.02 || Math.abs(angle) > 1.58 || y < -20) {
+    // The driver's head is the fail point: landing upside down or burying the chassis ends the run.
+    var headX = x + Math.cos(angle) * 0.10 - Math.sin(angle) * 0.56;
+    var headY = y + Math.sin(angle) * 0.10 + Math.cos(angle) * 0.56;
+    var localGround = groundAt(x);
+    if (headY - 0.16 < groundAt(headX) + 0.02 || Math.abs(angle) > 1.58 || y < localGround - 1.4 || y < -20) {
         manager.send("endRun", "CRASH");
     }
+}
+"""
+
+    private const val HAZARD_SCRIPT = """
+var triggered = false;
+function onTrigger(other) {
+    if (triggered || other.tag != "Sensor") return;
+    var manager = scene.find("Game Manager");
+    if (!manager || !manager.send("isRunning")) return;
+    triggered = true;
+    manager.send("endRun", "WRECKED");
+    self.destroy();
 }
 """
 

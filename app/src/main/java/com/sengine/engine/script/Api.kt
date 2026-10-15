@@ -55,6 +55,24 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun getVz(): Double = (rb3?.vz ?: 0f).toDouble()
     fun setVz(v: Double) { rb3?.vz = v.toFloat() }
     fun isGrounded(): Boolean = rb3?.grounded ?: go.getAny<Rigidbody2D>()?.grounded ?: false
+    /** 2D angular velocity uses radians per second. */
+    fun getAngularVelocity(): Double = (go.getAny<Rigidbody2D>()?.angularVelocity ?: 0f).toDouble()
+    fun setAngularVelocity(v: Double) { go.getAny<Rigidbody2D>()?.angularVelocity = v.toFloat() }
+    fun addTorque(value: Double) { go.getAny<Rigidbody2D>()?.let { it.torque += value.toFloat() } }
+    fun getAngularVelocityX(): Double = (rb3?.angularVelocityX ?: 0f).toDouble()
+    fun getAngularVelocityY(): Double = (rb3?.angularVelocityY ?: 0f).toDouble()
+    fun getAngularVelocityZ(): Double = (rb3?.angularVelocityZ ?: 0f).toDouble()
+    fun setAngularVelocity(x: Double, y: Double, z: Double) {
+        rb3?.let { it.angularVelocityX = x.toFloat(); it.angularVelocityY = y.toFloat(); it.angularVelocityZ = z.toFloat() }
+    }
+    fun addTorque(x: Double, y: Double, z: Double) {
+        rb3?.let { it.torqueX += x.toFloat(); it.torqueY += y.toFloat(); it.torqueZ += z.toFloat() }
+    }
+    fun applyImpulse(ix: Double, iy: Double) {
+        val rb = go.getAny<Rigidbody2D>() ?: return
+        val mass = rb.mass.coerceAtLeast(0.001f)
+        rb.vx += ix.toFloat() / mass; rb.vy += iy.toFloat() / mass
+    }
     fun addForce(fx: Double, fy: Double) {
         rb3?.let { it.vx += (fx / it.mass).toFloat(); it.vy += (fy / it.mass).toFloat(); return }
         val rb = go.getAny<Rigidbody2D>() ?: return
@@ -225,6 +243,8 @@ class SScene(private val engine: Engine, private val sys: ScriptSystem) {
 class SInput(private val engine: Engine) {
     @JvmField var axisX = 0.0
     @JvmField var axisY = 0.0
+    /** Normalized phone tilt on the lateral axis, available with the driveTilt control scheme. */
+    @JvmField var tiltX = 0.0
     @JvmField var a = false
     @JvmField var b = false
     @JvmField var aDown = false
@@ -238,7 +258,7 @@ class SInput(private val engine: Engine) {
 
     fun sync() {
         val i = engine.input
-        axisX = i.axisX.toDouble(); axisY = i.axisY.toDouble()
+        axisX = i.axisX.toDouble(); axisY = i.axisY.toDouble(); tiltX = i.tiltX.toDouble()
         a = i.a; b = i.b; aDown = i.aDown; bDown = i.bDown
         upgrade = i.upgrade; upgradeDown = i.upgradeDown
         touching = i.touching; tapped = i.tapped

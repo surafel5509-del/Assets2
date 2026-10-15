@@ -45,6 +45,8 @@ class AnimationEditorActivity : AppCompatActivity() {
     private lateinit var colsField: EditText
     private lateinit var rowsField: EditText
     private lateinit var fpsField: EditText
+    private lateinit var pivotXField: EditText
+    private lateinit var pivotYField: EditText
     private lateinit var framesField: EditText
     private lateinit var loopBox: CheckBox
     private lateinit var strip: LinearLayout
@@ -69,7 +71,13 @@ class AnimationEditorActivity : AppCompatActivity() {
         val middle = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         // left: settings + preview
         val left = vbox().apply { setPadding(dp(10), dp(8), dp(10), dp(8)); setBackgroundColor(C.PANEL) }
-        preview = PreviewView(this)
+        preview = PreviewView(this) { x, y ->
+            clip.pivotX = x; clip.pivotY = y
+            updating = true
+            pivotXField.setText(fmt(x)); pivotYField.setText(fmt(y))
+            updating = false
+            refresh(false)
+        }
         left.addView(preview, lp(MATCH, dp(170)))
         val playRow = hbox()
         playRow.addView(button("⏯") { preview.playing = !preview.playing }, lp(0, WRAP, 1f).margins(0, dp(4), dp(2), 0))
@@ -88,6 +96,8 @@ class AnimationEditorActivity : AppCompatActivity() {
         colsField = field("1", numeric = true); row("Columns", colsField)
         rowsField = field("1", numeric = true); row("Rows", rowsField)
         fpsField = field("10", numeric = true); row("FPS", fpsField)
+        pivotXField = field("0.5", numeric = true); row("Pivot X", pivotXField)
+        pivotYField = field("0.5", numeric = true); row("Pivot Y", pivotYField)
         framesField = field("0"); row("Frames", framesField)
         loopBox = CheckBox(this).apply { text = "Loop"; setTextColor(C.TEXT) }
         left.addView(loopBox)
@@ -98,7 +108,7 @@ class AnimationEditorActivity : AppCompatActivity() {
         tools.addView(button("⇄") { setFrames((clip.frames + clip.frames.reversed().drop(1).dropLast(1)).toMutableList()) }.apply { textSize = 11f }, lp(0, WRAP, 1f).margins(dp(2), 0, 0, 0))
         tools.addView(button("Clear") { setFrames(mutableListOf()) }.apply { textSize = 11f }, lp(0, WRAP, 1f).margins(dp(2), 0, 0, 0))
         left.addView(tools, lp(MATCH, WRAP).margins(0, dp(4), 0, 0))
-        left.addView(label("Tap cells on the sheet to append frames. Tap a frame in the strip to remove it.", 11f, C.DIM), lp(MATCH, WRAP).margins(0, dp(6), 0, 0))
+        left.addView(label("Tap preview to set the sprite pivot. Tap sheet cells to append frames; tap a strip frame to remove it.", 11f, C.DIM), lp(MATCH, WRAP).margins(0, dp(6), 0, 0))
         middle.addView(ScrollView(this).apply { addView(left) }, lp(dp(270), MATCH))
 
         // right: sheet + frame strip
@@ -116,7 +126,7 @@ class AnimationEditorActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun afterTextChanged(s: Editable?) { if (!updating) readFields() }
         }
-        listOf(colsField, rowsField, fpsField, framesField).forEach { it.addTextChangedListener(watcher) }
+        listOf(colsField, rowsField, fpsField, pivotXField, pivotYField, framesField).forEach { it.addTextChangedListener(watcher) }
         loopBox.setOnCheckedChangeListener { _, b -> if (!updating) { clip.loop = b; refresh(false) } }
 
         val a = asset
@@ -207,6 +217,8 @@ class AnimationEditorActivity : AppCompatActivity() {
         clip.columns = (colsField.text.toString().toIntOrNull() ?: 1).coerceIn(1, 64)
         clip.rows = (rowsField.text.toString().toIntOrNull() ?: 1).coerceIn(1, 64)
         clip.fps = (fpsField.text.toString().toFloatOrNull() ?: 10f).coerceIn(0.1f, 120f)
+        clip.pivotX = (pivotXField.text.toString().toFloatOrNull() ?: 0.5f).coerceIn(0f, 1f)
+        clip.pivotY = (pivotYField.text.toString().toFloatOrNull() ?: 0.5f).coerceIn(0f, 1f)
         clip.frames = AnimationClip.parseFrames(framesField.text.toString()).filter { it < clip.columns * clip.rows }.toMutableList()
         refresh(false)
     }
@@ -215,6 +227,7 @@ class AnimationEditorActivity : AppCompatActivity() {
         updating = true
         colsField.setText(clip.columns.toString()); rowsField.setText(clip.rows.toString())
         fpsField.setText(fmt(clip.fps)); framesField.setText(AnimationClip.formatFrames(clip.frames))
+        pivotXField.setText(fmt(clip.pivotX)); pivotYField.setText(fmt(clip.pivotY))
         loopBox.isChecked = clip.loop
         updating = false
     }
@@ -224,7 +237,8 @@ class AnimationEditorActivity : AppCompatActivity() {
         texBtn.text = clip.texture.ifBlank { "(choose texture)" }
         sheet.set(bitmap, clip)
         preview.set(bitmap, clip)
-        info.text = "${clip.frames.size} frames • ${fmt(clip.duration)} s" + (bitmap?.let { " • sheet ${it.width}×${it.height}" } ?: "")
+        info.text = "${clip.frames.size} frames • ${fmt(clip.duration)} s • pivot ${fmt(clip.pivotX)}, ${fmt(clip.pivotY)}" +
+            (bitmap?.let { " • sheet ${it.width}×${it.height}" } ?: "")
         strip.removeAllViews()
         clip.frames.forEachIndexed { i, cell ->
             val v = FrameThumb(this, bitmap, clip, cell, i)
@@ -326,7 +340,8 @@ class AnimationEditorActivity : AppCompatActivity() {
         }
     }
 
-    class PreviewView(ctx: Context) : View(ctx) {
+    @SuppressLint("ViewConstructor")
+    class PreviewView(ctx: Context, private val onPivot: (Float, Float) -> Unit) : View(ctx) {
         private var bmp: Bitmap? = null
         private var clip = AnimationClip()
         var playing = true
@@ -335,6 +350,9 @@ class AnimationEditorActivity : AppCompatActivity() {
         private val p = Paint().apply { isFilterBitmap = false }
         private val src = Rect()
         private val dst = RectF()
+        private val pivotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFC857.toInt(); strokeWidth = 2f * resources.displayMetrics.density; style = Paint.Style.STROKE
+        }
         private val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9AA0A6.toInt(); textSize = 11f * resources.displayMetrics.density }
 
         fun set(b: Bitmap?, c: AnimationClip) { bmp = b; clip = c; invalidate() }
@@ -361,10 +379,28 @@ class AnimationEditorActivity : AppCompatActivity() {
                 val w = src.width() * s; val h = src.height() * s
                 dst.set((width - w) / 2, (height - h) / 2, (width + w) / 2, (height + h) / 2)
                 c.drawBitmap(b, src, dst, p)
+                val pivotX = dst.left + dst.width() * clip.pivotX
+                val pivotY = dst.top + dst.height() * clip.pivotY
+                val arm = 7f * resources.displayMetrics.density
+                c.drawLine(pivotX - arm, pivotY, pivotX + arm, pivotY, pivotPaint)
+                c.drawLine(pivotX, pivotY - arm, pivotX, pivotY + arm, pivotPaint)
+                c.drawCircle(pivotX, pivotY, arm * 0.55f, pivotPaint)
                 c.drawText("frame ${i + 1}/${clip.frames.size}  (cell ${clip.frames[i]})", 8f, height - 8f, txt)
             }
             if (playing) postInvalidateOnAnimation()
         }
+
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            if (e.actionMasked == MotionEvent.ACTION_UP && bmp != null && dst.contains(e.x, e.y)) {
+                onPivot(((e.x - dst.left) / dst.width()).coerceIn(0f, 1f),
+                    ((e.y - dst.top) / dst.height()).coerceIn(0f, 1f))
+                performClick()
+            }
+            return true
+        }
+
+        override fun performClick(): Boolean { super.performClick(); return true }
     }
 
     @SuppressLint("ViewConstructor")

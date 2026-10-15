@@ -282,7 +282,7 @@ function gameOver() {
     }
 
     // ---------------------------------------------------------------- physics
-    private val physics = Template("Physics Sandbox", "Tap anywhere to drop bouncy balls and boxes.") { p ->
+    private val physics = Template("Physics Sandbox", "Tap to spawn bouncy balls and crates with angular spin on a ramped arena.") { p ->
         p.writeAsset("Spawner.js", """// Tap the screen to spawn objects
 var n = 0;
 function update(dt) {
@@ -306,7 +306,8 @@ function update(dt) {
         obj(s, "Wall Right", 12f, 0f, 1f, 14f).sprite(0xFF546E7A).box()
         obj(s, "Ramp", -5f, -2f, 5f, 0.4f).sprite(0xFF78909C).box()
         for (row in 0 until 4) for (i in 0 until 4 - row) {
-            obj(s, "Crate", 3f + i * 1.05f + row * 0.52f, -5.5f + row * 1.02f).sprite(0xFFA1887F).box().body()
+            obj(s, "Crate", 3f + i * 1.05f + row * 0.52f, -5.5f + row * 1.02f)
+                .sprite(0xFFA1887F).box().body().also { it.getAny<Rigidbody2D>()?.freezeRotation = false }
         }
         val ball = obj(s, "Ball", 0f, 20f, 0.8f, 0.8f).sprite(0xFFFFFFFF, 1).circleCol().body(bounce = 0.7f)
         ball.active = false
@@ -343,7 +344,7 @@ function update(dt) {
     }
 
     // ---------------------------------------------------------------- 3D demo
-    private val demo3d = Template("3D Demo", "3D world with lights, physics, models, shaders and a character.") { p ->
+    private val demo3d = Template("3D Demo", "Third-person 3D sample with lights, pickups, raycasts, models and an angular-physics crate.") { p ->
         installAssets(p, "Checker", "Wooden Crate", "Low-Poly Tree", "Rock", "Crystal", "Toon", "Pulse", "Player3D", "Coin Pickup", "Jump")
         p.writeAsset("Coin3D.js", """// Spinning pickup
 var baseY;
@@ -374,6 +375,8 @@ function onTrigger(other) {
             .script("Player3D.js", "speed=6, jump=7")
         player.tag = "Player"
         for (i in 0 until 6) obj3(s, "Crate", -3f + (i % 3) * 1.05f, 0.5f + (i / 3) * 1.05f, -6f).mesh(0, 0xFFFFFFFF, "Crate.png").col3().body3(bounce = 0.1f)
+        val tumblingCrate = obj3(s, "Tumbling Crate", 7f, 6f, -5f).mesh(0, 0xFFFFB74D, "Crate.png").col3().body3(bounce = 0.18f)
+        tumblingCrate.getAny<Rigidbody3D>()?.also { it.freezeRotation = false; it.startAngularX = 1.2f; it.startAngularY = 1.8f }
         for (i in 0 until 4) obj3(s, "Ball", 4f + i * 0.5f, 3f + i * 1.5f, -4f, 0.8f, 0.8f, 0.8f).mesh(1, listOf(0xFF42A5F5, 0xFFAB47BC, 0xFFFFCA28, 0xFF66BB6A)[i]).col3(sphere = true).body3(bounce = 0.7f)
         val treePos = listOf(-10f to -10f, 8f to -12f, -14f to 4f, 12f to 6f, 0f to -16f, -6f to 12f)
         for ((x, z) in treePos) obj3(s, "Tree", x, 0f, z, 2f, 2f, 2f).mesh(8, 0xFF5FA85B, model = "Tree.obj").col3()

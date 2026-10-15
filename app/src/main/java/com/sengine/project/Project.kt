@@ -16,7 +16,7 @@ class Project(val dir: File) {
     var startScene = "Main"
     var created = System.currentTimeMillis()
     var orientation = 0 // 0 landscape, 1 portrait
-    /** Preferred runtime overlay: "classic" joystick/buttons or "drive" pedals. */
+    /** Preferred runtime overlay: "classic", "drive", or "driveTilt" (drive pedals plus accelerometer balance). */
     var controlScheme = "classic"
 
     private val userDataLock = Any()

@@ -33,11 +33,11 @@ class PhysicsWorld {
         val col: Collider2D,
         var cx: Float = 0f, var cy: Float = 0f,
         var hw: Float = 0f, var hh: Float = 0f, var r: Float = 0f,
-        var rotation: Float = 0f
+        var rotation: Float = 0f, var invInertia: Float = 0f
     ) {
         val isCircle get() = col.shape == 1
         val invMass: Float
-            get() = if (rb == null || rb.bodyType != 0) 0f else 1f / rb.mass
+            get() = if (rb == null || rb.bodyType != 0) 0f else 1f / rb.mass.coerceAtLeast(0.001f)
     }
 
     private var prevContacts = HashSet<Long>()
@@ -73,10 +73,14 @@ class PhysicsWorld {
                         val k = max(0f, 1f - rb.drag * dt)
                         rb.vx *= k; rb.vy *= k
                     }
+                    integrateRotation(go, rb, dt, applyTorque = true)
                     moveWorld(go, rb.vx * dt, rb.vy * dt)
                 }
-                1 -> moveWorld(go, rb.vx * dt, rb.vy * dt)
-                else -> {}
+                1 -> {
+                    integrateRotation(go, rb, dt, applyTorque = false)
+                    moveWorld(go, rb.vx * dt, rb.vy * dt)
+                }
+                else -> rb.torque = 0f
             }
         }
 
@@ -132,6 +136,32 @@ class PhysicsWorld {
         }
     }
 
+    private fun integrateRotation(go: GameObject, rb: Rigidbody2D, dt: Float, applyTorque: Boolean) {
+        if (rb.freezeRotation) {
+            rb.angularVelocity = 0f
+        } else {
+            if (applyTorque) rb.angularVelocity += rb.torque / momentOfInertia(go, rb) * dt
+            if (rb.angularDrag > 0f) rb.angularVelocity *= max(0f, 1f - rb.angularDrag * dt)
+            go.rotation += Math.toDegrees((rb.angularVelocity * dt).toDouble()).toFloat()
+        }
+        rb.torque = 0f
+    }
+
+    private fun momentOfInertia(go: GameObject, rb: Rigidbody2D): Float {
+        val w = go.computeWorld()
+        val col = go.get<Collider2D>()
+        val mass = rb.mass.coerceAtLeast(0.001f)
+        val value = if (col == null) mass else if (col.shape == 1) {
+            val radius = col.radius * max(w.scaleX, w.scaleY)
+            0.5f * mass * radius * radius
+        } else {
+            val width = col.width * w.scaleX
+            val height = col.height * w.scaleY
+            mass * (width * width + height * height) / 12f
+        }
+        return (value * rb.inertiaScale).coerceAtLeast(1e-4f)
+    }
+
     private fun refresh(b: Body) {
         val w = b.go.computeWorld()
         val sx = w.scaleX
@@ -142,9 +172,11 @@ class PhysicsWorld {
         b.hh = b.col.height * sy * 0.5f
         b.r = b.col.radius * max(sx, sy)
         b.rotation = Math.toRadians(w.rotationDeg.toDouble()).toFloat()
+        b.invInertia = if (b.rb == null || b.rb.bodyType != 0 || b.rb.freezeRotation) 0f
+        else 1f / momentOfInertia(b.go, b.rb)
     }
 
-    private class Manifold(val nx: Float, val ny: Float, val depth: Float)
+    private class Manifold(val nx: Float, val ny: Float, val depth: Float, val x: Float, val y: Float)
 
     /** Normal points from a to b. */
     private fun collide(a: Body, b: Body): Manifold? {
@@ -152,7 +184,7 @@ class PhysicsWorld {
             !a.isCircle && !b.isCircle -> boxBox(a, b)
             a.isCircle && b.isCircle -> circleCircle(a, b)
             !a.isCircle && b.isCircle -> boxCircle(a, b)
-            else -> boxCircle(b, a)?.let { Manifold(-it.nx, -it.ny, it.depth) }
+            else -> boxCircle(b, a)?.let { Manifold(-it.nx, -it.ny, it.depth, it.x, it.y) }
         }
     }
 
@@ -186,7 +218,21 @@ class PhysicsWorld {
 
         if (!testAxis(axx, axy) || !testAxis(ayx, ayy) ||
             !testAxis(bxx, bxy) || !testAxis(byx, byy)) return null
-        return Manifold(bestX, bestY, bestDepth)
+        val ra = boxProjectionRadius(a, bestX, bestY)
+        val rb = boxProjectionRadius(b, bestX, bestY)
+        val normalCoord = ((a.cx * bestX + a.cy * bestY + ra) + (b.cx * bestX + b.cy * bestY - rb)) * 0.5f
+        val tx = -bestY; val ty = bestX
+        val tangentCoord = ((a.cx + b.cx) * 0.5f) * tx + ((a.cy + b.cy) * 0.5f) * ty
+        val px = bestX * normalCoord + tx * tangentCoord
+        val py = bestY * normalCoord + ty * tangentCoord
+        return Manifold(bestX, bestY, bestDepth, px, py)
+    }
+
+    private fun boxProjectionRadius(b: Body, nx: Float, ny: Float): Float {
+        val co = cos(b.rotation); val si = sin(b.rotation)
+        val dotU = co * nx + si * ny
+        val dotV = -si * nx + co * ny
+        return b.hw * abs(dotU) + b.hh * abs(dotV)
     }
 
     private fun circleCircle(a: Body, b: Body): Manifold? {
@@ -196,7 +242,11 @@ class PhysicsWorld {
         val d2 = dx * dx + dy * dy
         if (d2 >= rs * rs) return null
         val d = sqrt(d2)
-        return if (d < 1e-5f) Manifold(0f, 1f, rs) else Manifold(dx / d, dy / d, rs - d)
+        return if (d < 1e-5f) Manifold(0f, 1f, rs, a.cx, a.cy + a.r * 0.5f)
+        else {
+            val nx = dx / d; val ny = dy / d
+            Manifold(nx, ny, rs - d, a.cx + nx * a.r, a.cy + ny * a.r)
+        }
     }
 
     private fun boxCircle(box: Body, c: Body): Manifold? {
@@ -219,14 +269,21 @@ class PhysicsWorld {
             val oy = box.hh - abs(localY)
             if (ox < oy) {
                 nx = if (localX < 0f) -1f else 1f; ny = 0f
-                return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, ox + c.r)
+                val px = if (nx < 0f) -box.hw else box.hw
+                val py = localY.coerceIn(-box.hh, box.hh)
+                return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, ox + c.r,
+                    box.cx + ux * px + vx * py, box.cy + uy * px + vy * py)
             }
             nx = 0f; ny = if (localY < 0f) -1f else 1f
-            return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, oy + c.r)
+            val px = localX.coerceIn(-box.hw, box.hw)
+            val py = if (ny < 0f) -box.hh else box.hh
+            return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, oy + c.r,
+                box.cx + ux * px + vx * py, box.cy + uy * px + vy * py)
         }
         val d = sqrt(d2)
         nx /= d; ny /= d
-        return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, c.r - d)
+        return Manifold(ux * nx + vx * ny, uy * nx + vy * ny, c.r - d,
+            box.cx + ux * closestX + vx * closestY, box.cy + uy * closestX + vy * closestY)
     }
 
     private fun resolve(a: Body, b: Body, m: Manifold) {
@@ -234,46 +291,64 @@ class PhysicsWorld {
         val ib = b.invMass
         val sum = ia + ib
         if (sum == 0f) return
-        // positional correction
+        // Positional correction keeps overlap resolution stable without injecting velocity.
         val corr = max(m.depth - 0.001f, 0f) / sum * 0.9f
         if (ia > 0f) moveWorld(a.go, -m.nx * corr * ia, -m.ny * corr * ia)
         if (ib > 0f) moveWorld(b.go, m.nx * corr * ib, m.ny * corr * ib)
 
-        // grounded flags (normal a->b pointing down means a is on top of b)
+        // Grounded flags (normal a->b pointing down means a is on top of b).
         if (m.ny < -0.5f) a.rb?.grounded = true
         if (m.ny > 0.5f) b.rb?.grounded = true
 
-        val avx = a.rb?.takeIf { it.bodyType != 2 }?.vx ?: 0f
-        val avy = a.rb?.takeIf { it.bodyType != 2 }?.vy ?: 0f
-        val bvx = b.rb?.takeIf { it.bodyType != 2 }?.vx ?: 0f
-        val bvy = b.rb?.takeIf { it.bodyType != 2 }?.vy ?: 0f
-        val rvx = bvx - avx
-        val rvy = bvy - avy
+        val rax = m.x - a.cx; val ray = m.y - a.cy
+        val rbx = m.x - b.cx; val rby = m.y - b.cy
+        val (avx, avy) = velocityAt(a, rax, ray)
+        val (bvx, bvy) = velocityAt(b, rbx, rby)
+        var rvx = bvx - avx
+        var rvy = bvy - avy
         val vn = rvx * m.nx + rvy * m.ny
-        if (vn > 0f) return
-        val e = max(a.rb?.bounciness ?: 0f, b.rb?.bounciness ?: 0f)
-        val j = -(1f + e) * vn / sum
-        applyImpulse(a, -j * m.nx, -j * m.ny)
-        applyImpulse(b, j * m.nx, j * m.ny)
+        if (vn >= 0f) return
 
-        // friction
+        val ran = rax * m.ny - ray * m.nx
+        val rbn = rbx * m.ny - rby * m.nx
+        val normalDenom = sum + ran * ran * a.invInertia + rbn * rbn * b.invInertia
+        if (normalDenom <= 1e-8f) return
+        val e = max(a.rb?.bounciness ?: 0f, b.rb?.bounciness ?: 0f)
+        val j = -(1f + e) * vn / normalDenom
+        applyImpulse(a, -j * m.nx, -j * m.ny, rax, ray)
+        applyImpulse(b, j * m.nx, j * m.ny, rbx, rby)
+
+        // Coulomb friction includes the angular velocity of each contact point.
         val tx = -m.ny
         val ty = m.nx
+        val (avxAfter, avyAfter) = velocityAt(a, rax, ray)
+        val (bvxAfter, bvyAfter) = velocityAt(b, rbx, rby)
+        rvx = bvxAfter - avxAfter
+        rvy = bvyAfter - avyAfter
         val vt = rvx * tx + rvy * ty
+        val rat = rax * ty - ray * tx
+        val rbt = rbx * ty - rby * tx
+        val tangentDenom = sum + rat * rat * a.invInertia + rbt * rbt * b.invInertia
+        if (tangentDenom <= 1e-8f) return
         val mu = sqrt((a.rb?.friction ?: 0.4f) * (b.rb?.friction ?: 0.4f))
-        var jt = -vt / sum
-        val maxF = j * mu
-        jt = jt.coerceIn(-maxF, maxF)
-        applyImpulse(a, -jt * tx, -jt * ty)
-        applyImpulse(b, jt * tx, jt * ty)
+        val jt = (-vt / tangentDenom).coerceIn(-j * mu, j * mu)
+        applyImpulse(a, -jt * tx, -jt * ty, rax, ray)
+        applyImpulse(b, jt * tx, jt * ty, rbx, rby)
     }
 
-    private fun applyImpulse(b: Body, ix: Float, iy: Float) {
+    private fun velocityAt(b: Body, rx: Float, ry: Float): Pair<Float, Float> {
+        val rb = b.rb?.takeIf { it.bodyType != 2 } ?: return 0f to 0f
+        val angular = if (rb.freezeRotation) 0f else rb.angularVelocity
+        return (rb.vx - angular * ry) to (rb.vy + angular * rx)
+    }
+
+    private fun applyImpulse(b: Body, ix: Float, iy: Float, rx: Float, ry: Float) {
         val inv = b.invMass
         if (inv == 0f) return
         val rb = b.rb ?: return
         rb.vx += ix * inv
         rb.vy += iy * inv
+        rb.angularVelocity += (rx * iy - ry * ix) * b.invInertia
     }
 
     /** Returns first active object whose collider contains the world point. */

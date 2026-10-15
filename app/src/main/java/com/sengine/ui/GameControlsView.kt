@@ -15,6 +15,7 @@ class GameControlsView(
     context: Context,
     private val input: () -> Input?,
     private val driveMode: Boolean = false,
+    private val tiltMode: Boolean = false,
 ) : View(context) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -87,6 +88,20 @@ class GameControlsView(
         paint.style = Paint.Style.FILL
         text.textSize = (tuneH * 0.34f).coerceAtLeast(dp(13f).toFloat())
         canvas.drawText("TUNE  ↑", tuneCx, tuneCy + text.textSize * 0.36f, text)
+        if (tiltMode) {
+            text.textSize = dp(11f).toFloat()
+            canvas.drawText("TILT TO BALANCE", tuneCx, top - dp(8f), text)
+            val meterY = top - dp(19f)
+            val half = dp(28f).toFloat()
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(2f).toFloat()
+            paint.color = 0x99FFFFFF.toInt()
+            canvas.drawLine(tuneCx - half, meterY, tuneCx + half, meterY, paint)
+            paint.style = Paint.Style.FILL
+            val lean = (input()?.tiltX ?: 0f).coerceIn(-1f, 1f)
+            paint.color = 0xFF78D8FF.toInt()
+            canvas.drawCircle(tuneCx + lean * half, meterY, dp(3f).toFloat(), paint)
+        }
     }
 
     private fun drawPedal(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, label: String, icon: String, pressed: Boolean) {

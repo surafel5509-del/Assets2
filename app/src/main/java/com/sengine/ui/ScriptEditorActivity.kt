@@ -241,12 +241,15 @@ SELF  (self / transform / gameObject)
   worldX worldY                (read-only)
   setPosition(x,y) move(dx,dy) rotate(deg)
   vx vy grounded setVelocity(vx,vy)
+  angularVelocity             (radians / second)
+  addTorque(t) applyImpulse(x,y)
   addForce(fx,fy)              (impulse)
 
  3D
   z rotX rotY rotZ scaleZ worldZ vz
   setPosition(x,y,z) move(dx,dy,dz)
   rotate(rx,ry,rz) setVelocity(x,y,z)
+  angularVelocityX/Y/Z addTorque(x,y,z)
   addForce(x,y,z) distanceTo3(o) forward()
   setMeshColor("#FFRRGGBB")
 
@@ -258,6 +261,7 @@ SELF  (self / transform / gameObject)
   color = "#FFRRGGBB"  visible  flipX
   text  (TextRenderer)  setTexture(name)
   burst(n) setEmitting(b)      (particles)
+  ParticleEmitter: drag, spin, size variance, gravity, color and texture
   size                         (camera)
   destroy() child(name) parent
   distanceTo(o) overlaps(o) is(o)
@@ -266,7 +270,7 @@ SELF  (self / transform / gameObject)
   setComponentEnabled(type, b)
 
 INPUT
-  axisX axisY (-1..1)  a b aDown bDown
+  axisX axisY (-1..1)  a b aDown bDown  tiltX (-1..1)
   upgrade upgradeDown (game UI)  touching tapped touchX touchY (world)
 
 SCENE

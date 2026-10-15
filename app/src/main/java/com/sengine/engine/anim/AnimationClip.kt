@@ -6,7 +6,7 @@ import com.sengine.project.Project
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Sprite-sheet animation clip stored as a small JSON `.anim` asset. */
+/** Sprite-sheet animation clip stored as a JSON `.anim` asset, including its normalized sprite pivot. */
 class AnimationClip(
     var texture: String = "",
     var columns: Int = 1,
@@ -14,10 +14,13 @@ class AnimationClip(
     var frames: MutableList<Int> = mutableListOf(0),
     var fps: Float = 10f,
     var loop: Boolean = true,
+    var pivotX: Float = 0.5f,
+    var pivotY: Float = 0.5f,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("texture", texture).put("columns", columns).put("rows", rows)
         .put("frames", JSONArray(frames)).put("fps", fps.toDouble()).put("loop", loop)
+        .put("pivotX", pivotX.toDouble()).put("pivotY", pivotY.toDouble())
 
     val duration: Float get() = if (fps <= 0f) 0f else frames.size / fps
 
@@ -40,7 +43,9 @@ class AnimationClip(
             if (frames.isEmpty()) frames.add(0)
             return AnimationClip(
                 o.optString("texture", ""), o.optInt("columns", 1).coerceAtLeast(1), o.optInt("rows", 1).coerceAtLeast(1),
-                frames, o.optDouble("fps", 10.0).toFloat(), o.optBoolean("loop", true)
+                frames, o.optDouble("fps", 10.0).toFloat(), o.optBoolean("loop", true),
+                o.optDouble("pivotX", 0.5).toFloat().coerceIn(0f, 1f),
+                o.optDouble("pivotY", 0.5).toFloat().coerceIn(0f, 1f)
             )
         }
 
@@ -103,6 +108,8 @@ class AnimationSystem(private val project: Project) {
             anim.frame = idx.coerceIn(0, total - 1)
         } else if (!playing) anim.frame = 0
         sr.animTexture = c.texture.ifBlank { null }
+        sr.pivotX = c.pivotX
+        sr.pivotY = c.pivotY
         c.cellUv(c.frames[anim.frame.coerceIn(0, c.frames.size - 1)], sr.uv)
     }
 }

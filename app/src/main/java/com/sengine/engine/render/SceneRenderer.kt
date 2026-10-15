@@ -143,8 +143,22 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             val tex = if (texName.isNotBlank()) textures.image(texName) else null
             val prog = if (sr.shader.isNotBlank()) shaders.sprite(sr.shader) else null
             val shape = if (tex != null) 0 else sr.shape
-            if (m3 != null) r.quadModel(m3, sr.color, shape, tex, 200f, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
-            else r.quad(w, sr.color, shape, tex, min(w.scaleX, w.scaleY) * ppu, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
+            val pivotX = 0.5f - sr.pivotX
+            val pivotY = 0.5f - sr.pivotY
+            if (m3 != null) {
+                val spriteMatrix = if (pivotX == 0f && pivotY == 0f) m3 else {
+                    Mat4.trs(m4b, pivotX, pivotY, 0f, 0f, 0f, 0f, 1f, 1f, 1f)
+                    Mat4.mul(m4, m3, m4b)
+                    m4
+                }
+                r.quadModel(spriteMatrix, sr.color, shape, tex, 200f, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
+            } else {
+                val spriteWorld = if (pivotX == 0f && pivotY == 0f) w else {
+                    tmp2.identity(); tmp2.tx = pivotX; tmp2.ty = pivotY
+                    tmp.setMul(w, tmp2)
+                }
+                r.quad(spriteWorld, sr.color, shape, tex, min(w.scaleX, w.scaleY) * ppu, sr.flipX, sr.flipY, sr.uv, prog, sr.shaderParam)
+            }
         }
         go.get<TextRenderer>()?.let { tr ->
             if (tr.text.isNotEmpty()) {
@@ -173,13 +187,16 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         if (pe.additive) GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE)
         for (p in pe.particles) {
             val t = (p.age / p.life).coerceIn(0f, 1f)
-            val size = pe.startSize + (pe.endSize - pe.startSize) * t
+            val size = (pe.startSize + (pe.endSize - pe.startSize) * t) * p.sizeScale
             if (size <= 0f) continue
             val c = lerpColor(pe.startColor, pe.endColor, t)
             if (z != null) {
-                Mat4.trs(m4, p.x, p.y, z, 0f, 0f, 0f, size, size, size)
+                Mat4.trs(m4, p.x, p.y, z, 0f, 0f, p.rotation, size, size, size)
                 r.quadModel(m4, c, if (tex != null) 0 else 1, tex, 100f)
-            } else r.rect(p.x, p.y, size, size, c, if (tex != null) 0 else 1, ppu, tex)
+            } else {
+                tmp.setTRS(p.x, p.y, p.rotation, size, size)
+                r.quad(tmp, c, if (tex != null) 0 else 1, tex, ppu)
+            }
         }
         if (pe.additive) GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
     }

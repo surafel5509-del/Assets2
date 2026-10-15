@@ -38,6 +38,9 @@ class SpriteRenderer : Component() {
     var texture = ""
     var flipX = false
     var flipY = false
+    /** Normalized artwork pivot. (0.5, 0.5) keeps the traditional centered origin. */
+    var pivotX = 0.5f
+    var pivotY = 0.5f
     var shader = ""
     var shaderParam = 1f
     var screenSpace = false
@@ -52,6 +55,8 @@ class SpriteRenderer : Component() {
         Prop.Asset("Texture", AssetKind.TEXTURE, { texture }, { texture = it }),
         Prop.B("Flip X", { flipX }, { flipX = it }),
         Prop.B("Flip Y", { flipY }, { flipY = it }),
+        Prop.F("Pivot X", { pivotX }, { pivotX = it.coerceIn(0f, 1f) }, 0.05f),
+        Prop.F("Pivot Y", { pivotY }, { pivotY = it.coerceIn(0f, 1f) }, 0.05f),
         Prop.Asset("Shader", AssetKind.SHADER, { shader }, { shader = it }),
         Prop.F("Shader Param", { shaderParam }, { shaderParam = it }),
         Prop.B("Screen Space UI", { screenSpace }, { screenSpace = it }),
@@ -119,12 +124,21 @@ class Rigidbody2D : Component() {
     var drag = 0f
     var bounciness = 0f
     var friction = 0.4f
+    /** Angular drag in inverse seconds. */
+    var angularDrag = 0.05f
+    /** Scales automatically calculated shape inertia. */
+    var inertiaScale = 1f
+    var freezeRotation = true
     var startVx = 0f
     var startVy = 0f
+    /** Angular velocity is measured in radians per second. */
+    var startAngularVelocity = 0f
 
     // runtime
     var vx = 0f
     var vy = 0f
+    var angularVelocity = 0f
+    var torque = 0f
     var grounded = false
 
     override fun props() = listOf(
@@ -134,12 +148,17 @@ class Rigidbody2D : Component() {
         Prop.F("Linear Drag", { drag }, { drag = it.coerceAtLeast(0f) }),
         Prop.F("Bounciness", { bounciness }, { bounciness = it.coerceIn(0f, 1f) }, 0.05f),
         Prop.F("Friction", { friction }, { friction = it.coerceIn(0f, 1f) }, 0.05f),
+        Prop.B("Freeze Rotation", { freezeRotation }, { freezeRotation = it }),
+        Prop.F("Angular Drag", { angularDrag }, { angularDrag = it.coerceAtLeast(0f) }, 0.01f),
+        Prop.F("Inertia Scale", { inertiaScale }, { inertiaScale = it.coerceAtLeast(0.01f) }, 0.1f),
         Prop.F("Velocity X", { startVx }, { startVx = it }),
         Prop.F("Velocity Y", { startVy }, { startVy = it }),
+        Prop.F("Angular Velocity", { startAngularVelocity }, { startAngularVelocity = it }, 0.1f),
     )
 
     override fun resetRuntime() {
-        vx = startVx; vy = startVy; grounded = false
+        vx = startVx; vy = startVy; angularVelocity = startAngularVelocity
+        torque = 0f; grounded = false
     }
 }
 
@@ -181,13 +200,21 @@ class ParticleEmitter : Component() {
     var rate = 30f
     var lifetime = 1.2f
     var speed = 3f
+    var speedVariance = 0.4f
     var direction = 90f
     var spread = 30f
     var startSize = 0.25f
     var endSize = 0.02f
+    var sizeVariance = 0.15f
     var startColor = 0xFFFFC940.toInt()
     var endColor = 0x00FF3D00
     var gravity = 0f
+    /** Linear velocity damping in inverse seconds. */
+    var drag = 0f
+    var startRotation = 0f
+    var rotationSpeed = 0f
+    var rotationVariance = 180f
+    var rotationSpeedVariance = 0f
     var maxParticles = 300
     var additive = false
     var texture = ""
@@ -197,20 +224,31 @@ class ParticleEmitter : Component() {
     var accumulator = 0f
     var pendingBurst = 0
 
-    class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, var age: Float, var life: Float)
+    class Particle(
+        var x: Float, var y: Float, var vx: Float, var vy: Float,
+        var age: Float, var life: Float,
+        var rotation: Float = 0f, var angularVelocity: Float = 0f, var sizeScale: Float = 1f,
+    )
 
     override fun props() = listOf(
         Prop.B("Emitting", { emitting }, { emitting = it }),
         Prop.F("Rate", { rate }, { rate = it.coerceAtLeast(0f) }, 1f),
         Prop.F("Lifetime", { lifetime }, { lifetime = it.coerceAtLeast(0.01f) }),
         Prop.F("Speed", { speed }, { speed = it }),
+        Prop.F("Speed Variance", { speedVariance }, { speedVariance = it.coerceIn(0f, 1f) }, 0.05f),
         Prop.F("Direction", { direction }, { direction = it }, 1f),
         Prop.F("Spread", { spread }, { spread = it.coerceIn(0f, 360f) }, 1f),
         Prop.F("Start Size", { startSize }, { startSize = it.coerceAtLeast(0f) }, 0.01f),
         Prop.F("End Size", { endSize }, { endSize = it.coerceAtLeast(0f) }, 0.01f),
+        Prop.F("Size Variance", { sizeVariance }, { sizeVariance = it.coerceIn(0f, 1f) }, 0.05f),
         Prop.Color("Start Color", { startColor }, { startColor = it }),
         Prop.Color("End Color", { endColor }, { endColor = it }),
         Prop.F("Gravity", { gravity }, { gravity = it }),
+        Prop.F("Particle Drag", { drag }, { drag = it.coerceAtLeast(0f) }, 0.05f),
+        Prop.F("Start Rotation", { startRotation }, { startRotation = it }, 5f),
+        Prop.F("Rotation Speed", { rotationSpeed }, { rotationSpeed = it }, 5f),
+        Prop.F("Rotation Variance", { rotationVariance }, { rotationVariance = it.coerceIn(0f, 360f) }, 5f),
+        Prop.F("Spin Variance", { rotationSpeedVariance }, { rotationSpeedVariance = it.coerceAtLeast(0f) }, 5f),
         Prop.I("Max Particles", { maxParticles }, { maxParticles = it.coerceIn(1, 5000) }),
         Prop.B("Additive Blend", { additive }, { additive = it }),
         Prop.Asset("Texture", AssetKind.TEXTURE, { texture }, { texture = it }),
@@ -355,13 +393,26 @@ class Rigidbody3D : Component() {
     var drag = 0.05f
     var bounciness = 0f
     var friction = 0.5f
+    var angularDrag = 0.05f
+    var inertiaScale = 1f
+    var freezeRotation = true
     var startVx = 0f
     var startVy = 0f
     var startVz = 0f
+    /** Angular velocity is measured in radians per second. */
+    var startAngularX = 0f
+    var startAngularY = 0f
+    var startAngularZ = 0f
 
     var vx = 0f
     var vy = 0f
     var vz = 0f
+    var angularVelocityX = 0f
+    var angularVelocityY = 0f
+    var angularVelocityZ = 0f
+    var torqueX = 0f
+    var torqueY = 0f
+    var torqueZ = 0f
     var grounded = false
 
     override fun props() = listOf(
@@ -371,12 +422,22 @@ class Rigidbody3D : Component() {
         Prop.F("Linear Drag", { drag }, { drag = it.coerceAtLeast(0f) }),
         Prop.F("Bounciness", { bounciness }, { bounciness = it.coerceIn(0f, 1f) }, 0.05f),
         Prop.F("Friction", { friction }, { friction = it.coerceIn(0f, 1f) }, 0.05f),
+        Prop.B("Freeze Rotation", { freezeRotation }, { freezeRotation = it }),
+        Prop.F("Angular Drag", { angularDrag }, { angularDrag = it.coerceAtLeast(0f) }, 0.01f),
+        Prop.F("Inertia Scale", { inertiaScale }, { inertiaScale = it.coerceAtLeast(0.01f) }, 0.1f),
         Prop.F("Velocity X", { startVx }, { startVx = it }),
         Prop.F("Velocity Y", { startVy }, { startVy = it }),
         Prop.F("Velocity Z", { startVz }, { startVz = it }),
+        Prop.F("Angular X", { startAngularX }, { startAngularX = it }, 0.1f),
+        Prop.F("Angular Y", { startAngularY }, { startAngularY = it }, 0.1f),
+        Prop.F("Angular Z", { startAngularZ }, { startAngularZ = it }, 0.1f),
     )
 
-    override fun resetRuntime() { vx = startVx; vy = startVy; vz = startVz; grounded = false }
+    override fun resetRuntime() {
+        vx = startVx; vy = startVy; vz = startVz
+        angularVelocityX = startAngularX; angularVelocityY = startAngularY; angularVelocityZ = startAngularZ
+        torqueX = 0f; torqueY = 0f; torqueZ = 0f; grounded = false
+    }
 }
 
 class Collider3D : Component() {

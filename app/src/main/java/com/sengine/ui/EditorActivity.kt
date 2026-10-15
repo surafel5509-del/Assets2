@@ -65,6 +65,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private lateinit var inspector: InspectorPanel
     private lateinit var hierarchy: HierarchyAdapter
     private lateinit var controls: GameControlsView
+    private var tiltInput: TiltInputController? = null
     private lateinit var toolbar: LinearLayout
     private lateinit var titleText: TextView
     private lateinit var statsText: TextView
@@ -136,6 +137,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             it.create("Main Camera").add(Camera2D())
         }
         engine = Engine(project, scene)
+        tiltInput = TiltInputController(this, engine.input)
         history = History(engine)
         engine.listeners.add(engineListener)
         buildUi()
@@ -167,11 +169,13 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     override fun onResume() {
         super.onResume()
         glView.onResume()
+        if (project.controlScheme == "driveTilt") tiltInput?.start()
         handler.post(ticker)
         refreshAssets()
     }
 
     override fun onPause() {
+        tiltInput?.stop()
         super.onPause()
         glView.onPause()
         handler.removeCallbacks(ticker)
@@ -179,6 +183,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     override fun onDestroy() {
+        tiltInput?.stop()
         super.onDestroy()
         if (::engine.isInitialized) {
             engine.listeners.remove(engineListener)
@@ -253,7 +258,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         controller = ViewportController(this, engine, state)
         glView.setOnTouchListener(controller)
         vp.addView(glView)
-        controls = GameControlsView(this, { engine.input }, driveMode = project.controlScheme == "drive")
+        controls = GameControlsView(this, { engine.input }, driveMode = project.controlScheme.startsWith("drive"), tiltMode = project.controlScheme == "driveTilt")
         vp.addView(controls)
         statsText = label("", 11f, 0xCCFFFFFF.toInt()).apply {
             setPadding(dp(8), dp(3), dp(8), dp(3)); background = round(0x88000000.toInt(), dp(4).toFloat())
@@ -568,8 +573,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     // ================================================================== menus & scenes
     private fun mainMenu(anchor: View) {
         val pm = PopupMenu(this, anchor)
+        val controlLabel = when (project.controlScheme) {
+            "drive" -> "Drive pedals"
+            "driveTilt" -> "Drive + phone tilt"
+            else -> "Classic joystick"
+        }
         val entries = listOf(
-            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Export Project (.zip)",
+            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Sprite & Animation Editor",
+            "Control Scheme: $controlLabel", "Export Project (.zip)",
             (if (state.showProfiler) "Hide" else "Show") + " Profiler",
             (if (state.showGrid) "Hide" else "Show") + " Grid",
             (if (state.showColliders) "Hide" else "Show") + " Colliders",
@@ -585,7 +596,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t.startsWith("Build & Run") -> { saveScene(silent = true); startActivity(Intent(this, PlayerActivity::class.java).putExtra("project", project.name)) }
                 t == "Build APK…" -> { saveScene(silent = true); startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
                 t == "Asset Store" -> startActivity(Intent(this, AssetStoreActivity::class.java).putExtra("project", project.name))
-                t == "Animation Editor" -> openAnimationEditor(null)
+                t == "Sprite & Animation Editor" -> openAnimationEditor(null)
+                t.startsWith("Control Scheme:") -> controlSchemeDialog()
                 t.endsWith("Profiler") -> state.showProfiler = !state.showProfiler
                 t.startsWith("Export") -> { saveScene(silent = true); exportLauncher.launch("${project.name}.zip") }
                 t.endsWith("Grid") -> state.showGrid = !state.showGrid
@@ -605,6 +617,31 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             true
         }
         pm.show()
+    }
+
+    private fun controlSchemeDialog() {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode before changing controls"); return }
+        val values = listOf("classic", "drive", "driveTilt")
+        val labels = arrayOf("Classic joystick and action buttons", "Drive pedals", "Drive pedals + phone tilt balance")
+        val selected = values.indexOf(project.controlScheme).coerceAtLeast(0)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Runtime Controls")
+            .setSingleChoiceItems(labels, selected) { dialog, which ->
+                project.controlScheme = values[which]
+                project.saveMeta()
+                val parent = controls.parent as? FrameLayout
+                if (parent != null) {
+                    parent.removeView(controls)
+                    controls = GameControlsView(this, { engine.input }, driveMode = project.controlScheme.startsWith("drive"), tiltMode = project.controlScheme == "driveTilt")
+                    parent.addView(controls, 1, FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                }
+                if (project.controlScheme == "driveTilt") tiltInput?.start() else tiltInput?.stop()
+                dialog.dismiss()
+                toast("Controls updated")
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     private fun showText(title: String, text: String) {

@@ -8,6 +8,8 @@ class Input {
     // raw state written from the UI thread
     @Volatile var joyX = 0f
     @Volatile var joyY = 0f
+    /** Filtered device tilt, normalized to [-1, 1], written by the optional accelerometer controller. */
+    @Volatile var rawTiltX = 0f
     @Volatile var rawA = false
     @Volatile var rawB = false
     @Volatile var rawUpgrade = false
@@ -20,6 +22,7 @@ class Input {
     // per-frame state read by scripts
     var axisX = 0f; private set
     var axisY = 0f; private set
+    var tiltX = 0f; private set
     var a = false; private set
     var b = false; private set
     var aDown = false; private set
@@ -40,6 +43,7 @@ class Input {
         if (KeyEvent.KEYCODE_W in keys || KeyEvent.KEYCODE_DPAD_UP in keys) ky += 1f
         axisX = (joyX + kx).coerceIn(-1f, 1f)
         axisY = (joyY + ky).coerceIn(-1f, 1f)
+        tiltX = rawTiltX.coerceIn(-1f, 1f)
         val na = rawA || KeyEvent.KEYCODE_SPACE in keys || KeyEvent.KEYCODE_BUTTON_A in keys
         val nb = rawB || KeyEvent.KEYCODE_ENTER in keys || KeyEvent.KEYCODE_BUTTON_B in keys
         val nu = rawUpgrade
@@ -55,7 +59,8 @@ class Input {
     }
 
     fun clear() {
-        joyX = 0f; joyY = 0f; rawA = false; rawB = false; rawUpgrade = false; rawTouching = false; tapPending = false
+        joyX = 0f; joyY = 0f; rawTiltX = 0f; tiltX = 0f
+        rawA = false; rawB = false; rawUpgrade = false; rawTouching = false; tapPending = false
         keys.clear()
         a = false; b = false; aDown = false; bDown = false; upgrade = false; upgradeDown = false; tapped = false; touching = false
     }

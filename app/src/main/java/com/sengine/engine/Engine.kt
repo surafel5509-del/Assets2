@@ -15,6 +15,7 @@ import org.json.JSONObject
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -300,11 +301,15 @@ class Engine(val project: Project, initialScene: Scene) {
             if (!alive) toEmit = 0
             while (toEmit-- > 0 && pe.particles.size < pe.maxParticles) {
                 val ang = Math.toRadians((pe.direction + w.rotationDeg + (Random.nextFloat() - 0.5f) * pe.spread).toDouble())
-                val sp = pe.speed * (0.6f + Random.nextFloat() * 0.8f)
+                val speedScale = 1f + (Random.nextFloat() * 2f - 1f) * pe.speedVariance
+                val startRotation = pe.startRotation + (Random.nextFloat() * 2f - 1f) * pe.rotationVariance
+                val spin = pe.rotationSpeed + (Random.nextFloat() * 2f - 1f) * pe.rotationSpeedVariance
+                val sizeScale = (1f + (Random.nextFloat() * 2f - 1f) * pe.sizeVariance).coerceAtLeast(0f)
+                val sp = pe.speed * speedScale
                 pe.particles.add(
                     ParticleEmitter.Particle(
                         w.tx, w.ty, (cos(ang) * sp).toFloat(), (sin(ang) * sp).toFloat(),
-                        0f, pe.lifetime * (0.7f + Random.nextFloat() * 0.6f)
+                        0f, pe.lifetime * (0.7f + Random.nextFloat() * 0.6f), startRotation, spin, sizeScale
                     )
                 )
             }
@@ -314,7 +319,12 @@ class Engine(val project: Project, initialScene: Scene) {
                 p.age += dt
                 if (p.age >= p.life) { it.remove(); continue }
                 p.vy += pe.gravity * dt
+                if (pe.drag > 0f) {
+                    val damping = max(0f, 1f - pe.drag * dt)
+                    p.vx *= damping; p.vy *= damping
+                }
                 p.x += p.vx * dt; p.y += p.vy * dt
+                p.rotation += p.angularVelocity * dt
             }
         }
     }

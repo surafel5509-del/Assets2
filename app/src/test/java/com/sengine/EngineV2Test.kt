@@ -1,12 +1,17 @@
 package com.sengine
 
 import com.sengine.engine.Engine
+import com.sengine.engine.anim.AnimationClip
 import com.sengine.engine.blueprint.Blueprint
 import com.sengine.engine.blueprint.BlueprintCompiler
 import com.sengine.engine.blueprint.BlueprintNodes
 import com.sengine.engine.core.Animator
+import com.sengine.engine.core.Collider3D
 import com.sengine.engine.core.Rigidbody3D
+import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
+import com.sengine.engine.physics.PhysicsWorld3D
+import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
 import com.sengine.project.AssetLibrary
 import com.sengine.project.Project
@@ -103,8 +108,37 @@ class EngineV2Test {
     }
 
     @Test
+    fun animationClipSavesNormalizedSpritePivot() {
+        val clip = AnimationClip(texture = "Hero.png", columns = 4, rows = 2,
+            frames = mutableListOf(0, 1, 5, 4), fps = 12f, loop = false, pivotX = 0.27f, pivotY = 0.12f)
+        val decoded = AnimationClip.fromJson(JSONObject(clip.toJson().toString()))
+        assertEquals(0.27f, decoded.pivotX, 0.0001f)
+        assertEquals(0.12f, decoded.pivotY, 0.0001f)
+        assertEquals(clip.frames, decoded.frames)
+    }
+
+    @Test
+    fun threeDimensionalBodiesRespondToTorque() {
+        val scene = Scene("Angular 3D")
+        scene.gravity3D = 0f
+        val crate = scene.create("Crate")
+        crate.add(Collider3D())
+        val body = crate.add(Rigidbody3D().also { it.freezeRotation = false; it.angularDrag = 0f })
+        val physics = PhysicsWorld3D()
+        repeat(60) {
+            body.torqueZ = 1f
+            physics.step(scene, 1f / 60f)
+        }
+        assertTrue("3D angular velocity should accumulate", kotlin.math.abs(body.angularVelocityZ) > 1f)
+        assertTrue("3D transform should rotate", kotlin.math.abs(crate.rotation) > 10f)
+    }
+
+    @Test
     fun animatedPlatformerPlaysClips() {
         val p = newProject("Animated Platformer")
+        val runClip = AnimationClip.fromJson(JSONObject(p.readAsset("HeroRun.anim") ?: "{}"))
+        runClip.pivotY = 0.16f
+        p.writeAsset("HeroRun.anim", runClip.toJson().toString())
         val r = start(p)
         val hero = r.engine.scene.find("Player")!!
         r.frames(60)
@@ -113,6 +147,7 @@ class EngineV2Test {
         println("SIM anim current='${anim.current}' playing=${anim.playing} frame=${anim.frame} x=${hero.x}")
         assertEquals("HeroRun.anim", anim.current)
         assertTrue("run animation should play", anim.playing)
+        assertEquals(0.16f, hero.getAny<SpriteRenderer>()!!.pivotY, 0.001f)
         r.engine.input.joyX = 0f
         r.frames(10)
         assertTrue("animation should stop when idle", !anim.playing)

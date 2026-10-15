@@ -25,6 +25,8 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var engine: Engine
     private lateinit var glView: GLSurfaceView
     private lateinit var fpsText: TextView
+    private var tiltInput: TiltInputController? = null
+    private var tiltEnabled = false
     private val handler = Handler(Looper.getMainLooper())
     private val fpsTick = object : Runnable {
         override fun run() {
@@ -43,6 +45,8 @@ class PlayerActivity : AppCompatActivity() {
         else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         val sceneName = intent.getStringExtra("scene") ?: project.startScene
         engine = Engine(project, project.loadScene(sceneName))
+        tiltEnabled = project.controlScheme == "driveTilt"
+        tiltInput = TiltInputController(this, engine.input)
         engine.listeners.add(object : Engine.Listener {
             override fun onLog(level: Int, message: String) {
                 if (level >= 2) handler.post { android.widget.Toast.makeText(this@PlayerActivity, message, android.widget.Toast.LENGTH_SHORT).show() }
@@ -57,7 +61,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         glView.setOnTouchListener { v, e -> forwardTouch(v, e); true }
         root.addView(glView)
-        root.addView(GameControlsView(this, { engine.input }, driveMode = project.controlScheme == "drive"))
+        root.addView(GameControlsView(this, { engine.input }, driveMode = project.controlScheme.startsWith("drive"), tiltMode = tiltEnabled))
         fpsText = label("", 11f, 0x99FFFFFF.toInt()).apply { setPadding(dp(10), dp(6), 0, 0) }
         if (!standalone) {
             root.addView(fpsText, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.START))
@@ -102,10 +106,23 @@ class PlayerActivity : AppCompatActivity() {
         engine.input.keys.remove(keyCode); return super.onKeyUp(keyCode, event)
     }
 
-    override fun onResume() { super.onResume(); glView.onResume(); handler.post(fpsTick); hideSystemUi() }
-    override fun onPause() { super.onPause(); glView.onPause(); handler.removeCallbacks(fpsTick) }
+    override fun onResume() {
+        super.onResume()
+        glView.onResume()
+        if (tiltEnabled) tiltInput?.start()
+        handler.post(fpsTick)
+        hideSystemUi()
+    }
+
+    override fun onPause() {
+        tiltInput?.stop()
+        super.onPause()
+        glView.onPause()
+        handler.removeCallbacks(fpsTick)
+    }
 
     override fun onDestroy() {
+        tiltInput?.stop()
         super.onDestroy()
         if (::engine.isInitialized) engine.release()
     }

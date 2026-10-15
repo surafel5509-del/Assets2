@@ -1,8 +1,13 @@
 package com.sengine
 
 import com.sengine.engine.Engine
+import com.sengine.engine.core.Collider2D
+import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.Rigidbody2D
+import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
+import com.sengine.engine.core.SpriteRenderer
+import com.sengine.engine.physics.PhysicsWorld
 import com.sengine.project.Project
 import com.sengine.project.Templates
 import org.json.JSONObject
@@ -125,6 +130,64 @@ class EngineSimulationTest {
         assertEquals(before + 2, after)
         assertTrue("crates should rest on the floor", crates.minOf { it.y } > -6.5f)
         assertTrue("script errors: ${r.errors}", r.errors.isEmpty())
+    }
+
+    @Test
+    fun angularRigidbodiesRespondToTorqueAndCanFreezeRotation() {
+        val scene = Scene("Angular")
+        scene.gravityY = 0f
+        val box = scene.create("Rotor")
+        box.add(Collider2D())
+        val rb = box.add(Rigidbody2D().also { it.freezeRotation = false; it.angularDrag = 0f })
+        val frozen = scene.create("Frozen")
+        frozen.x = 4f
+        frozen.add(Collider2D())
+        val frozenBody = frozen.add(Rigidbody2D().also { it.angularDrag = 0f })
+        val physics = PhysicsWorld()
+        repeat(60) {
+            rb.torque = 1f
+            frozenBody.torque = 1f
+            physics.step(scene, 1f / 60f)
+        }
+        assertTrue("unfrozen body should gain angular velocity", kotlin.math.abs(rb.angularVelocity) > 1f)
+        assertTrue("angular impulses should rotate the transform", kotlin.math.abs(box.rotation) > 10f)
+        assertEquals("rotation remains locked by default for backwards-compatible character controllers", 0f, frozen.rotation, 0.001f)
+    }
+
+    @Test
+    fun offCenterContactFrictionProducesAngularMotion() {
+        val scene = Scene("Impact")
+        scene.gravityY = 0f
+        val wall = scene.create("Wall").also { it.x = 1f; it.y = 0.5f }
+        wall.add(Collider2D().also { it.width = 1f; it.height = 2f })
+        wall.add(Rigidbody2D().also { it.bodyType = 2; it.friction = 1f })
+        val ball = scene.create("Ball").also { it.x = 0.2f; it.y = 0.25f }
+        ball.add(Collider2D().also { it.shape = 1; it.radius = 0.5f })
+        val body = ball.add(Rigidbody2D().also {
+            it.freezeRotation = false; it.angularDrag = 0f; it.friction = 1f; it.startVx = 5f; it.startVy = 1f
+        })
+        body.resetRuntime()
+        PhysicsWorld().step(scene, 1f / 60f)
+        assertTrue("contact-point friction should spin the body", kotlin.math.abs(body.angularVelocity) > 0.1f)
+    }
+
+    @Test
+    fun spritePivotAndAdvancedParticleSettingsRoundTrip() {
+        val scene = Scene("Assets")
+        val go = scene.create("Effects")
+        go.add(SpriteRenderer().also { it.pivotX = 0.18f; it.pivotY = 0.07f })
+        go.add(ParticleEmitter().also {
+            it.sizeVariance = 0.4f; it.drag = 1.3f; it.rotationSpeed = 45f
+            it.rotationVariance = 90f; it.rotationSpeedVariance = 180f
+        })
+        val decoded = SceneSerializer.fromJson(JSONObject(SceneSerializer.toJson(scene).toString()))
+        val sprite = decoded.find("Effects")!!.getAny<SpriteRenderer>()!!
+        val particles = decoded.find("Effects")!!.getAny<ParticleEmitter>()!!
+        assertEquals(0.18f, sprite.pivotX, 0.0001f)
+        assertEquals(0.07f, sprite.pivotY, 0.0001f)
+        assertEquals(0.4f, particles.sizeVariance, 0.0001f)
+        assertEquals(1.3f, particles.drag, 0.0001f)
+        assertEquals(180f, particles.rotationSpeedVariance, 0.0001f)
     }
 
     @Test
