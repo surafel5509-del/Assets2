@@ -18,6 +18,7 @@ class Scene(var name: String) {
     var nextId = 1L
 
     fun create(name: String, parent: GameObject? = null): GameObject {
+        require(parent == null || parent in objects) { "Parent is not in this scene" }
         val go = GameObject(nextId++, uniqueName(name))
         go.parent = parent
         objects.add(go)
@@ -37,22 +38,39 @@ class Scene(var name: String) {
 
     fun childrenOf(go: GameObject?) = objects.filter { it.parent === go }
 
-    /** Depth-first hierarchy listing with depth. */
+    /** Linear-time, iterative traversal: safe even for deeply nested imported scenes. */
     fun hierarchy(): List<Pair<GameObject, Int>> {
-        val out = ArrayList<Pair<GameObject, Int>>()
-        fun walk(p: GameObject?, depth: Int) {
-            for (c in objects) if (c.parent === p) {
-                out.add(c to depth); walk(c, depth + 1)
+        val children = objects.groupBy { it.parent }
+        val out = ArrayList<Pair<GameObject, Int>>(objects.size)
+        val stack = ArrayDeque<Pair<GameObject, Int>>()
+        val visited = HashSet<GameObject>()
+        fun walk(root: GameObject) {
+            stack.addLast(root to 0)
+            while (stack.isNotEmpty()) {
+                val (go, depth) = stack.removeLast()
+                if (!visited.add(go)) continue
+                out.add(go to depth)
+                for (child in children[go].orEmpty().asReversed()) stack.addLast(child to depth + 1)
             }
         }
-        walk(null, 0)
+        for (root in children[null].orEmpty()) walk(root)
+        // Keep orphaned objects visible so diagnostics can report them.
+        for (go in objects) if (go !in visited) walk(go)
         return out
     }
 
     fun remove(go: GameObject) {
-        for (c in childrenOf(go)) remove(c)
-        go.destroyed = true
-        objects.remove(go)
+        val children = objects.groupBy { it.parent }
+        val pending = ArrayDeque<GameObject>()
+        val removed = HashSet<GameObject>()
+        pending.addLast(go)
+        while (pending.isNotEmpty()) {
+            val current = pending.removeLast()
+            if (!removed.add(current)) continue
+            current.destroyed = true
+            children[current].orEmpty().forEach { pending.addLast(it) }
+        }
+        objects.removeAll(removed)
     }
 
     private val tmp3 = FloatArray(16)
@@ -72,14 +90,23 @@ class Scene(var name: String) {
 
     /** Deep copy of an object (and its children) placed next to the original. */
     fun duplicate(src: GameObject, newParent: GameObject? = src.parent): GameObject {
-        val json = SceneSerializer.objectToJson(src)
-        val copy = create(src.name, newParent)
-        SceneSerializer.applyObjectJson(copy, json)
-        copy.parent = newParent
-        for (child in childrenOf(src).toList()) {
-            if (child !== copy) duplicate(child, copy)
+        require(src in objects) { "Object is not in this scene" }
+        require(newParent == null || newParent in objects) { "Parent is not in this scene" }
+        require(newParent !== src && (newParent == null || !src.isAncestorOf(newParent))) { "Cannot duplicate into own subtree" }
+        val descendants = objects.groupBy { it.parent }
+        fun clone(original: GameObject, parent: GameObject?): GameObject {
+            val copy = create(original.name, parent)
+            SceneSerializer.applyObjectJson(copy, SceneSerializer.objectToJson(original))
+            return copy
         }
-        return copy
+        val root = clone(src, newParent)
+        val pending = ArrayDeque<Pair<GameObject, GameObject>>()
+        pending.addLast(src to root)
+        while (pending.isNotEmpty()) {
+            val (original, copy) = pending.removeLast()
+            for (child in descendants[original].orEmpty()) pending.addLast(child to clone(child, copy))
+        }
+        return root
     }
 
     fun moveInOrder(go: GameObject, delta: Int) {
@@ -96,6 +123,7 @@ class Scene(var name: String) {
 }
 
 object SceneSerializer {
+    const val SCHEMA_VERSION = 1
     fun objectToJson(go: GameObject): JSONObject {
         val o = JSONObject()
         o.put("id", go.id)
@@ -135,7 +163,7 @@ object SceneSerializer {
         val comps = o.optJSONArray("components") ?: JSONArray()
         for (i in 0 until comps.length()) {
             val cj = comps.getJSONObject(i)
-            val c = ComponentRegistry.create(cj.optString("type")) ?: continue
+            val c = ComponentRegistry.create(cj.optString("type")) ?: MissingComponent(cj)
             c.fromJson(cj)
             go.add(c)
         }
@@ -143,6 +171,7 @@ object SceneSerializer {
 
     fun toJson(scene: Scene): JSONObject {
         val o = JSONObject()
+        o.put("schemaVersion", SCHEMA_VERSION)
         o.put("name", scene.name)
         o.put("gravityX", scene.gravityX.toDouble())
         o.put("gravityY", scene.gravityY.toDouble())
@@ -160,6 +189,8 @@ object SceneSerializer {
     }
 
     fun fromJson(o: JSONObject): Scene {
+        val version = o.optInt("schemaVersion", 0)
+        require(version in 0..SCHEMA_VERSION) { "Scene schema $version is not supported by this editor" }
         val s = Scene(o.optString("name", "Main"))
         s.gravityX = o.optDouble("gravityX", 0.0).toFloat()
         s.gravityY = o.optDouble("gravityY", -9.81).toFloat()
@@ -173,15 +204,18 @@ object SceneSerializer {
         val arr = o.optJSONArray("objects") ?: JSONArray()
         val parents = HashMap<GameObject, Long>()
         var maxId = 0L
+        val byId = HashMap<Long, GameObject>()
         for (i in 0 until arr.length()) {
             val oj = arr.getJSONObject(i)
             val go = GameObject(oj.optLong("id"), oj.optString("name", "GameObject"))
+            require(go.id > 0 && go.id < Long.MAX_VALUE && !byId.containsKey(go.id)) { "Invalid or duplicate object ID ${go.id}" }
+            byId[go.id] = go
             applyObjectJson(go, oj)
             if (oj.has("parent")) parents[go] = oj.getLong("parent")
             s.objects.add(go)
             maxId = maxOf(maxId, go.id)
         }
-        for ((go, pid) in parents) go.parent = s.findById(pid)
+        for ((go, pid) in parents) go.parent = byId[pid] ?: throw IllegalArgumentException("Missing parent $pid for ${go.name}")
         s.nextId = maxOf(o.optLong("nextId", 1L), maxId + 1)
         return s
     }

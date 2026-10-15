@@ -73,7 +73,7 @@ object ApkBuilder {
                 }
                 progress("Embedding game data…", 0.7f)
                 val base = projectDir.canonicalFile
-                val files = base.walkTopDown().filter { it.isFile && !it.name.startsWith(".") }.sortedBy { it.path }.toList()
+                val files = base.walkTopDown().filter { com.sengine.project.ProjectFiles.isPublishable(base, it) }.sortedBy { it.path }.toList()
                 for (f in files) {
                     val rel = f.canonicalFile.relativeTo(base).invariantSeparatorsPath
                     val ext = f.extension.lowercase()

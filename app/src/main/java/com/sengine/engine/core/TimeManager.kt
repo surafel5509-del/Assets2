@@ -5,8 +5,11 @@ package com.sengine.engine.core
  */
 class TimeManager {
     var timeScale: Float = 1f
+        set(value) { require(value.isFinite() && value >= 0f); field = value }
     var fixedDeltaTime: Float = 1f / 60f
+        set(value) { require(value.isFinite() && value > 0f); field = value }
     var maximumDeltaTime: Float = 0.1f
+        set(value) { require(value.isFinite() && value > 0f); field = value }
     var time: Double = 0.0
         private set
     var unscaledTime: Double = 0.0
@@ -28,10 +31,11 @@ class TimeManager {
     private var fpsFrames = 0
     private var deltaHistory = FloatArray(30)
     private var historyIndex = 0
+    private var historyCount = 0
 
     fun update(rawDt: Float) {
-        unscaledDeltaTime = rawDt.coerceIn(0f, maximumDeltaTime)
-        deltaTime = (unscaledDeltaTime * timeScale).coerceIn(0f, maximumDeltaTime)
+        unscaledDeltaTime = if (rawDt.isFinite()) rawDt.coerceAtLeast(0f) else 0f
+        deltaTime = (unscaledDeltaTime.coerceAtMost(maximumDeltaTime) * timeScale).coerceIn(0f, maximumDeltaTime)
         time += deltaTime
         unscaledTime += unscaledDeltaTime
         frameCount++
@@ -39,7 +43,8 @@ class TimeManager {
         // smooth delta
         deltaHistory[historyIndex] = deltaTime
         historyIndex = (historyIndex + 1) % deltaHistory.size
-        smoothDeltaTime = deltaHistory.average().toFloat()
+        historyCount = (historyCount + 1).coerceAtMost(deltaHistory.size)
+        smoothDeltaTime = deltaHistory.sum() / historyCount
 
         fpsAcc += unscaledDeltaTime
         fpsFrames++
@@ -51,7 +56,7 @@ class TimeManager {
     }
 
     fun fixedUpdate() {
-        fixedTime += fixedDeltaTime * timeScale
+        fixedTime += fixedDeltaTime
     }
 
     fun reset() {
@@ -62,7 +67,9 @@ class TimeManager {
         fps = 0f
         fpsAcc = 0f
         fpsFrames = 0
-        deltaHistory.fill(fixedDeltaTime)
+        deltaTime = 0f; unscaledDeltaTime = 0f; smoothDeltaTime = 0f
+        historyIndex = 0; historyCount = 0
+        deltaHistory.fill(0f)
     }
 }
 

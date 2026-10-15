@@ -10,9 +10,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * S Engine Ultimate Edition - Professional Project System
- * Unity 6 + Unreal Engine 5 class project management
- * Supports engine config, quality settings, build settings, version control
+ * On-device project storage, settings, versioned scenes, backups and recovery.
  */
 
 class Project(val dir: File) {
@@ -101,13 +99,13 @@ class Project(val dir: File) {
         o.put("gpuInstancing", gpuInstancing)
         o.put("srpBatcher", srpBatcher)
         o.put("occlusionCulling", occlusionCulling)
-        metaFile.writeText(o.toString(2))
+        AtomicFiles.write(metaFile, o.toString(2), 1)
         // Also save engine config separately
-        File(settingsDir, "EngineConfig.json").writeText(engineConfig.toJson().toString(2))
-        File(settingsDir, "QualitySettings.json").writeText(qualitySettings.toJson().toString(2))
+        AtomicFiles.write(File(settingsDir, "EngineConfig.json"), engineConfig.toJson().toString(2))
+        AtomicFiles.write(File(settingsDir, "QualitySettings.json"), qualitySettings.toJson().toString(2))
     }
 
-    fun sceneFile(n: String) = File(scenesDir, "$n.scene.json")
+    fun sceneFile(n: String) = AtomicFiles.child(scenesDir, "$n.scene.json")
     fun sceneExists(n: String) = sceneFile(n).exists()
 
     fun listScenes(): List<String> =
@@ -124,20 +122,31 @@ class Project(val dir: File) {
 
     fun saveScene(scene: Scene) {
         scenesDir.mkdirs()
-        sceneFile(scene.name).writeText(SceneSerializer.toJson(scene).toString(1))
+        AtomicFiles.write(sceneFile(scene.name), SceneSerializer.toJson(scene).toString(1), backupCount)
+        recoveryFile(scene.name).delete()
         lastSaved = System.currentTimeMillis()
         if (!scenesInBuild.contains(scene.name)) scenesInBuild.add(scene.name)
     }
 
+    private fun recoveryFile(n: String) = AtomicFiles.child(File(dir, ".recovery"), "$n.scene.json")
+
+    /** Recovery is separate from the saved scene and never silently replaces it. */
+    fun saveRecovery(scene: Scene) = AtomicFiles.write(recoveryFile(scene.name), SceneSerializer.toJson(scene).toString())
+    fun hasRecovery(n: String): Boolean = recoveryFile(n).let { it.exists() && (!sceneFile(n).exists() || it.lastModified() >= sceneFile(n).lastModified()) }
+    fun loadRecovery(n: String): Scene = SceneSerializer.fromJson(JSONObject(recoveryFile(n).readText())).also { it.name = n }
+    fun discardRecovery(n: String) { recoveryFile(n).delete() }
+    fun loadBackup(n: String): Scene = SceneSerializer.fromJson(JSONObject(File(sceneFile(n).path + ".bak1").readText())).also { it.name = n }
+
     fun deleteScene(n: String): Boolean {
         val deleted = sceneFile(n).delete()
+        discardRecovery(n)
         scenesInBuild.remove(n)
         return deleted
     }
 
-    fun assetFile(n: String) = File(assetsDir, n)
-    fun prefabFile(n: String) = File(prefabsDir, if (n.endsWith(".prefab")) n else "$n.prefab")
-    fun materialFile(n: String) = File(materialsDir, if (n.endsWith(".mat")) n else "$n.mat")
+    fun assetFile(n: String) = AtomicFiles.child(assetsDir, n)
+    fun prefabFile(n: String) = AtomicFiles.child(prefabsDir, if (n.endsWith(".prefab")) n else "$n.prefab")
+    fun materialFile(n: String) = AtomicFiles.child(materialsDir, if (n.endsWith(".mat")) n else "$n.mat")
 
     fun listAssets(kind: AssetKind? = null): List<String> =
         (assetsDir.listFiles() ?: emptyArray())
@@ -156,15 +165,15 @@ class Project(val dir: File) {
     fun readMaterial(n: String): String? = materialFile(n).takeIf { it.exists() }?.readText()
 
     fun writeAsset(n: String, text: String) {
-        assetsDir.mkdirs(); assetFile(n).writeText(text)
+        AtomicFiles.write(assetFile(n), text)
     }
 
     fun writePrefab(n: String, text: String) {
-        prefabsDir.mkdirs(); prefabFile(n).writeText(text)
+        AtomicFiles.write(prefabFile(n), text)
     }
 
     fun writeMaterial(n: String, text: String) {
-        materialsDir.mkdirs(); materialFile(n).writeText(text)
+        AtomicFiles.write(materialFile(n), text)
     }
 
     fun uniqueAssetName(base: String): String {

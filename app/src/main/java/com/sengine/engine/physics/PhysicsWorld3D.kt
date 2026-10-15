@@ -16,8 +16,7 @@ import kotlin.math.sqrt
  */
 class PhysicsWorld3D {
     var listener: PhysicsWorld.Listener? = null
-    private var accumulator = 0f
-    private val fixedDt = 1f / 60f
+    val clock = com.sengine.engine.core.FixedStepClock()
     private var prevContacts = HashSet<Long>()
     private var prevTriggers = HashSet<Long>()
 
@@ -30,14 +29,10 @@ class PhysicsWorld3D {
 
     private class M(val nx: Float, val ny: Float, val nz: Float, val depth: Float)
 
-    fun reset() { accumulator = 0f; prevContacts = HashSet(); prevTriggers = HashSet() }
+    fun reset() { clock.reset(); prevContacts = HashSet(); prevTriggers = HashSet() }
 
     fun step(scene: Scene, dt: Float) {
-        if (scene.objects.none { it.getAny<Collider3D>() != null || it.getAny<Rigidbody3D>() != null }) return
-        accumulator += minOf(dt, 0.25f)
-        var n = 0
-        while (accumulator >= fixedDt && n < 5) { fixed(scene, fixedDt); accumulator -= fixedDt; n++ }
-        if (n == 5) accumulator = 0f
+        clock.advance(dt) { fixed(scene, it) }
     }
 
     private fun move(go: GameObject, dx: Float, dy: Float, dz: Float) {

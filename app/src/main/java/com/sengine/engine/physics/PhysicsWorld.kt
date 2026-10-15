@@ -22,8 +22,7 @@ class PhysicsWorld {
     }
 
     var listener: Listener? = null
-    private var accumulator = 0f
-    private val fixedDt = 1f / 60f
+    val clock = com.sengine.engine.core.FixedStepClock()
 
     private class Body(
         val go: GameObject,
@@ -41,19 +40,12 @@ class PhysicsWorld {
     private var prevTriggers = HashSet<Long>()
 
     fun reset() {
-        accumulator = 0f
+        clock.reset()
         prevContacts = HashSet(); prevTriggers = HashSet()
     }
 
     fun step(scene: Scene, dt: Float) {
-        accumulator += minOf(dt, 0.25f)
-        var steps = 0
-        while (accumulator >= fixedDt && steps < 5) {
-            fixedStep(scene, fixedDt)
-            accumulator -= fixedDt
-            steps++
-        }
-        if (steps == 5) accumulator = 0f
+        clock.advance(dt) { fixedStep(scene, it) }
     }
 
     private fun fixedStep(scene: Scene, dt: Float) {

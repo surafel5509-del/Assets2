@@ -1,216 +1,54 @@
-name: Build S Engine Ultra APK
+name: Android engine checks
 
 on:
   push:
-    branches:
-      - main
-      - arena/*
+    branches: [main, 'arena/*']
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: read
-  issues: write
+  contents: read
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    timeout-minutes: 40
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
-
-      - name: Setup Android SDK - Accept Licenses
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+      - name: Compile, test, lint and package
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Cache Gradle Wrapper
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/wrapper
-            ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Show project structure
-        run: |
-          echo "=== S Engine 6.1.2 Ultra Edition ==="
-          cat app/build.gradle.kts | grep -E "versionCode|versionName|ENGINE_VERSION|buildFeatures|buildConfig"
-          echo "Total Kotlin files: $(find app/src/main/java -name '*.kt' | wc -l)"
-
-      - name: Clean Gradle
-        run: |
-          ./gradlew clean --no-daemon || echo "Clean failed, continuing"
-
-      - name: Compile Kotlin - Quick Check
-        id: compile_kotlin
-        run: |
-          echo "Compiling Kotlin only..."
-          ./gradlew :app:compileDebugKotlin --stacktrace --no-daemon 2>&1 | tee compile-kotlin.log
-          echo "Exit code: ${PIPESTATUS[0]}"
-          tail -n 500 compile-kotlin.log > compile-failure.log
-          cat compile-failure.log
-
-      - name: Build Debug APK - S Engine 6.1.2 Ultra
-        id: build_debug
-        run: |
-          echo "Starting Gradle build..."
-          set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee gradle-build.log
-          BUILD_EXIT=${PIPESTATUS[0]}
-          echo "Build exit code: $BUILD_EXIT"
-          ls -lh app/build/outputs/apk/debug/ || echo "No debug APK dir"
-          find app/build -name "*.apk" -type f -exec ls -lh {} \; || echo "No APK found"
-          echo "=== Last 1000 lines ===" > build-failure-summary.log
-          tail -n 1000 gradle-build.log >> build-failure-summary.log
-          echo "" >> build-failure-summary.log
-          echo "=== Errors ===" >> build-failure-summary.log
-          grep -i -A5 -B5 "error\|FAILED\|Unresolved\|Cannot" gradle-build.log | tail -n 1000 >> build-failure-summary.log || true
-          cat build-failure-summary.log
-          echo "### Build Failure - S Engine Ultra 6.1.2" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Run ID: $GITHUB_RUN_ID" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat build-failure-summary.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo "Gradle build failed with exit $BUILD_EXIT"
-            exit $BUILD_EXIT
-          fi
-
-      - name: Build Release APK (signed with debug key)
-        if: success()
-        run: |
-          ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee gradle-release.log || echo "Release build failed but debug ok"
-          ls -lh app/build/outputs/apk/release/ || true
-
-      - name: Upload APK Artifact
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace --no-daemon 2>&1 | tee verification.log
+      - name: Test and lint reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: S-Engine-Ultra-6.1.2-APK
+          name: engine-verification
           path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/release/*.apk
-            gradle-build.log
-            gradle-release.log
-            build-failure-summary.log
-            compile-kotlin.log
-            compile-failure.log
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload Build Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs-ultra
-          path: |
-            gradle-build.log
-            gradle-release.log
-            build-failure-summary.log
-            compile-kotlin.log
-            compile-failure.log
+            verification.log
             app/build/reports/
-            app/build/outputs/logs/
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Upload log via Contents API for debugging
-        if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Uploading failure logs via Contents API..."
-          cat compile-kotlin.log > combined-failure.log 2>/dev/null || true
-          echo "" >> combined-failure.log
-          echo "=== GRADLE BUILD LOG ===" >> combined-failure.log
-          cat gradle-build.log >> combined-failure.log 2>/dev/null || true
-          echo "" >> combined-failure.log
-          echo "=== FAILURE SUMMARY ===" >> combined-failure.log
-          cat build-failure-summary.log >> combined-failure.log 2>/dev/null || true
-          cat compile-failure.log >> combined-failure.log 2>/dev/null || true
-          head -c 90000 combined-failure.log > truncated.log
-          B64_CONTENT=$(base64 -w 0 truncated.log)
-          # Use run_id in filename to avoid SHA conflict
-          FILE_NAME="BUILD_FAILURE_LOG_${{ github.run_id }}.md"
-          echo "Creating file $FILE_NAME via Contents API"
-          python3 << 'PY'
-          import json, base64, os
-          with open('truncated.log', 'r') as f:
-              content = f.read()
-          b64 = base64.b64encode(content.encode()).decode()
-          run_id = os.environ.get('GITHUB_RUN_ID','unknown')
-          ref_name = os.environ.get('GITHUB_REF_NAME','arena/561b2bf3-assets2')
-          payload = {
-              "message": f"CI: Add build failure log for run {run_id} [skip ci]",
-              "content": b64,
-              "branch": ref_name
-          }
-          with open('content_payload.json', 'w') as out:
-              json.dump(payload, out)
-          print(f"Payload created for {ref_name}")
-          PY
-          curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" --data @content_payload.json https://api.github.com/repos/${{ github.repository }}/contents/BUILD_FAILURE_LOG_${{ github.run_id }}.md > put_response.json || echo "PUT failed"
-          cat put_response.json | head -c 2000
-          echo ""
-          # Also update main BUILD_FAILURE_LOG.md for backward compat
-          B64_MAIN=$(base64 -w 0 truncated.log)
-          python3 << 'PY'
-          import json, base64, os, sys
-          run_id = os.environ.get('GITHUB_RUN_ID','unknown')
-          ref_name = os.environ.get('GITHUB_REF_NAME','arena/561b2bf3-assets2')
-          sha = ""
-          # Try to get existing file SHA
-          import subprocess, json as js
-          try:
-              result = subprocess.run(["curl","-s","-H",f"Authorization: token {os.environ.get('GH_TOKEN','')}", f"https://api.github.com/repos/{os.environ.get('GITHUB_REPOSITORY','')}/contents/BUILD_FAILURE_LOG.md?ref={ref_name}"], capture_output=True, text=True)
-              data = js.loads(result.stdout)
-              sha = data.get('sha','')
-              print(f"Existing SHA: {sha}")
-          except Exception as e:
-              print(f"Failed to get SHA: {e}")
-          with open('truncated.log','r') as f:
-              content = f.read()
-          b64 = base64.b64encode(content.encode()).decode()
-          payload = {
-              "message": f"CI: Add build failure log for run {run_id} [skip ci]",
-              "content": b64,
-              "branch": ref_name
-          }
-          if sha:
-              payload["sha"] = sha
-          with open('content_payload_main.json','w') as out:
-              json.dump(payload, out)
-          PY
-          curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" --data @content_payload_main.json https://api.github.com/repos/${{ github.repository }}/contents/BUILD_FAILURE_LOG.md > put_main_response.json || echo "PUT main failed"
-          cat put_main_response.json | head -c 2000
-
-      - name: Show Engine Version and APK Info
-        if: always()
-        run: |
-          echo "S Engine Version: 6.1.2 Ultra Edition [Ultra] API:612"
-          echo "Systems: 96+ Components: 250+ Templates: 36 API: 400+"
-          find . -name "*.apk" -type f -exec ls -lh {} \; || echo "No APK found"
+            app/build/test-results/
+          retention-days: 14
+      - name: Debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: S-Engine-Studio-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -43,6 +43,7 @@ import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.Scene
+import com.sengine.engine.core.SceneDiagnostics
 import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
@@ -83,6 +84,18 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private lateinit var pauseBtn: TextView
     private lateinit var stepBtn: TextView
     private lateinit var modeBtn: TextView
+    private lateinit var tabProblems: TextView
+    private lateinit var tabProfiler: TextView
+    private lateinit var problemsScroll: ScrollView
+    private lateinit var problemsList: LinearLayout
+    private lateinit var profilerPanel: ProfilerPanel
+    private lateinit var assetSearchBar: View
+    private lateinit var undoBtn: TextView
+    private lateinit var redoBtn: TextView
+    private var activeTab = 0
+    private var assetQuery = ""
+    private var lastRecoveryAt = 0L
+    private var recoveryFailed = false
     private val toolButtons = HashMap<Tool, TextView>()
 
     private val handler = Handler(Looper.getMainLooper())
@@ -92,7 +105,24 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private val ticker = object : Runnable {
         override fun run() {
             inspector.refreshValues()
-            val count = engine.scene.objects.size
+            val count = synchronized(engine.lock) { engine.scene.objects.size }
+            updateTitle()
+            undoBtn.isEnabled = history.canUndo && engine.mode == Engine.Mode.EDIT
+            redoBtn.isEnabled = history.canRedo && engine.mode == Engine.Mode.EDIT
+            undoBtn.alpha = if (undoBtn.isEnabled) 1f else 0.35f
+            redoBtn.alpha = if (redoBtn.isEnabled) 1f else 0.35f
+            if (activeTab == 3 && bottomContent.visibility == View.VISIBLE) profilerPanel.sample(engine)
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastRecoveryAt >= 30_000L && project.autoSave && history.dirty && engine.mode == Engine.Mode.EDIT) {
+                lastRecoveryAt = now
+                try {
+                    synchronized(engine.lock) { project.saveRecovery(engine.scene) }
+                    recoveryFailed = false
+                } catch (e: Exception) {
+                    if (!recoveryFailed) appendConsole(2, "Recovery save failed: ${e.message}")
+                    recoveryFailed = true
+                }
+            }
             if (engine.mode != Engine.Mode.EDIT && count != lastObjectCount) refreshHierarchy()
             val mode = when (engine.mode) { Engine.Mode.EDIT -> "EDIT"; Engine.Mode.PLAY -> "▶ PLAYING"; Engine.Mode.PAUSED -> "⏸ PAUSED" }
             statsText.text = "$mode  •  ${engine.scene.name}  •  ${engine.fps.toInt()} FPS  •  $count objects" +
@@ -132,8 +162,18 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         project = ProjectManager.open(this, intent.getStringExtra("project") ?: run { finish(); return })
         val sceneName = if (project.sceneExists(project.startScene)) project.startScene
         else project.listScenes().firstOrNull() ?: "Main"
-        val scene = if (project.sceneExists(sceneName)) project.loadScene(sceneName) else Scene(sceneName).also {
-            it.create("Main Camera").add(Camera2D())
+        val scene = try {
+            if (project.sceneExists(sceneName)) project.loadScene(sceneName) else Scene(sceneName).also {
+                it.create("Main Camera").add(Camera2D())
+            }
+        } catch (e: Exception) {
+            MaterialAlertDialogBuilder(this).setTitle("Scene could not be opened")
+                .setMessage("${e.message}\n\nThe scene was not modified. Try opening the most recent backup.")
+                .setPositiveButton("Use backup") { _, _ ->
+                    try { project.saveScene(project.loadBackup(sceneName)); recreate() }
+                    catch (backupError: Exception) { toast("Backup unavailable: ${backupError.message}"); finish() }
+                }.setNegativeButton("Close") { _, _ -> finish() }.setCancelable(false).show()
+            return
         }
         engine = Engine(project, scene)
         history = History(engine)
@@ -153,32 +193,37 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         inspector.rebuild()
         refreshAssets()
         updateModeUi()
-        appendConsole(0, "S Engine Ultimate 2.0 — project '${project.name}', scene '${scene.name}'")
+        appendConsole(0, "S Engine Studio — project '${project.name}', scene '${scene.name}'")
+
+        applyWorkspace(getPreferences(MODE_PRIVATE).getString("workspace", "Balanced") ?: "Balanced")
+        offerRecovery()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (engine.mode != Engine.Mode.EDIT) { engine.stop(); return }
-                saveScene(silent = true)
-                finish()
+                if (saveScene(silent = true)) finish()
             }
         })
     }
 
     override fun onResume() {
         super.onResume()
-        glView.onResume()
-        handler.post(ticker)
-        refreshAssets()
+        if (::glView.isInitialized) {
+            glView.onResume()
+            handler.post(ticker)
+            refreshAssets()
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        glView.onPause()
+        if (::glView.isInitialized) glView.onPause()
         handler.removeCallbacks(ticker)
-        if (engine.mode == Engine.Mode.EDIT && history.dirty) saveScene(silent = true)
+        if (::engine.isInitialized && engine.mode == Engine.Mode.EDIT && history.dirty) saveScene(silent = true)
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         super.onDestroy()
         if (::engine.isInitialized) {
             engine.listeners.remove(engineListener)
@@ -190,6 +235,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     @SuppressLint("ClickableViewAccessibility")
     private fun buildUi() {
         val root = vbox().apply { setBackgroundColor(C.BG) }
+        val masthead = hbox().apply { setBackgroundColor(C.BG); setPadding(dp(12), dp(4), dp(8), dp(4)) }
+        masthead.addView(label("S / STUDIO", 12f, C.ACCENT, true), lp(WRAP, WRAP))
+        masthead.addView(label("  •  ${project.name}", 12f, C.DIM).apply { isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.END }, lp(0, WRAP, 1f))
+        masthead.addView(button("Commands  ⌘", C.BG) { showCommands() }.apply { textSize = 12f; contentDescription = "Command palette, Control K" })
+        masthead.addView(button("Workspace", C.BG) { chooseWorkspace() }.apply { textSize = 12f })
+        root.addView(masthead, lp(MATCH, WRAP))
 
         // ---- toolbar
         toolbar = hbox().apply { setPadding(dp(4), dp(3), dp(4), dp(3)) }
@@ -209,17 +260,17 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             toolButtons[tool] = tbtn(glyph) { setTool(tool) }
         }
         modeBtn = tbtn("2D") { toggle3D() }
-        tbtn("📊") { state.showProfiler = !state.showProfiler }
+        tbtn("Stats") { showTab(3) }
         sep()
         playBtn = tbtn("▶") { if (engine.mode == Engine.Mode.EDIT) startPlay() else engine.stop() }
         pauseBtn = tbtn("⏸") { if (engine.mode == Engine.Mode.PAUSED) engine.play() else engine.pause() }
         stepBtn = tbtn("⏭") { engine.stepFrame() }
         sep()
-        tbtn("↶") { undo() }
-        tbtn("↷") { redo() }
+        undoBtn = tbtn("↶") { undo() }.apply { contentDescription = "Undo, Control Z"; tooltipText = "Undo" }
+        redoBtn = tbtn("↷") { redo() }.apply { contentDescription = "Redo, Control Shift Z"; tooltipText = "Redo" }
         sep()
         tbtn("＋") { addObjectMenu(it) }
-        tbtn("💾") { saveScene() }
+        tbtn("Save") { saveScene() }
         tbtn("⋮") { mainMenu(it) }
         tbtn("▤") { toggle(inspectorPanel) }
         val tbScroll = HorizontalScrollView(this).apply { addView(tb); isHorizontalScrollBarEnabled = false; setBackgroundColor(C.HEADER) }
@@ -238,10 +289,15 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             onClick = { select(it.id) },
             onLongClick = { go, v -> objectMenu(go, v) },
             onToggleActive = { go -> history.record(state.selectedId); synchronized(engine.lock) { go.active = !go.active }; refreshHierarchy(); inspector.refreshValues() })
+        hp.addView(field("").apply {
+            hint = "Search objects…"; textSize = 12f
+            contentDescription = "Search hierarchy by name, tag or component"
+            onTextChanged { hierarchy.query = it; refreshHierarchy() }
+        }, lp(MATCH, dp(36)).margins(dp(6), dp(5), dp(6), dp(5)))
         val rv = RecyclerView(this).apply { layoutManager = LinearLayoutManager(this@EditorActivity); adapter = hierarchy }
         hp.addView(rv, lp(MATCH, 0, 1f))
         hierarchyPanel = hp
-        middle.addView(hp, lp(dp(180), MATCH))
+        middle.addView(hp, lp(dp(if (resources.configuration.screenWidthDp >= 1000) 220 else 166), MATCH))
 
         // viewport
         val vp = FrameLayout(this)
@@ -272,7 +328,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         ip.addView(ScrollView(this).apply { addView(inspContent); isFillViewport = true }, lp(MATCH, 0, 1f))
         inspector = InspectorPanel(this, this, inspContent)
         inspectorPanel = ip
-        middle.addView(ip, lp(dp(270), MATCH))
+        middle.addView(ip, lp(dp(if (resources.configuration.screenWidthDp >= 1000) 290 else 236), MATCH))
 
         root.addView(middle, lp(MATCH, 0, 1f))
 
@@ -281,7 +337,9 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         val tabs = hbox().apply { setBackgroundColor(C.HEADER); setPadding(dp(4), dp(2), dp(4), dp(2)) }
         tabConsole = button("Console", C.HEADER) { showTab(0) }.apply { textSize = 12f }
         tabAssets = button("Assets", C.HEADER) { showTab(1) }.apply { textSize = 12f }
-        tabs.addView(tabConsole); tabs.addView(tabAssets)
+        tabProblems = button("Problems", C.HEADER) { showTab(2); validateScene() }.apply { textSize = 12f }
+        tabProfiler = button("Profiler", C.HEADER) { showTab(3) }.apply { textSize = 12f }
+        tabs.addView(tabAssets); tabs.addView(tabConsole); tabs.addView(tabProblems); tabs.addView(tabProfiler)
         tabs.addView(View(this), lp(0, 1, 1f))
         assetButtons = hbox()
         assetButtons.addView(button("+ Script") { newScriptDialog { refreshAssets(); openScript(it) } }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
@@ -295,7 +353,17 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         tabs.addView(assetButtons)
         tabs.addView(button("Clear", C.HEADER) { consoleText.text = "" }.apply { textSize = 12f })
         tabs.addView(button("▾", C.HEADER) { toggle(bottomContent) }.apply { textSize = 12f })
-        bottomPanel.addView(tabs, lp(MATCH, WRAP))
+        bottomPanel.addView(HorizontalScrollView(this).apply { addView(tabs); isHorizontalScrollBarEnabled = false }, lp(MATCH, WRAP))
+        assetSearchBar = hbox().apply {
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            addView(label("PROJECT / ASSETS", 10f, C.DIM, true), lp(WRAP, WRAP).margins(0, 0, dp(12), 0))
+            addView(field("").apply {
+                hint = "Search assets or type (texture, script, model…)"; textSize = 12f
+                contentDescription = "Search project assets"
+                onTextChanged { assetQuery = it; refreshAssets() }
+            }, lp(0, dp(34), 1f))
+        }
+        bottomPanel.addView(assetSearchBar, lp(MATCH, WRAP))
 
         bottomContent = FrameLayout(this)
         consoleText = label("", 11f, 0xFFCFD2D6.toInt()).apply { typeface = Typeface.MONOSPACE; setPadding(dp(8), dp(4), dp(8), dp(4)); setTextIsSelectable(true) }
@@ -304,18 +372,30 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         assetsRow = hbox().apply { setPadding(dp(6), dp(6), dp(6), dp(6)) }
         assetsScroll = HorizontalScrollView(this).apply { addView(assetsRow) }
         bottomContent.addView(assetsScroll)
+        problemsList = vbox().apply { setPadding(dp(8), dp(4), dp(8), dp(4)) }
+        problemsScroll = ScrollView(this).apply { addView(problemsList) }
+        bottomContent.addView(problemsScroll)
+        profilerPanel = ProfilerPanel(this)
+        bottomContent.addView(profilerPanel)
         bottomPanel.addView(bottomContent, lp(MATCH, dp(112)))
         root.addView(bottomPanel, lp(MATCH, WRAP))
 
         setContentView(root)
         setTool(Tool.MOVE)
-        showTab(0)
+        showTab(1)
         updateTitle()
     }
 
     private fun toggle(v: View) { v.visibility = if (v.visibility == View.VISIBLE) View.GONE else View.VISIBLE }
 
     private fun showTab(i: Int) {
+        activeTab = i
+        bottomPanel.visibility = View.VISIBLE
+        problemsScroll.visibility = if (i == 2) View.VISIBLE else View.GONE
+        profilerPanel.visibility = if (i == 3) View.VISIBLE else View.GONE
+        assetSearchBar.visibility = if (i == 1) View.VISIBLE else View.GONE
+        tabProblems.setTextColor(if (i == 2) C.ACCENT else C.DIM)
+        tabProfiler.setTextColor(if (i == 3) C.ACCENT else C.DIM)
         consoleScroll.visibility = if (i == 0) View.VISIBLE else View.GONE
         assetsScroll.visibility = if (i == 1) View.VISIBLE else View.GONE
         assetButtons.visibility = if (i == 1) View.VISIBLE else View.GONE
@@ -325,7 +405,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     private fun updateTitle() {
-        titleText.text = "${project.name} / ${engine.scene.name}"
+        titleText.text = "${engine.scene.name}${if (history.dirty) " •" else ""}"
     }
 
     private fun setTool(t: Tool) {
@@ -338,7 +418,13 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         playBtn.text = if (m == Engine.Mode.EDIT) "▶" else "■"
         playBtn.setButtonColor(if (m == Engine.Mode.EDIT) C.PANEL2 else C.GREEN)
         pauseBtn.setButtonColor(if (m == Engine.Mode.PAUSED) C.YELLOW else C.PANEL2)
-        stepBtn.alpha = if (m == Engine.Mode.PAUSED) 1f else 0.4f
+        pauseBtn.isEnabled = m != Engine.Mode.EDIT
+        pauseBtn.alpha = if (pauseBtn.isEnabled) 1f else 0.35f
+        stepBtn.isEnabled = m == Engine.Mode.PAUSED
+        stepBtn.alpha = if (stepBtn.isEnabled) 1f else 0.35f
+        playBtn.contentDescription = if (m == Engine.Mode.EDIT) "Play scene" else "Stop and restore edit scene"
+        pauseBtn.contentDescription = "Pause or resume simulation"
+        stepBtn.contentDescription = "Step one frame"
         toolbar.setBackgroundColor(if (m == Engine.Mode.EDIT) C.HEADER else 0xFF1D2E45.toInt())
         controls.visibility = if (m == Engine.Mode.EDIT) View.GONE else View.VISIBLE
         controls.reset()
@@ -423,6 +509,9 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private fun startPlay() {
         currentFocus?.let { it.clearFocus(); hideKeyboard(it) }
         consoleText.text = ""
+        if (validateScene().any { it.severity == SceneDiagnostics.Severity.ERROR }) {
+            showTab(2); toast("Resolve scene errors before playing"); return
+        }
         engine.play()
     }
 
@@ -444,14 +533,16 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         refreshHierarchy(); inspector.rebuild()
     }
 
-    private fun saveScene(silent: Boolean = false) {
-        if (engine.mode != Engine.Mode.EDIT) { if (!silent) toast("Stop play mode before saving"); return }
-        try {
+    private fun saveScene(silent: Boolean = false): Boolean {
+        if (engine.mode != Engine.Mode.EDIT) { if (!silent) toast("Stop play mode before saving"); return false }
+        return try {
             synchronized(engine.lock) { project.saveScene(engine.scene) }
             project.saveMeta()
             history.dirty = false
             if (!silent) toast("Saved ${engine.scene.name}") else appendConsole(0, "Auto-saved ${engine.scene.name}")
-        } catch (e: Exception) { toast("Save failed: ${e.message}") }
+            updateTitle()
+            true
+        } catch (e: Exception) { toast("Save failed: ${e.message}"); false }
     }
 
     // ================================================================== object creation
@@ -574,6 +665,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             (if (state.showGrid) "Hide" else "Show") + " Grid",
             (if (state.showColliders) "Hide" else "Show") + " Colliders",
             "Snap: " + if (controller.snap) "ON" else "OFF",
+            "Command Palette…", "Validate Scene", "Recover Autosave…", "Restore Last Backup…", "Workspace…",
             "Toggle Bottom Panel", "Script API Reference", "About S Engine"
         )
         entries.forEach { pm.menu.add(it) }
@@ -581,20 +673,25 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             val t = item.title.toString()
             when {
                 t == "Save Scene" -> saveScene()
+                t == "Command Palette…" -> showCommands()
+                t == "Validate Scene" -> { showTab(2); validateScene() }
+                t == "Recover Autosave…" -> offerRecovery()
+                t == "Restore Last Backup…" -> restoreBackup()
+                t == "Workspace…" -> chooseWorkspace()
                 t == "Scenes…" -> scenesDialog()
-                t.startsWith("Build & Run") -> { saveScene(silent = true); startActivity(Intent(this, PlayerActivity::class.java).putExtra("project", project.name)) }
-                t == "Build APK…" -> { saveScene(silent = true); startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
+                t.startsWith("Build & Run") -> { if (saveScene(silent = true)) startActivity(Intent(this, PlayerActivity::class.java).putExtra("project", project.name)) }
+                t == "Build APK…" -> { if (saveScene(silent = true)) startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
                 t == "Asset Store" -> startActivity(Intent(this, AssetStoreActivity::class.java).putExtra("project", project.name))
                 t == "Animation Editor" -> openAnimationEditor(null)
                 t.endsWith("Profiler") -> state.showProfiler = !state.showProfiler
-                t.startsWith("Export") -> { saveScene(silent = true); exportLauncher.launch("${project.name}.zip") }
+                t.startsWith("Export") -> { if (saveScene(silent = true)) exportLauncher.launch("${project.name}.zip") }
                 t.endsWith("Grid") -> state.showGrid = !state.showGrid
                 t.endsWith("Colliders") -> state.showColliders = !state.showColliders
                 t.startsWith("Snap") -> controller.snap = !controller.snap
                 t == "Toggle Bottom Panel" -> toggle(bottomPanel)
                 t == "Script API Reference" -> showText("Script API", ScriptEditorActivity.API_DOC)
                 t.startsWith("About") -> showText("About S Engine",
-                    "S Engine Ultimate 2.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                    "S Engine Studio\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
                         "• 3D: meshes, OBJ models, Blinn-Phong lights, fog, sky, 3D physics, orbit editor\n" +
                         "• Sprite animation editor, asset store, visual blueprints, GLSL shaders & post FX\n" +
                         "• Build real installable APKs of your game\n" +
@@ -614,7 +711,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
 
     private fun scenesDialog() {
         if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode first"); return }
-        saveScene(silent = true)
+        if (!saveScene(silent = true)) return
         val scenes = project.listScenes()
         val labels = scenes.map { s ->
             s + (if (s == engine.scene.name) "   (open)" else "") + (if (s == project.startScene) "   ★ start" else "")
@@ -668,20 +765,22 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     private fun openScene(name: String) {
-        val s = project.loadScene(name)
+        if (engine.mode != Engine.Mode.EDIT || !saveScene(silent = true)) return
+        val s = try { project.loadScene(name) } catch (e: Exception) { toast("Cannot open scene: ${e.message}"); return }
         synchronized(engine.lock) { engine.replaceScene(s) }
         history.clear(); history.dirty = false
         state.selectedId = -1
         refreshHierarchy(); inspector.rebuild(); updateTitle()
         appendConsole(0, "Opened scene $name")
+        offerRecovery()
     }
 
     // ================================================================== assets
     fun refreshAssets() {
         if (!::assetsRow.isInitialized) return
         assetsRow.removeAllViews()
-        val assets = project.listAssets()
-        if (assets.isEmpty()) assetsRow.addView(label("No assets yet. Create a script or import images / sounds.", 12f, C.DIM).apply { setPadding(dp(8), dp(20), 0, 0) })
+        val assets = project.listAssets().filter { assetQuery.isBlank() || it.contains(assetQuery, true) || AssetKind.of(it)?.name?.contains(assetQuery, true) == true }
+        if (assets.isEmpty()) assetsRow.addView(label(if (assetQuery.isBlank()) "No assets yet. Create a script or import images / sounds." else "No assets match '$assetQuery'.", 12f, C.DIM).apply { setPadding(dp(8), dp(20), 0, 0) })
         for (name in assets) assetsRow.addView(assetCard(name), lp(dp(88), MATCH).margins(dp(3), 0, dp(3), 0))
     }
 
@@ -854,6 +953,111 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         }
     }
 
+    private fun chooseWorkspace() {
+        val names = arrayOf("Balanced", "Scene focus", "Inspect")
+        MaterialAlertDialogBuilder(this).setTitle("Workspace layout")
+            .setItems(names) { _, index -> applyWorkspace(names[index]) }.show()
+    }
+
+    private fun applyWorkspace(name: String) {
+        hierarchyPanel.visibility = if (name == "Scene focus" || name == "Inspect") View.GONE else View.VISIBLE
+        inspectorPanel.visibility = if (name == "Scene focus" || (name == "Balanced" && resources.configuration.screenWidthDp < 840)) View.GONE else View.VISIBLE
+        bottomContent.visibility = if (name == "Scene focus") View.GONE else View.VISIBLE
+        assetSearchBar.visibility = if (name != "Scene focus" && activeTab == 1) View.VISIBLE else View.GONE
+        getPreferences(MODE_PRIVATE).edit().putString("workspace", name).apply()
+    }
+
+    private fun validateScene(): List<SceneDiagnostics.Issue> {
+        val issues = synchronized(engine.lock) {
+            SceneDiagnostics.inspect(engine.scene) { name ->
+                try { project.assetFile(name).isFile || project.prefabFile(name).isFile || project.materialFile(name).isFile }
+                catch (_: IllegalArgumentException) { false }
+            }
+        }
+        problemsList.removeAllViews()
+        tabProblems.text = "Problems (${issues.size})"
+        if (issues.isEmpty()) problemsList.addView(label("✓  Scene checks passed — no structural or asset-reference issues found.", 12f, C.GREEN).apply { setPadding(dp(8), dp(10), dp(8), dp(10)) })
+        for (issue in issues) problemsList.addView(button(
+            "${if (issue.severity == SceneDiagnostics.Severity.ERROR) "ERROR" else "WARN"}   ${issue.message}",
+            C.PANEL, if (issue.severity == SceneDiagnostics.Severity.ERROR) C.RED else C.YELLOW
+        ) { issue.objectId?.let { id -> select(id); controller.frame(engine.scene.findById(id)) } }.apply {
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL; textSize = 12f
+        }, lp(MATCH, WRAP))
+        return issues
+    }
+
+    private fun offerRecovery() {
+        if (engine.mode != Engine.Mode.EDIT) return
+        val name = engine.scene.name
+        if (!project.hasRecovery(name)) return
+        MaterialAlertDialogBuilder(this).setTitle("Recover unsaved scene?")
+            .setMessage("A newer recovery snapshot exists for '$name'. Restore it as an unsaved edit, or keep the saved scene. Nothing is overwritten until you save.")
+            .setPositiveButton("Restore") { _, _ ->
+                try {
+                    val recovered = project.loadRecovery(name)
+                    history.record(state.selectedId)
+                    applySnapshot(recovered, -1)
+                    history.dirty = true
+                    appendConsole(0, "Recovered '$name'. Review it, then Save to keep it.")
+                } catch (e: Exception) { toast("Recovery failed: ${e.message}") }
+            }.setNegativeButton("Discard recovery") { _, _ -> project.discardRecovery(name) }
+            .setNeutralButton("Later", null).show()
+    }
+
+    private fun restoreBackup() {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode first"); return }
+        MaterialAlertDialogBuilder(this).setTitle("Restore last saved backup?")
+            .setMessage("The backup will become an unsaved edit. You can undo this operation.")
+            .setPositiveButton("Restore") { _, _ ->
+                try {
+                    val backup = project.loadBackup(engine.scene.name)
+                    history.record(state.selectedId); applySnapshot(backup, -1); history.dirty = true
+                } catch (e: Exception) { toast("Backup unavailable: ${e.message}") }
+            }.setNegativeButton("Cancel", null).show()
+    }
+
+    private fun showCommands() {
+        val edit = engine.mode == Engine.Mode.EDIT
+        val selected = synchronized(engine.lock) { engine.scene.findById(state.selectedId) }
+        val commands = mutableListOf(
+            CommandPalette.Command("Save scene", "File", edit) { saveScene() },
+            CommandPalette.Command("Open scene", "File", edit) { scenesDialog() },
+            CommandPalette.Command("Undo", "Edit", edit && history.canUndo) { undo() },
+            CommandPalette.Command("Redo", "Edit", edit && history.canRedo) { redo() },
+            CommandPalette.Command(if (edit) "Play" else "Stop", "Runtime") { if (edit) startPlay() else engine.stop() },
+            CommandPalette.Command("Pause / resume", "Runtime", !edit) { if (engine.mode == Engine.Mode.PAUSED) engine.play() else engine.pause() },
+            CommandPalette.Command("Step frame", "Runtime", engine.mode == Engine.Mode.PAUSED) { engine.stepFrame() },
+            CommandPalette.Command("Frame selected", "Scene", selected != null) { controller.frame(selected) },
+            CommandPalette.Command("Toggle 2D / 3D", "Scene") { toggle3D() },
+            CommandPalette.Command("Toggle grid", "Scene") { state.showGrid = !state.showGrid },
+            CommandPalette.Command("Toggle snapping", "Scene") { controller.snap = !controller.snap },
+            CommandPalette.Command("Validate scene", "Tools") { showTab(2); validateScene() },
+            CommandPalette.Command("Profiler", "Window") { showTab(3) },
+            CommandPalette.Command("Assets", "Window") { showTab(1) },
+            CommandPalette.Command("Console", "Window") { showTab(0) },
+            CommandPalette.Command("Choose workspace", "Window") { chooseWorkspace() },
+            CommandPalette.Command("Restore last backup", "File", edit) { restoreBackup() },
+            CommandPalette.Command("Build Android APK", "Build", edit) { if (saveScene(true)) startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
+        )
+        for (kind in listOf("Empty", "Square", "Camera", "Cube", "Sphere", "3D Camera", "Directional Light", "Particle System")) {
+            commands.add(CommandPalette.Command(kind, "Create", edit) { createObject(kind) })
+        }
+        for (tool in Tool.values()) commands.add(CommandPalette.Command(tool.name.lowercase().replaceFirstChar { it.uppercase() }, "Transform", edit) { setTool(tool) })
+        CommandPalette.show(this, commands)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (::engine.isInitialized && event.action == KeyEvent.ACTION_DOWN && event.isCtrlPressed) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_K -> { showCommands(); return true }
+                KeyEvent.KEYCODE_S -> { saveScene(); return true }
+                KeyEvent.KEYCODE_Z -> { if (event.isShiftPressed) redo() else undo(); return true }
+                KeyEvent.KEYCODE_Y -> { redo(); return true }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     // ================================================================== console & input
     private fun appendConsole(level: Int, msg: String) {
         if (!::consoleText.isInitialized) return
@@ -865,14 +1069,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (engine.mode != Engine.Mode.EDIT && keyCode != KeyEvent.KEYCODE_BACK) {
+        if (::engine.isInitialized && engine.mode != Engine.Mode.EDIT && keyCode != KeyEvent.KEYCODE_BACK) {
             engine.input.keys.add(keyCode); return true
         }
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        engine.input.keys.remove(keyCode)
+        if (::engine.isInitialized) engine.input.keys.remove(keyCode)
         return super.onKeyUp(keyCode, event)
     }
 

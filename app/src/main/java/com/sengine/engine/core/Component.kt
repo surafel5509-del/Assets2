@@ -13,7 +13,7 @@ abstract class Component {
     /** Reset transient runtime state (called when play mode starts). */
     open fun resetRuntime() {}
 
-    fun toJson(): JSONObject {
+    open fun toJson(): JSONObject {
         val o = JSONObject()
         o.put("type", type)
         o.put("enabled", enabled)

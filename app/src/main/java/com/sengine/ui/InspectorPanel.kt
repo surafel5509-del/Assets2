@@ -146,7 +146,9 @@ class InspectorPanel(private val act: EditorActivity, private val host: EditorHo
         header.addView(en, 0)
         val menu = act.button("⋮", C.HEADER) { v ->
             val pm = PopupMenu(act, v)
-            pm.menu.add("Move Up"); pm.menu.add("Move Down"); pm.menu.add("Reset"); pm.menu.add("Remove")
+            pm.menu.add("Move Up"); pm.menu.add("Move Down")
+            if (c !is com.sengine.engine.core.MissingComponent) pm.menu.add("Reset")
+            pm.menu.add("Remove")
             pm.setOnMenuItemClickListener {
                 record()
                 locked {
@@ -171,6 +173,8 @@ class InspectorPanel(private val act: EditorActivity, private val host: EditorHo
         header.addView(menu)
         container.addView(header)
         val body = sectionBody()
+        if (c is com.sengine.engine.core.MissingComponent) body.addView(act.label(
+            "Component unavailable. Its original data is preserved when saving. Install the matching plugin or engine version to edit it.", 12f, C.YELLOW))
         for (p in c.props()) addProp(body, p)
         if (c is ScriptComponent) {
             val row = act.hbox()
@@ -369,23 +373,16 @@ class InspectorPanel(private val act: EditorActivity, private val host: EditorHo
     }
 
     fun addComponentDialog(go: GameObject) {
-        val cats = ComponentRegistry.categories.entries.toList()
-        MaterialAlertDialogBuilder(act)
-            .setTitle("Add Component")
-            .setItems(cats.map { "${it.key}  ›" }.toTypedArray()) { _, ci ->
-                val types = cats[ci].value.filter { t -> t == "Script" || go.components.none { it.type == t } }
-                if (types.isEmpty()) return@setItems
-                MaterialAlertDialogBuilder(act)
-                    .setTitle(cats[ci].key)
-                    .setItems(types.map { prettyType(it) }.toTypedArray()) { _, i ->
-                        record()
-                        locked { ComponentRegistry.create(types[i])?.let { go.add(it) } }
-                        rebuild(); changed(true)
-                    }
-                    .setNegativeButton("Back") { _, _ -> addComponentDialog(go) }
-                    .show()
+        val commands = ComponentRegistry.categories.flatMap { (category, types) ->
+            types.filter { type -> type == "Script" || go.components.none { it.type == type } }.map { type ->
+                CommandPalette.Command(prettyType(type), category) {
+                    record()
+                    locked { ComponentRegistry.create(type)?.let { go.add(it) } }
+                    rebuild(); changed(true)
+                }
             }
-            .show()
+        }
+        CommandPalette.show(act, commands)
     }
 
     companion object {

@@ -17,14 +17,14 @@ object ProjectManager {
             .map { Project(it) }
             .sortedByDescending { it.dir.lastModified() }
 
-    fun open(ctx: Context, name: String) = Project(File(root(ctx), name))
+    fun open(ctx: Context, name: String) = Project(AtomicFiles.child(root(ctx), name))
 
     fun sanitize(name: String) = name.trim().replace(Regex("[^A-Za-z0-9 _\\-]"), "").take(40)
 
     fun exists(ctx: Context, name: String) = File(root(ctx), name).exists()
 
     fun create(ctx: Context, name: String, template: Templates.Template): Project {
-        val p = Project(File(root(ctx), name))
+        val p = Project(AtomicFiles.child(root(ctx), name))
         p.saveMeta()
         template.build(p)
         p.saveMeta()
@@ -34,7 +34,7 @@ object ProjectManager {
     fun delete(p: Project) = p.dir.deleteRecursively()
 
     fun rename(ctx: Context, p: Project, newName: String): Project? {
-        val target = File(root(ctx), newName)
+        val target = AtomicFiles.child(root(ctx), newName)
         if (target.exists()) return null
         return if (p.dir.renameTo(target)) Project(target) else null
     }
@@ -50,7 +50,7 @@ object ProjectManager {
 
     fun exportZip(p: Project, out: OutputStream) {
         ZipOutputStream(out).use { zip ->
-            p.dir.walkTopDown().filter { it.isFile }.forEach { f ->
+            p.dir.walkTopDown().filter { ProjectFiles.isPublishable(p.dir, it) }.forEach { f ->
                 val rel = f.relativeTo(p.dir).path.replace('\\', '/')
                 zip.putNextEntry(ZipEntry("${p.name}/$rel"))
                 f.inputStream().use { it.copyTo(zip) }
@@ -66,8 +66,7 @@ object ProjectManager {
         ZipInputStream(input).use { zip ->
             while (true) {
                 val e = zip.nextEntry ?: break
-                val f = File(tmp, e.name)
-                if (!f.canonicalPath.startsWith(tmp.canonicalPath)) continue // zip-slip guard
+                val f = AtomicFiles.child(tmp, e.name) // path-segment-aware zip-slip guard
                 if (e.isDirectory) f.mkdirs() else {
                     f.parentFile?.mkdirs()
                     f.outputStream().use { zip.copyTo(it) }

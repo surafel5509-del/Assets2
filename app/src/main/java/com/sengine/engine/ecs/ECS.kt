@@ -66,6 +66,7 @@ class World(val name: String = "Default World") {
     private val versions = mutableMapOf<Int, Int>()
 
     fun createEntity(vararg components: IComponentData): Entity {
+        require(components.map { it::class.java }.distinct().size == components.size) { "Duplicate component types in entity" }
         val index = if (freeIndices.isNotEmpty()) freeIndices.removeAt(freeIndices.size - 1) else nextIndex++
         val version = versions.getOrDefault(index, 0) + 1
         versions[index] = version
@@ -130,9 +131,16 @@ class World(val name: String = "Default World") {
         for (sys in systems) sys.onUpdate(dt)
     }
 
+    fun clearEntities() {
+        // Retain generation counters so stale handles never address a newly created entity.
+        val live = archetypes.flatMap { it.entities }.toList()
+        live.forEach { destroyEntity(it) }
+        archetypes.clear()
+    }
+
     fun destroy() {
         for (sys in systems) sys.onDestroy()
-        archetypes.clear()
+        clearEntities()
         systems.clear()
     }
 
@@ -173,6 +181,11 @@ class EntityManager {
     private val entityToGo = mutableMapOf<Entity, GameObject>()
 
     fun createFromGameObject(go: GameObject): Entity {
+        goToEntity[go.id]?.let { existing ->
+            if (entityToGo[existing] === go) return existing
+            world.destroyEntity(existing)
+            entityToGo.remove(existing)
+        }
         val entity = world.createEntity(
             Translation(go.x, go.y, go.z),
             Rotation(go.rotX, go.rotY, go.rotation),
@@ -183,21 +196,46 @@ class EntityManager {
         return entity
     }
 
-    fun syncToGameObject() {
-        val chunks = world.query(Query(all = setOf(Translation::class.java)))
-        for (chunk in chunks) {
+    /** Import changes made by scripts/physics before ECS systems run. */
+    fun syncFromGameObjects() {
+        for ((entity, go) in entityToGo.toMap()) if (go.destroyed) {
+            world.destroyEntity(entity); entityToGo.remove(entity); goToEntity.remove(go.id)
+        }
+        for (chunk in world.query(Query(all = setOf(Translation::class.java, Rotation::class.java, Scale::class.java)))) {
             val translations = chunk.getComponents(Translation::class.java)
+            val rotations = chunk.getComponents(Rotation::class.java)
+            val scales = chunk.getComponents(Scale::class.java)
             for (i in 0 until chunk.count) {
-                val entity = chunk.entities[i]
-                val go = entityToGo[entity] ?: continue
-                go.x = translations[i].x
-                go.y = translations[i].y
-                go.z = translations[i].z
+                val go = entityToGo[chunk.entities[i]] ?: continue
+                translations[i].apply { x = go.x; y = go.y; z = go.z }
+                rotations[i].apply { x = go.rotX; y = go.rotY; z = go.rotation }
+                scales[i].apply { x = go.scaleX; y = go.scaleY; z = go.scaleZ }
             }
         }
     }
 
+    fun syncToGameObject() {
+        for (chunk in world.query(Query(all = setOf(Translation::class.java, Rotation::class.java, Scale::class.java)))) {
+            val translations = chunk.getComponents(Translation::class.java)
+            val rotations = chunk.getComponents(Rotation::class.java)
+            val scales = chunk.getComponents(Scale::class.java)
+            for (i in 0 until chunk.count) {
+                val go = entityToGo[chunk.entities[i]] ?: continue
+                if (!go.isActiveInHierarchy()) continue
+                go.x = translations[i].x; go.y = translations[i].y; go.z = translations[i].z
+                go.rotX = rotations[i].x; go.rotY = rotations[i].y; go.rotation = rotations[i].z
+                go.scaleX = scales[i].x; go.scaleY = scales[i].y; go.scaleZ = scales[i].z
+            }
+        }
+    }
+
+    fun clear() {
+        world.clearEntities()
+        goToEntity.clear(); entityToGo.clear()
+    }
+
     fun update(dt: Float) {
+        syncFromGameObjects()
         world.update(dt)
         syncToGameObject()
     }

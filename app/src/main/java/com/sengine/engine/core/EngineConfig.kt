@@ -8,15 +8,15 @@ import org.json.JSONObject
  */
 object EngineVersion {
     const val MAJOR = 6
-    const val MINOR = 1
-    const val PATCH = 2
-    const val NAME = "S Engine Ultra Edition"
-    const val CODENAME = "Ultra"
-    const val API_VERSION = 612
-    const val PREV_CODENAME = "Titan"
-    const val PREV_VERSION = "6.1.1 Most Powerful Edition [Titan]"
+    const val MINOR = 2
+    const val PATCH = 0
+    const val NAME = "S Engine Studio"
+    const val CODENAME = "Studio"
+    const val API_VERSION = 620
+    const val PREV_CODENAME = "Ultra"
+    const val PREV_VERSION = "6.1.2 Ultra Edition"
     fun string() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION"
-    fun fullString() = "$NAME $MAJOR.$MINOR.$PATCH [$CODENAME] API:$API_VERSION (Prev: $PREV_VERSION [$PREV_CODENAME]) | Features: RayTracing,Nanite,Lumen,Chaos,WorldPartition,ControlRig,MotionMatching,XR,EQS,MLAgents,PCG,2D_URP,Tilemap,2D_Physics,2D_Animation,Sorting,FullControl,Clustered,CSM,FSR2,VolumetricClouds,WaterV2,Burst,UndoRedo,PrefabVariants,GOAP,InterestManagement"
+    fun fullString() = "${string()} | Android editor • OpenGL ES 2.0 • JavaScript • 2D/3D physics • Studio workflows"
 }
 
 enum class RayTracingQuality { Off, Low, Medium, High, Ultra, Psycho }

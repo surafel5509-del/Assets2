@@ -65,7 +65,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
 
     override fun onDrawFrame(gl: GL10?) {
         val now = System.nanoTime()
-        val dt = ((now - lastNs) / 1e9f).coerceIn(0f, 0.1f)
+        val dt = ((now - lastNs) / 1e9f).coerceAtLeast(0f)
         lastNs = now
         synchronized(engine.lock) {
             engine.tick(dt)

@@ -4,13 +4,14 @@ import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Ultimate Edition Job System - Unity Jobs + Burst equivalent
- * High-performance multithreaded job scheduler
+ * JVM executor-backed job scheduler. This is not a native/Burst compiler.
  */
 
 class JobHandle internal constructor(internal val future: Future<*>? = null, internal val id: Int = 0) {
     fun complete() {
-        try { future?.get() } catch (_: Exception) {}
+        try { future?.get() }
+        catch (e: InterruptedException) { Thread.currentThread().interrupt(); throw IllegalStateException("Job wait interrupted", e) }
+        catch (e: ExecutionException) { throw IllegalStateException("Job execution failed", e.cause) }
     }
     fun isCompleted(): Boolean = future?.isDone ?: true
 
@@ -37,7 +38,7 @@ interface IJobParallelForBatch {
 
 class JobSystem {
     private val executor: ExecutorService = Executors.newFixedThreadPool(
-        maxOf(2, Runtime.getRuntime().availableProcessors() - 1),
+        (Runtime.getRuntime().availableProcessors() - 1).coerceIn(2, 8),
         ThreadFactory { r ->
             Thread(r, "S-Job-${jobCounter.incrementAndGet()}").apply { isDaemon = true }
         }
@@ -55,6 +56,7 @@ class JobSystem {
     }
 
     fun scheduleParallel(job: IJobParallelFor, count: Int, batchSize: Int = 32): JobHandle {
+        require(count >= 0 && batchSize > 0) { "Count must be non-negative and batch size positive" }
         val futures = mutableListOf<Future<*>>()
         var start = 0
         while (start < count) {
@@ -67,12 +69,13 @@ class JobSystem {
             start = end
         }
         val combined = executor.submit {
-            for (f in futures) try { f.get() } catch (_: Exception) {}
+            for (f in futures) f.get()
         }
         return JobHandle(combined, jobIdCounter.incrementAndGet())
     }
 
     fun scheduleBatch(job: IJobParallelForBatch, count: Int, batchSize: Int = 32): JobHandle {
+        require(count >= 0 && batchSize > 0) { "Count must be non-negative and batch size positive" }
         val futures = mutableListOf<Future<*>>()
         var start = 0
         while (start < count) {
@@ -82,7 +85,7 @@ class JobSystem {
             start += c
         }
         val combined = executor.submit {
-            for (f in futures) try { f.get() } catch (_: Exception) {}
+            for (f in futures) f.get()
         }
         return JobHandle(combined, jobIdCounter.incrementAndGet())
     }

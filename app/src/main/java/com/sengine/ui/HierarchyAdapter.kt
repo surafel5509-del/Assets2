@@ -25,16 +25,26 @@ class HierarchyAdapter(
     private var rows: List<Row> = emptyList()
     val collapsed = HashSet<Long>()
     var selectedId = -1L
+    var query = ""
 
     class VH(val root: LinearLayout, val arrow: TextView, val icon: TextView, val name: TextView, val eye: TextView) : RecyclerView.ViewHolder(root)
 
     fun submit(items: List<Pair<GameObject, Int>>, all: List<GameObject>) {
         val out = ArrayList<Row>()
         var hideDepth = Int.MAX_VALUE
+        val parents = all.mapNotNull { it.parent }.toHashSet()
+        val visible = HashSet<GameObject>()
+        if (query.isNotBlank()) for (go in all) {
+            if (go.name.contains(query, true) || go.tag.contains(query, true) || go.components.any { it.type.contains(query, true) }) {
+                var node: GameObject? = go
+                while (node != null && visible.add(node)) node = node.parent
+            }
+        }
         for ((go, depth) in items) {
-            if (depth > hideDepth) continue
+            if (query.isNotBlank() && go !in visible) continue
+            if (query.isBlank() && depth > hideDepth) continue
             hideDepth = Int.MAX_VALUE
-            val hasChildren = all.any { it.parent === go }
+            val hasChildren = go in parents
             out.add(Row(go, depth, hasChildren, go.name, go.active, iconFor(go)))
             if (hasChildren && go.id in collapsed) hideDepth = depth
         }
@@ -71,11 +81,13 @@ class HierarchyAdapter(
 
     override fun onBindViewHolder(h: VH, position: Int) {
         val r = rows[position]
-        h.root.setPadding(act.dp(4 + r.depth * 14), act.dp(7), act.dp(4), act.dp(7))
+        h.root.setPadding(act.dp(4 + r.depth.coerceAtMost(8) * 14), act.dp(7), act.dp(4), act.dp(7))
         h.arrow.text = if (r.hasChildren) (if (r.go.id in collapsed) "▸" else "▾") else ""
         h.icon.text = r.icon
         h.name.text = r.name
         h.name.setTextColor(if (r.active) C.TEXT else C.DIM)
+        h.eye.contentDescription = "Toggle ${r.name} active"
+        h.arrow.contentDescription = "Expand or collapse ${r.name}"
         h.eye.text = if (r.active) "👁" else "–"
         h.root.setBackgroundColor(if (r.go.id == selectedId) C.SEL else 0)
         h.root.setOnClickListener { onClick(r.go) }

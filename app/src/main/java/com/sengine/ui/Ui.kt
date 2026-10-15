@@ -15,17 +15,18 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 object C {
-    const val BG = 0xFF1E1F22.toInt()
-    const val PANEL = 0xFF2B2D31.toInt()
-    const val PANEL2 = 0xFF383A40.toInt()
-    const val HEADER = 0xFF232428.toInt()
-    const val FIELD = 0xFF1A1B1E.toInt()
-    const val ACCENT = 0xFF4C8DFF.toInt()
-    const val TEXT = 0xFFE6E6E6.toInt()
-    const val DIM = 0xFF9AA0A6.toInt()
-    const val SEL = 0xFF34507F.toInt()
+    const val BORDER = 0xFF303B4E.toInt()
+    const val BG = 0xFF10141C.toInt()
+    const val PANEL = 0xFF181E29.toInt()
+    const val PANEL2 = 0xFF252F40.toInt()
+    const val HEADER = 0xFF141A24.toInt()
+    const val FIELD = 0xFF101620.toInt()
+    const val ACCENT = 0xFF6CA5FF.toInt()
+    const val TEXT = 0xFFE7EDF7.toInt()
+    const val DIM = 0xFF93A2B9.toInt()
+    const val SEL = 0xFF253D62.toInt()
     const val RED = 0xFFE5534B.toInt()
-    const val GREEN = 0xFF57AB5A.toInt()
+    const val GREEN = 0xFF54C99A.toInt()
     const val YELLOW = 0xFFE0B341.toInt()
 }
 
@@ -55,6 +56,9 @@ fun Context.button(text: String, color: Int = C.PANEL2, textColor: Int = C.TEXT,
         gravity = Gravity.CENTER
         setPadding(dp(12), dp(6), dp(12), dp(6))
         minWidth = dp(40)
+        minHeight = dp(36)
+        contentDescription = text
+        tooltipText = text
         background = RippleDrawable(ColorStateList.valueOf(0x44FFFFFF), round(color, dp(6).toFloat()), null)
         isClickable = true
         isFocusable = true
@@ -71,7 +75,7 @@ fun Context.field(value: String, numeric: Boolean = false, multiline: Boolean = 
         setTextColor(C.TEXT)
         textSize = 13f
         setPadding(dp(6), dp(4), dp(6), dp(4))
-        background = round(C.FIELD, dp(4).toFloat(), 1, 0xFF3A3C42.toInt())
+        background = round(C.FIELD, dp(4).toFloat(), 1, C.BORDER)
         inputType = when {
             numeric -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
             multiline -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS

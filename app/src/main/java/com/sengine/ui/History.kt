@@ -1,44 +1,37 @@
 package com.sengine.ui
 
+import com.sengine.editor.SnapshotHistory
 import com.sengine.engine.Engine
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
 import org.json.JSONObject
 
-/** Snapshot based undo / redo for the edited scene. */
+/** Adapter around the bounded, independently testable history store. */
 class History(private val engine: Engine) {
-    private val undoStack = ArrayDeque<Pair<String, Long>>()
-    private val redoStack = ArrayDeque<Pair<String, Long>>()
+    private val store = SnapshotHistory()
     var dirty = false
+    val canUndo get() = store.canUndo
+    val canRedo get() = store.canRedo
+    val undoCount get() = store.undoCount
+    val redoCount get() = store.redoCount
+    private fun snapshot(selected: Long) = SnapshotHistory.Entry(SceneSerializer.toJson(engine.scene).toString(), selected)
 
-    private fun snapshot(): String = synchronized(engine.lock) { SceneSerializer.toJson(engine.scene).toString() }
-
-    fun record(selected: Long) {
-        if (engine.mode != Engine.Mode.EDIT) return
-        val s = snapshot()
-        if (undoStack.lastOrNull()?.first == s) return
-        undoStack.addLast(s to selected)
-        while (undoStack.size > 60) undoStack.removeFirst()
-        redoStack.clear()
+    fun record(selected: Long) = synchronized(engine.lock) {
+        if (engine.mode != Engine.Mode.EDIT) return@synchronized
+        store.record(snapshot(selected))
         dirty = true
     }
-
-    val canUndo get() = undoStack.isNotEmpty()
-    val canRedo get() = redoStack.isNotEmpty()
-
-    fun undo(selected: Long): Pair<Scene, Long>? {
-        val e = undoStack.removeLastOrNull() ?: return null
-        redoStack.addLast(snapshot() to selected)
+    fun undo(selected: Long): Pair<Scene, Long>? = synchronized(engine.lock) {
+        if (engine.mode != Engine.Mode.EDIT) return@synchronized null
+        val e = store.undo(snapshot(selected)) ?: return@synchronized null
         dirty = true
-        return SceneSerializer.fromJson(JSONObject(e.first)) to e.second
+        SceneSerializer.fromJson(JSONObject(e.json)) to e.selection
     }
-
-    fun redo(selected: Long): Pair<Scene, Long>? {
-        val e = redoStack.removeLastOrNull() ?: return null
-        undoStack.addLast(snapshot() to selected)
+    fun redo(selected: Long): Pair<Scene, Long>? = synchronized(engine.lock) {
+        if (engine.mode != Engine.Mode.EDIT) return@synchronized null
+        val e = store.redo(snapshot(selected)) ?: return@synchronized null
         dirty = true
-        return SceneSerializer.fromJson(JSONObject(e.first)) to e.second
+        SceneSerializer.fromJson(JSONObject(e.json)) to e.selection
     }
-
-    fun clear() { undoStack.clear(); redoStack.clear() }
+    fun clear() { store.clear(); dirty = false }
 }

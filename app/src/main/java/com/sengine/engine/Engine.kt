@@ -23,24 +23,9 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * S Engine Ultimate Edition - Professional Game Engine Core
- * Unity 6 + Unreal Engine 5 class architecture
- * 
- * Features:
- * - Universal Render Pipeline + HDRP + Forward/Deferred
- * - Advanced Physics with joints, vehicles, character controller, cloth
- * - DOTS-like ECS + Job System
- * - Animator Controller with state machines, blend trees, IK
- * - NavMesh + Behavior Trees + Crowd
- * - Audio Mixer + Spatial Audio + Reverb Zones
- * - VFX Graph + Advanced Particle System
- * - Terrain System + Water + Skybox + Volumetric Fog
- * - Input System v2 (action-based)
- * - Networking (Netcode)
- * - Profiling + Frame Debugger
- * - Prefab System + Object Pooling
- * - Material System (PBR)
- * - Post Processing Stack v3
+ * Android editor/player runtime. The active loop integrates scripts, basic physics,
+ * hybrid ECS, animation, audio, and rendering. Additional modules below include
+ * experimental implementations; their presence is not a supported-feature guarantee.
  */
 
 class Engine(val project: Project, initialScene: Scene) {
@@ -78,7 +63,7 @@ class Engine(val project: Project, initialScene: Scene) {
     val config = EngineConfig()
     val timeManager = TimeManager()
     val ecs = com.sengine.engine.ecs.EntityManager()
-    val jobSystem = com.sengine.engine.jobs.JobSystem.main
+    val jobSystem = com.sengine.engine.jobs.JobSystem()
     val materialLibrary = com.sengine.engine.render.MaterialLibrary()
     val pipelineManager = com.sengine.engine.render.pipeline.PipelineManager()
     val lightingSystem = com.sengine.engine.render.LightingSystem()
@@ -287,12 +272,8 @@ class Engine(val project: Project, initialScene: Scene) {
             ultraEditor.createWindow(com.sengine.engine.tools.EditorWindowType.Hierarchy)
             ultraPlatform.createARPlane(0f,0f,0f, 5f,5f)
         } catch (_: Exception) {}
-        log(0, "S Engine Most Powerful Edition v${EngineVersion.MAJOR}.${EngineVersion.MINOR}.${EngineVersion.PATCH} [${EngineVersion.CODENAME}] Initialized - ULTRA - Months/Years Professional Project")
-        log(0, "Render Pipeline: ${config.pipeline} | Color Space: ${config.colorSpace} | Quality: ${config.quality.level} | 2D URP: Enabled | Clustered: ${ultraRendering.mode} | Upscaler: ${ultraRendering.upscaler.type}")
-        log(0, "Quantum Systems: RayTracing=${config.rayTracing} Nanite=${config.nanite} Lumen=${config.lumen} VT=${config.virtualTexture} Chaos=${config.chaosDestruction} WorldPartition=${config.worldPartition} XR=${config.xrSupport}")
-        log(0, "Titan 2D Systems: Renderer2D=${renderer2DSystem.lights.size} Sprites=${spriteSystemV2.sprites.size} Tilemap=${tilemapSystemV2.layers.size} Physics2D=${physics2DV2.bodies.size} Sorting=${sortingSystem.layers.size}")
-        log(0, "Most Powerful Tools: FullControl=${fullControlSystem.hierarchy.size} Packages=${packageManagerSystem.packages.size} ProfilerV2=${profilerV2System.frames.size} HotReload=${hotReloadSystem.watchedFiles.size}")
-        log(0, "Ultra Systems: Core Burst=${ultraCore.burstJobs.size} Assemblies=${ultraCore.assemblies.size} SO=${ultraCore.scriptableObjects.size} ${ultraCore.undoRedo.getStats()} | Rendering ${ultraRendering.getStats()} | Physics ${ultraPhysics.getStats()} | Anim ${ultraAnimation.getStats()} | Audio ${ultraAudio.getStats()} | AI ${ultraAI.getStats()} | Net ${ultraNetworking.getStats()} | Platform ${ultraPlatform.getStats()} | Editor ${ultraEditor.getStats()} | FullControl ${ultraFullControl.getStats()}")
+        log(0, "${EngineVersion.string()} initialized")
+        log(0, "Runtime: OpenGL ES 2.0, Rhino JavaScript, 2D/3D physics. Experimental modules are not production capability guarantees.")
     }
 
     // ---------------------------------------------------------------- commands
@@ -356,7 +337,8 @@ class Engine(val project: Project, initialScene: Scene) {
         scene.updateTransforms()
         updateGameView()
 
-        // Initialize ECS
+        // Initialize ECS without retaining mappings from a previous play session.
+        ecs.clear()
         for (go in scene.objects) if (go.isActiveInHierarchy()) ecs.createFromGameObject(go)
 
         // Initialize VFX
@@ -394,6 +376,7 @@ class Engine(val project: Project, initialScene: Scene) {
     private fun endScene() {
         profiler.beginSample("EndScene")
         scripts.end()
+        ecs.clear()
         audio.stop()
         vfxSystems.clear()
         behaviorTrees.clear()
@@ -413,7 +396,8 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     // ---------------------------------------------------------------- loop
-    fun tick(dt: Float) {
+    fun tick(rawDt: Float) {
+        val dt = if (rawDt.isFinite()) rawDt.coerceAtLeast(0f) else 0f
         profiler.beginSample("Engine.Tick")
         while (true) {
             val c = commands.poll() ?: break
@@ -427,9 +411,9 @@ class Engine(val project: Project, initialScene: Scene) {
             Mode.EDIT -> {
                 profiler.beginSample("EditMode")
                 scene.updateTransforms()
-                updateParticles(dt)
-                updateAnimators(dt, false)
-                updateVFX(dt, false)
+                updateParticles(dt.coerceAtMost(0.1f))
+                updateAnimators(dt.coerceAtMost(0.1f), false)
+                updateVFX(dt.coerceAtMost(0.1f), false)
                 profiler.endSample("EditMode")
             }
             Mode.PAUSED -> scene.updateTransforms()
@@ -440,8 +424,8 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     private fun runFrame(dt0: Float) {
-        val dt = dt0.coerceAtMost(timeManager.maximumDeltaTime)
-        timeManager.update(dt)
+        timeManager.update(dt0)
+        val dt = timeManager.deltaTime
         time += dt; frame++
         scene.updateTransforms()
         updateGameView()
@@ -457,8 +441,11 @@ class Engine(val project: Project, initialScene: Scene) {
 
         // Physics
         profiler.beginSample("Physics")
+        physics.clock.stepSeconds = timeManager.fixedDeltaTime
+        physics3D.clock.stepSeconds = timeManager.fixedDeltaTime
         physics.step(scene, dt)
         physics3D.step(scene, dt)
+        repeat(physics.clock.stepsLastFrame) { timeManager.fixedUpdate() }
         physicsAdvanced.update(scene, dt)
         // Character controllers
         for (go in scene.objects) {
@@ -498,8 +485,9 @@ class Engine(val project: Project, initialScene: Scene) {
         aiMs = aiMs * 0.9f + (tAI1 - tAI0) / 1e6f * 0.1f
 
         cleanupDestroyed()
-        scene.updateTransforms()
+        for (go in scene.objects) if (go.isActiveInHierarchy()) ecs.createFromGameObject(go)
         ecs.update(dt)
+        scene.updateTransforms()
 
         // Camera
         profiler.beginSample("Camera")
@@ -776,6 +764,7 @@ class Engine(val project: Project, initialScene: Scene) {
         synchronized(lock) {
             if (mode != Mode.EDIT) endScene()
             audio.stop()
+            ecs.world.destroy()
             jobSystem.shutdown()
         }
     }

@@ -21,6 +21,10 @@ class GameObject(var id: Long, var name: String) {
     var scaleZ = 1f
 
     var parent: GameObject? = null
+        set(value) {
+            require(value !== this && (value == null || !isAncestorOf(value))) { "A hierarchy cannot contain cycles" }
+            field = value
+        }
     val components = mutableListOf<Component>()
 
     @Volatile var destroyed = false
@@ -34,9 +38,12 @@ class GameObject(var id: Long, var name: String) {
         Mat4.trs(out, x, y, z, rotX, rotY, rotation, scaleX, scaleY, scaleZ)
 
     fun computeWorld3(): FloatArray {
-        val local = localMatrix3()
-        val p = parent ?: return local
-        return Mat4.mul(FloatArray(16), p.computeWorld3(), local)
+        val chain = ArrayList<GameObject>()
+        var node: GameObject? = this
+        while (node != null) { chain.add(node); node = node.parent }
+        var result = Mat4.identity()
+        for (ancestor in chain.asReversed()) result = Mat4.mul(FloatArray(16), result, ancestor.localMatrix3())
+        return result
     }
 
     fun setWorldPosition3(wx: Float, wy: Float, wz: Float) {
@@ -51,9 +58,12 @@ class GameObject(var id: Long, var name: String) {
     fun localMatrix(out: Affine = Affine()): Affine = out.setTRS(x, y, rotation, scaleX, scaleY)
 
     fun computeWorld(): Affine {
-        val local = localMatrix()
-        val p = parent ?: return local
-        return Affine().setMul(p.computeWorld(), local)
+        val chain = ArrayList<GameObject>()
+        var node: GameObject? = this
+        while (node != null) { chain.add(node); node = node.parent }
+        var result = Affine()
+        for (ancestor in chain.asReversed()) result = Affine().setMul(result, ancestor.localMatrix())
+        return result
     }
 
     fun setWorldPosition(wx: Float, wy: Float) {
@@ -66,7 +76,14 @@ class GameObject(var id: Long, var name: String) {
         }
     }
 
-    fun isActiveInHierarchy(): Boolean = active && !destroyed && (parent?.isActiveInHierarchy() ?: true)
+    fun isActiveInHierarchy(): Boolean {
+        var node: GameObject? = this
+        while (node != null) {
+            if (!node.active || node.destroyed) return false
+            node = node.parent
+        }
+        return true
+    }
 
     fun isAncestorOf(other: GameObject): Boolean {
         var p = other.parent
