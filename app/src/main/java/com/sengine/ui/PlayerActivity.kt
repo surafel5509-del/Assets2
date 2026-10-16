@@ -111,6 +111,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         glView.onResume()
+        if (::engine.isInitialized) engine.log(0, "Activity resumed: GL surface resumed")
         if (tiltEnabled) tiltInput?.start()
         handler.post(fpsTick)
         hideSystemUi()
@@ -120,6 +121,7 @@ class PlayerActivity : AppCompatActivity() {
         tiltInput?.stop()
         super.onPause()
         glView.onPause()
+        if (::engine.isInitialized) engine.log(0, "Activity paused: GL surface paused")
         handler.removeCallbacks(fpsTick)
     }
 

@@ -171,6 +171,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     override fun onResume() {
         super.onResume()
         glView.onResume()
+        engine.log(0, "Activity resumed: GL surface resumed")
         if (project.controlScheme == "driveTilt") tiltInput?.start()
         handler.post(ticker)
         refreshAssets()
@@ -180,6 +181,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         tiltInput?.stop()
         super.onPause()
         glView.onPause()
+        engine.log(0, "Activity paused: GL surface paused")
         handler.removeCallbacks(ticker)
         if (engine.mode == Engine.Mode.EDIT && history.dirty) saveScene(silent = true)
     }

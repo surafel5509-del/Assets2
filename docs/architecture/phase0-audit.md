@@ -108,7 +108,7 @@ Implemented (source only; **not yet compiled by Gradle** in this sandbox):
 Not yet done in Phase 1 (honest gaps):
 
 - `render/Textures.kt` and `render/PostProcessor.kt` still call `GLES20` directly. This is valid on an ES 3 context, but ES 3-only features (VAOs, UBOs, instancing) are not used anywhere yet.
-- No context-loss handling beyond re-running init on `onSurfaceCreated`. Textures and post targets are rebuilt there; there is no device-side verification of resume or context recreation.
+- Context loss is handled by re-running init on `onSurfaceCreated`: textures, post targets, shaders and renderer buffers are rebuilt, and stale handles from the old context are forgotten, not deleted. Lifecycle is now observable: each context is numbered (`GL context #N`), each surface size change is logged, and pause and resume are logged (see `docs/architecture/phase1-device-verification.md`). There is still no device-side verification of resume or context recreation.
 - No user-facing error dialog for init failure; the failure is shown in the log and status line.
 - The Phase 1 gate ("actual existing scenes render on ES 3; app survives resize, pause/resume and context recreation") **has not been verified on a device or emulator.**
 
