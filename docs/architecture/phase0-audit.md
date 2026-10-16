@@ -93,7 +93,7 @@ Known GL-related risks found in the audit (not yet addressed unless noted in §8
 
 ## 8. Phase 1 status on this branch
 
-Implemented (source only; **not yet compiled by Gradle** in this sandbox):
+Implemented (Gradle compiles and unit tests run in CI, not in the sandbox; **no device run yet**):
 
 - `render/api/GraphicsApi.kt`: `GraphicsBackend` (GLES30, GLES20), `ShaderDialect`, `GlCapabilities` (version/GLSL parsing, `describe`), `GraphicsBackendSelector`, `GraphicsInitException`.
 - `render/api/ShaderSourceSet.kt`: one interface per dialect; `ShaderDiagnostics` maps driver `0:<line>` errors back to the user's effect code.
@@ -132,4 +132,7 @@ Not yet done in Phase 1 (honest gaps):
   - Run `38865877370` on `04c9185` (first push): **failure** in `:app:compileDebugKotlin`, three unresolved `EGL14.EGL_OPENGL_ES3_BIT` references in `GlSurface.kt`. The constant is not in `EGL14`. Fixed by declaring the EGL_KHR_create_context value `0x40` locally.
   - Run `38866267838` on `2aa8649`: **success.** Steps `Run unit tests` (`testDebugUnitTest`, which includes the new `render` tests) and `Assemble debug and release APKs` both succeeded, and the APK artifact was uploaded. The per-test count was not retrieved, because the CI log and artifact storage were unreachable from the sandbox; the step result is the evidence.
   - Lesson: the sandbox can only type-check pure-Kotlin code. Android-facing code must be validated by CI until a local Android SDK is available.
+- **ES 3.00 compile check (sandbox, reference compiler):** all 21 ES 3 programs in `Gles3Shaders.kt` (10 built-in programs, the 3-program post/sprite/mesh variants, and the 8 built-in post effects from `Shaders.kt` substituted into the ES 3 post template) were compiled with glslang 0.0.15 (the Khronos reference front end, SPIR-V path). Result: **21 of 21 passed**. Negative control (an undeclared identifier) was rejected with `undeclared identifier`, so the checker is not accepting everything.
+  - Method: each source was checked as `#version 310 es` with `layout(location)` and `layout(binding)` added, because the SPIR-V path requires them. Those are the only changes. The ES 2 sources were not checked.
+  - Limits: this is a reference compiler, not a mobile driver. It does not prove the shaders run on Adreno, Mali or PowerVR drivers. The tool lives in `/tmp` and is not part of the repository.
 - `ShaderDiagnostics` mapping tests and the ES 3 shader lint tests validate the static properties of the sources. They do **not** prove that the GLSL compiles on a real driver; that requires an on-device run.
