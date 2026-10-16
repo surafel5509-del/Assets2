@@ -11,6 +11,12 @@ import javax.microedition.khronos.egl.EGLContext
 import javax.microedition.khronos.egl.EGLDisplay
 
 /**
+ * EGL_OPENGL_ES3_BIT (EGL_KHR_create_context, value 0x40). Android exposes it only through EGLExt, and
+ * EGL14 does not define it, so the value is declared here.
+ */
+private const val EGL_OPENGL_ES3_BIT = 0x00000040
+
+/**
  * EGL setup for [GLSurfaceView]. OpenGL ES 3.0 is requested first; when the driver has no ES 3 config
  * or refuses to create an ES 3 context, an OpenGL ES 2.0 context is created instead. The backend that
  * is actually used is decided later on the GL thread from the GL strings (see [GlInfo]), so a driver
@@ -50,7 +56,7 @@ private class Es3FirstConfigChooser(private val log: (String) -> Unit) : GLSurfa
                 EGL10.EGL_DEPTH_SIZE, 16,
                 EGL10.EGL_STENCIL_SIZE, 0,
                 EGL10.EGL_SURFACE_TYPE, EGL10.EGL_WINDOW_BIT,
-                EGL10.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT or EGL14.EGL_OPENGL_ES3_BIT,
+                EGL10.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT or EGL_OPENGL_ES3_BIT,
                 EGL10.EGL_NONE,
             )
             val count = IntArray(1)
@@ -59,7 +65,7 @@ private class Es3FirstConfigChooser(private val log: (String) -> Unit) : GLSurfa
             egl.eglChooseConfig(display, attribs, configs, configs.size, count)
             val usable = configs.filterNotNull()
             if (usable.isEmpty()) continue
-            val es3 = usable.firstOrNull { (GlSurface.renderableTypes(egl, display, it) and EGL14.EGL_OPENGL_ES3_BIT) != 0 }
+            val es3 = usable.firstOrNull { (GlSurface.renderableTypes(egl, display, it) and EGL_OPENGL_ES3_BIT) != 0 }
             log("EGL config: RGB$channel + depth16, ${usable.size} candidates, ES3-capable config: ${es3 != null}")
             return es3 ?: usable.first()
         }
@@ -73,7 +79,7 @@ private class Es3FirstConfigChooser(private val log: (String) -> Unit) : GLSurfa
 /** Creates an ES 3 context when the config allows it, falling back to ES 2 if creation fails. */
 private class Es3FirstContextFactory(private val log: (String) -> Unit) : GLSurfaceView.EGLContextFactory {
     override fun createContext(egl: EGL10, display: EGLDisplay, config: EGLConfig): EGLContext {
-        val es3Config = (GlSurface.renderableTypes(egl, display, config) and EGL14.EGL_OPENGL_ES3_BIT) != 0
+        val es3Config = (GlSurface.renderableTypes(egl, display, config) and EGL_OPENGL_ES3_BIT) != 0
         val versions = if (es3Config) intArrayOf(3, 2) else intArrayOf(2)
         for (version in versions) {
             val attribs = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, version, EGL10.EGL_NONE)
