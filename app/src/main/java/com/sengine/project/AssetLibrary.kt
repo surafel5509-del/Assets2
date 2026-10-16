@@ -77,6 +77,7 @@ object AssetLibrary {
         list += tex("Lava", "Lava.png", "Glowing lava, 128×128") { lava() }
         list += tex("Ice", "Ice.png", "Frozen surface, 64×64") { noiseTex(64, 0xFFBEE7F5.toInt(), 0xFF8CCBE6.toInt(), 2) }
         list += tex("Sky Gradient", "Sky.png", "Background gradient, 256×256") { sky(0xFF2E6FD8.toInt(), 0xFFBFE3FF.toInt(), false) }
+        list += tex("Real Sky 360°", "RealSky.png", "Equirectangular real sky texture for Camera3D Sky Mode, 512×256") { realSky() }
         list += tex("Night Sky", "NightSky.png", "Stars background, 256×256") { sky(0xFF050A1E.toInt(), 0xFF1D2B5A.toInt(), true) }
         list += tex("Desert Sky", "DesertSky.png", "Warm dusk sky for desert stages", "Textures") { sky(0xFFDA815C.toInt(), 0xFFFFD59A.toInt(), false) }
         list += tex("Arctic Sky", "ArcticSky.png", "Cool glacier sky for snow stages", "Textures") { sky(0xFF559AD4.toInt(), 0xFFE3F5FF.toInt(), false) }
@@ -562,6 +563,33 @@ object AssetLibrary {
                 c.drawCircle(r.nextFloat() * s, r.nextFloat() * s, 0.4f + r.nextFloat() * 1.1f, p)
             }
         }
+        return b
+    }
+
+    /** Equirectangular sky panorama: blue gradient, soft clouds and a warm sun glow. */
+    private fun realSky(): Bitmap {
+        val w = 512; val h = 256; val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        c.drawPaint(Paint().apply {
+            shader = LinearGradient(0f, 0f, 0f, h.toFloat(),
+                intArrayOf(0xFF1D5FBF.toInt(), 0xFF6FB2E8.toInt(), 0xFFCDEBFF.toInt(), 0xFFEAF6FF.toInt()),
+                floatArrayOf(0f, 0.45f, 0.72f, 1f), Shader.TileMode.CLAMP)
+        })
+        // clouds: many soft white ellipses clustered in bands
+        val r = rng(77); val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        repeat(90) {
+            val cx = r.nextFloat() * w; val cy = h * (0.18f + r.nextFloat() * 0.55f)
+            val rx = 18f + r.nextFloat() * 55f; val ry = rx * (0.22f + r.nextFloat() * 0.15f)
+            p.color = (0x30 + (r.nextFloat() * 0x40).toInt() shl 24) or 0x00FFFFFF
+            c.drawOval(RectF(cx - rx, cy - ry, cx + rx, cy + ry), p)
+            // wrap around the seam so the panorama tiles horizontally
+            c.drawOval(RectF(cx - rx - w, cy - ry, cx + rx - w, cy + ry), p)
+            c.drawOval(RectF(cx - rx + w, cy - ry, cx + rx + w, cy + ry), p)
+        }
+        // sun glow at u=0.3, high in the sky (the Sun component draws the crisp disc on top)
+        val sunX = w * 0.3f; val sunY = h * 0.22f
+        p.shader = RadialGradient(sunX, sunY, 70f, intArrayOf(0xCCFFF3C4.toInt(), 0x00FFF3C4), null, Shader.TileMode.CLAMP)
+        c.drawCircle(sunX, sunY, 70f, p)
         return b
     }
 

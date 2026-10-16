@@ -48,6 +48,8 @@ class Engine(val project: Project, initialScene: Scene) {
     val gameView = View2D()
 
     var time = 0.0; private set
+    /** Script/game speed multiplier (`game.timeScale = 0.5` = slow motion, 0 = frozen). */
+    @Volatile var timeScale = 1f
     var frame = 0L; private set
     @Volatile var fps = 0f; private set
     // profiler (milliseconds, smoothed)
@@ -163,13 +165,13 @@ class Engine(val project: Project, initialScene: Scene) {
 
         when (mode) {
             Mode.PLAY -> runFrame(dt)
-            Mode.EDIT -> { scene.updateTransforms(); updateParticles(dt); updateAnimators(dt, false) }
+            Mode.EDIT -> { scene.updateTransforms(); updateParticles(dt); updateParticles3D(dt); updateWorld(dt); updateAnimators(dt, false) }
             Mode.PAUSED -> scene.updateTransforms()
         }
     }
 
     private fun runFrame(dt0: Float) {
-        val dt = dt0.coerceAtMost(0.1f)
+        val dt = (dt0.coerceAtMost(0.1f) * timeScale).coerceAtLeast(0f)
         time += dt; frame++
         scene.updateTransforms()
         updateGameView()
@@ -188,6 +190,8 @@ class Engine(val project: Project, initialScene: Scene) {
         updateCamera3DFollow(dt)
         updateGameView()
         updateParticles(dt)
+        updateParticles3D(dt)
+        updateWorld(dt)
         updateAnimators(dt, true)
         decayShake(dt)
 
@@ -325,6 +329,74 @@ class Engine(val project: Project, initialScene: Scene) {
                 }
                 p.x += p.vx * dt; p.y += p.vy * dt
                 p.rotation += p.angularVelocity * dt
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 3D particles & world
+    private fun updateParticles3D(dt: Float) {
+        for (go in scene.objects) {
+            val pe = go.getAny<com.sengine.engine.core.ParticleEmitter3D>() ?: continue
+            val alive = go.isActiveInHierarchy() && pe.enabled
+            val w = go.world3
+            val ox = w[12]; val oy = w[13]; val oz = w[14]
+            if (alive && pe.emitting) pe.accumulator += pe.rate * dt
+            var toEmit = pe.accumulator.toInt() + pe.pendingBurst
+            pe.accumulator -= pe.accumulator.toInt()
+            pe.pendingBurst = 0
+            if (!alive) toEmit = 0
+            // base direction (normalised)
+            var dx = pe.directionX; var dy = pe.directionY; var dz = pe.directionZ
+            val dl = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz).coerceAtLeast(1e-6f)
+            dx /= dl; dy /= dl; dz /= dl
+            val cone = kotlin.math.tan(Math.toRadians(pe.spread.toDouble())).toFloat()
+            while (toEmit-- > 0 && pe.particles.size < pe.maxParticles) {
+                val so = when (pe.shape) {
+                    1 -> floatArrayOf((Random.nextFloat() * 2 - 1) * pe.shapeSize, (Random.nextFloat() * 2 - 1) * pe.shapeSize, (Random.nextFloat() * 2 - 1) * pe.shapeSize)
+                    2 -> floatArrayOf((Random.nextFloat() * 2 - 1) * pe.shapeSize, (Random.nextFloat() * 2 - 1) * pe.shapeSize, (Random.nextFloat() * 2 - 1) * pe.shapeSize)
+                    else -> floatArrayOf(0f, 0f, 0f)
+                }
+                var vx = dx + (Random.nextFloat() * 2 - 1) * cone
+                var vy = dy + (Random.nextFloat() * 2 - 1) * cone
+                var vz = dz + (Random.nextFloat() * 2 - 1) * cone
+                val vl = kotlin.math.sqrt(vx * vx + vy * vy + vz * vz).coerceAtLeast(1e-6f)
+                val sp = pe.speed * (1f + (Random.nextFloat() * 2 - 1) * pe.speedVariance)
+                vx = vx / vl * sp; vy = vy / vl * sp; vz = vz / vl * sp
+                pe.particles.add(com.sengine.engine.core.ParticleEmitter3D.Particle3(
+                    ox + so[0], oy + so[1], oz + so[2], vx, vy, vz,
+                    0f, pe.lifetime * (0.7f + Random.nextFloat() * 0.6f),
+                    (1f + (Random.nextFloat() * 2 - 1) * pe.sizeVariance).coerceAtLeast(0f), Random.nextFloat()))
+            }
+            val it = pe.particles.iterator()
+            while (it.hasNext()) {
+                val p = it.next()
+                p.age += dt
+                if (p.age >= p.life) { it.remove(); continue }
+                p.vy += pe.gravity * dt
+                if (pe.drag > 0f) {
+                    val dmp = max(0f, 1f - pe.drag * dt)
+                    p.vx *= dmp; p.vy *= dmp; p.vz *= dmp
+                }
+                p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt
+            }
+        }
+    }
+
+    /** Sun day cycle + human walk-cycle animation state. */
+    private fun updateWorld(dt: Float) {
+        for (go in scene.objects) {
+            go.getAny<com.sengine.engine.core.Sun>()?.let { sun ->
+                if (sun.animateDay && sun.enabled) {
+                    sun.dayFraction = (sun.dayFraction + dt * sun.daySpeed / 100f) % 1f
+                    if (sun.dayFraction < 0f) sun.dayFraction += 1f
+                }
+            }
+            go.getAny<com.sengine.engine.core.Human>()?.let { h ->
+                // the visible body is often a child of the physics root
+                val rb = go.getAny<com.sengine.engine.core.Rigidbody3D>()
+                    ?: go.parent?.getAny<com.sengine.engine.core.Rigidbody3D>()
+                h.moveSpeed = if (rb != null) kotlin.math.sqrt(rb.vx * rb.vx + rb.vz * rb.vz) else 0f
+                if (h.isWalking) h.walkPhase += dt * h.walkSpeed * (1f + h.moveSpeed * 0.35f)
             }
         }
     }

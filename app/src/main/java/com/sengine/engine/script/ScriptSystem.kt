@@ -50,6 +50,8 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         put(g, "audio", SAudio(engine))
         put(g, "storage", SStorage(engine.project))
         put(g, "console", SConsole(engine))
+        put(g, "game", SGame(engine))
+        put(g, "world", SWorld(engine, this))
         c.evaluateString(g, PRELUDE, "prelude", 1, null)
         compiled.clear()
         for (go in engine.scene.objects.toList()) attach(go)
@@ -122,6 +124,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
                 // Inspector params override top-level defaults like `var speed = 5;`
                 applyParams(scope, comp.params)
                 instances.add(inst)
+                call(inst, "awake")
             } catch (e: RhinoException) {
                 engine.log(2, "${comp.script}:${e.lineNumber()} ${e.details()}")
             } catch (e: Exception) {
@@ -169,6 +172,12 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
             if (!inst.go.isActiveInHierarchy() || !inst.comp.enabled) continue
             call(inst, "update", dtArg)
             if (tapTarget != null && tapTarget === inst.go) call(inst, "onTap")
+        }
+        // lateUpdate runs after every update() (camera work, following, UI sync...)
+        for (inst in instances.toList()) {
+            if (inst.failed || !inst.started || inst.go.destroyed) continue
+            if (!inst.go.isActiveInHierarchy() || !inst.comp.enabled) continue
+            call(inst, "lateUpdate", dtArg)
         }
         val g = global ?: return
         val tick = g.get("__tick", g)
@@ -240,6 +249,22 @@ function random(a, b) { if (a === undefined) return Math.random(); return a + Ma
 function randomInt(a, b) { return Math.floor(random(a, b + 1)); }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpAngle(a, b, t) { var d = ((b - a + 540) % 360) - 180; return a + d * clamp(t, 0, 1); }
+function moveTowards(v, target, step) { return v < target ? Math.min(v + step, target) : Math.max(v - step, target); }
+function sign(v) { return v > 0 ? 1 : (v < 0 ? -1 : 0); }
+function vec2(x, y) { return { x: x || 0, y: y || 0 }; }
+function vec3(x, y, z) { return { x: x || 0, y: y || 0, z: z || 0 }; }
+function find(name) { return scene.find(name); }
+function findAll(tag) { return scene.findAll(tag); }
+function instantiate(name, x, y, z) { return z === undefined ? scene.spawn(name, x, y) : scene.spawn(name, x, y, z); }
+function destroy(obj, delay) { if (!obj) return; if (delay) after(delay, function () { obj.destroy(); }); else obj.destroy(); }
+// tiny publish/subscribe event bus shared by all scripts: events.on("coin", fn), events.emit("coin", 1)
+var events = {
+  _h: {},
+  on: function (name, fn) { (this._h[name] = this._h[name] || []).push(fn); },
+  off: function (name) { delete this._h[name]; },
+  emit: function (name, arg) { var l = this._h[name] || []; for (var i = 0; i < l.length; i++) l[i](arg); }
+};
 var __timers = [];
 function after(sec, fn) { __timers.push({ t: time.time + sec, f: fn, every: 0 }); }
 function every(sec, fn) { __timers.push({ t: time.time + sec, f: fn, every: sec }); }

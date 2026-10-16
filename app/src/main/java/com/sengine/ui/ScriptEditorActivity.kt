@@ -227,8 +227,10 @@ class ScriptEditorActivity : AppCompatActivity() {
 
         val API_DOC = """
 LIFECYCLE (define any of these)
+  awake()              as soon as the object is created
   start()              once, when play begins
   update(dt)           every frame (dt = seconds)
+  lateUpdate(dt)       after all update() calls
   onCollision(other)   solid collision began
   onTrigger(other)     entered a trigger
   onTriggerExit(other) left a trigger
@@ -292,11 +294,42 @@ AUDIO  audio.play("file.wav") audio.beep()
 SAVE DATA  storage.get(key, fallback)  storage.set(key, value)
             project-scoped strings, numbers and booleans
 
+GAME   game.timeScale (0=freeze, 0.5=slow-mo)
+       game.fps game.pause() game.resume()
+       game.stop() game.shake(amount)
+
+WORLD  world.setSunColor("#FFD9A0")
+       world.setSunshine(1.2)        (0..6)
+       world.setSunTemperature(5600) (Kelvin)
+       world.setTimeOfDay(0..1)      (0=sunrise)
+       world.setSkyTexture("Sky.png")
+       world.setSkyColors(top, horizon)
+       world.terrainHeight(x, z)
+       world.waterLevel()
+
+EVENTS events.on("coin", fn)
+       events.emit("coin", value)
+       — shared by every script
+
+SELF EXTRAS
+  burstPreset("Fire", 40)  14 presets:
+  Fire Smoke Explosion Sparks Rain Snow
+  Magic Trail Healing Confetti Dust
+  Water Splash Falling Leaves Stars Bubbles
+  setFaceTexture("top", "Grass.png") ...
+  (top bottom front back left right)
+  setTiling(v) lookAt(x,y,z)
+  setWalking(b) isWalking() speed (3D)
+
 HELPERS
   log(...) warn(m) error(m)
   after(sec, fn) every(sec, fn)
+  find(name) findAll(tag)
+  instantiate(name,x,y[,z]) destroy(obj[,delay])
   random(a,b) randomInt(a,b)
-  clamp(v,a,b) lerp(a,b,t)
+  clamp(v,a,b) lerp(a,b,t) lerpAngle(a,b,t)
+  moveTowards(v,target,step) sign(v)
+  vec2(x,y) vec3(x,y,z)
 
 PARAMS  "speed=5, jump=10" in the Script
         component become variables.

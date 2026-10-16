@@ -43,6 +43,81 @@ object Meshes {
         })
     }
 
+    /** Heightfield mesh for a [com.sengine.engine.core.Terrain]; heights match Terrain.heightAt. */
+    fun terrain(t: com.sengine.engine.core.Terrain): Mesh {
+        val seg = t.segments.coerceIn(4, 160)
+        val b = B()
+        fun hAt(i: Int, j: Int): Float {
+            val u = i.toFloat() / seg; val v = j.toFloat() / seg
+            return com.sengine.engine.core.TerrainNoise.height(u, v, t.seed) * t.height
+        }
+        fun pos(i: Int, j: Int) = floatArrayOf(-t.width / 2f + t.width * i / seg, hAt(i, j), -t.depth / 2f + t.depth * j / seg)
+        fun emit(i: Int, j: Int) {
+            val p = pos(i, j)
+            val e = 1f
+            val dx = hAt(i + 1, j) - hAt(i - 1, j)
+            val dz = hAt(i, j + 1) - hAt(i, j - 1)
+            var nx = -dx / (2f * t.width / seg * e); var nz = -dz / (2f * t.depth / seg * e)
+            var ny = 1f
+            if (t.flatShading) { nx = 0f; nz = 0f }
+            val l = sqrt(nx * nx + ny * ny + nz * nz).coerceAtLeast(1e-6f)
+            b.v(p[0], p[1], p[2], nx / l, ny / l, nz / l, i.toFloat() / seg * t.tiling, j.toFloat() / seg * t.tiling)
+        }
+        for (j in 0 until seg) for (i in 0 until seg) {
+            emit(i, j); emit(i + 1, j); emit(i + 1, j + 1)
+            emit(i, j); emit(i + 1, j + 1); emit(i, j + 1)
+        }
+        return Mesh(b.arr())
+    }
+
+    /**
+     * Merged grass-blade mesh for a [com.sengine.engine.core.GrassField].
+     * Each blade is a tapered 2-triangle strip; UV.y (0 bottom, 1 tip) drives the
+     * wind bend in the mesh vertex shader and the bottom->top colour gradient
+     * is baked into the vertex colours via UV.x (reused as a tint mix by the caller).
+     */
+    fun grass(g: com.sengine.engine.core.GrassField): Mesh {
+        val b = B()
+        val rnd = kotlin.random.Random(g.seed * 1000003L + g.blades)
+        val count = g.blades.coerceIn(0, 20000)
+        for (n in 0 until count) {
+            val x = (rnd.nextFloat() * 2f - 1f) * g.areaX / 2f
+            val z = (rnd.nextFloat() * 2f - 1f) * g.areaZ / 2f
+            val h = g.bladeHeight * (0.65f + rnd.nextFloat() * 0.7f)
+            val wdt = g.bladeWidth * (0.7f + rnd.nextFloat() * 0.6f)
+            val rot = rnd.nextFloat() * Math.PI.toFloat()
+            val lean = (rnd.nextFloat() - 0.5f) * 0.35f
+            val cx = cos(rot.toDouble()).toFloat(); val sz = sin(rot.toDouble()).toFloat()
+            val tint = rnd.nextFloat()
+            // one vertical tapered blade quad in a random facing direction
+            val dx = sz; val dz = cx // perpendicular of facing dir
+            fun vert(side: Float, yFrac: Float) {
+                val halfW = wdt / 2f * (1f - yFrac * 0.85f)
+                val bendOff = lean * yFrac * yFrac + yFrac * yFrac * 0.15f
+                b.v(x + dx * side * halfW + cx * bendOff, h * yFrac, z + dz * side * halfW + sz * bendOff,
+                    0f, 1f, 0f, tint, yFrac)
+            }
+            vert(-1f, 0f); vert(1f, 0f); vert(1f, 0.55f)
+            vert(-1f, 0f); vert(1f, 0.55f); vert(-1f, 0.55f)
+            vert(-1f, 0.55f); vert(1f, 0.55f); vert(0f, 1f)
+        }
+        return Mesh(b.arr())
+    }
+
+    /** Subdivided plane for [com.sengine.engine.core.Water] (waves are displaced in the water shader). */
+    fun waterPlane(sizeX: Float, sizeZ: Float, seg: Int = 40): Mesh {
+        val b = B()
+        fun v(i: Int, j: Int) {
+            val u = i.toFloat() / seg; val vv = j.toFloat() / seg
+            b.v(-sizeX / 2f + sizeX * u, 0f, -sizeZ / 2f + sizeZ * vv, 0f, 1f, 0f, u, vv)
+        }
+        for (j in 0 until seg) for (i in 0 until seg) {
+            v(i, j); v(i, j + 1); v(i + 1, j + 1)
+            v(i, j); v(i + 1, j + 1); v(i + 1, j)
+        }
+        return Mesh(b.arr())
+    }
+
     fun model(file: File): Mesh? {
         val key = file.absolutePath
         val stamp = file.lastModified()

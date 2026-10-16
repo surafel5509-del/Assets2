@@ -14,13 +14,20 @@ object ComponentRegistry {
         "MeshRenderer" to { MeshRenderer() },
         "Camera3D" to { Camera3D() },
         "Light" to { Light() },
+        "Sun" to { Sun() },
+        "Terrain" to { Terrain() },
+        "Grass" to { GrassField() },
+        "Water" to { Water() },
+        "Human" to { Human() },
+        "UIPanel" to { UIPanel() },
+        "ParticleEmitter3D" to { ParticleEmitter3D() },
         "Rigidbody3D" to { Rigidbody3D() },
         "Collider3D" to { Collider3D() },
     )
 
     val categories: LinkedHashMap<String, List<String>> = linkedMapOf(
-        "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "Camera"),
-        "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light"),
+        "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "UIPanel", "Camera"),
+        "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light", "Sun", "Terrain", "Grass", "Water", "Human", "ParticleEmitter3D"),
         "Physics 2D" to listOf("Rigidbody2D", "Collider2D"),
         "Physics 3D" to listOf("Rigidbody3D", "Collider3D"),
         "Scripting & Audio" to listOf("Script", "AudioSource"),
@@ -196,6 +203,8 @@ class ScriptComponent : Component() {
 
 class ParticleEmitter : Component() {
     override val type = "ParticleEmitter"
+    /** Index into [ParticlePresets]; choosing one in the Inspector applies the whole look. */
+    var preset = 0
     var emitting = true
     var rate = 30f
     var lifetime = 1.2f
@@ -231,6 +240,7 @@ class ParticleEmitter : Component() {
     )
 
     override fun props() = listOf(
+        Prop.Choice("Preset (14 looks)", ParticlePresets.NAMES, { preset }, { preset = it; ParticlePresets.apply2D(this, it) }),
         Prop.B("Emitting", { emitting }, { emitting = it }),
         Prop.F("Rate", { rate }, { rate = it.coerceAtLeast(0f) }, 1f),
         Prop.F("Lifetime", { lifetime }, { lifetime = it.coerceAtLeast(0.01f) }),
@@ -312,13 +322,42 @@ class MeshRenderer : Component() {
     var unlit = false
     var shader = ""
     var shaderParam = 1f
+    // ---- material / texture system -------------------------------------
+    /** 0 = one texture everywhere, 1 = a different texture per cube face. */
+    var textureMode = 0
+    var textureTop = ""
+    var textureBottom = ""
+    var textureFront = ""
+    var textureBack = ""
+    var textureRight = ""
+    var textureLeft = ""
+    /** UV offset / rotation applied to every face of this material. */
+    var offsetX = 0f
+    var offsetY = 0f
+    var uvRotation = 0f
+    /** 0 = repeat, 1 = clamp, 2 = mirrored repeat (3D textures). */
+    var wrapMode = 0
+    /** Pixel-art style nearest filtering instead of smooth filtering. */
+    var pixelFilter = false
 
     override fun props() = listOf(
         Prop.Choice("Mesh", MESHES, { mesh }, { mesh = it }),
         Prop.Asset("Model (.obj)", AssetKind.MODEL, { model }, { model = it }),
         Prop.Color("Color", { color }, { color = it }),
+        Prop.Choice("Texture Mode", listOf("Single Texture", "Per-Face Textures (Cube)"), { textureMode }, { textureMode = it }),
         Prop.Asset("Texture", AssetKind.TEXTURE, { texture }, { texture = it }),
+        Prop.Asset("Face Top (+Y)", AssetKind.TEXTURE, { textureTop }, { textureTop = it }),
+        Prop.Asset("Face Bottom (-Y)", AssetKind.TEXTURE, { textureBottom }, { textureBottom = it }),
+        Prop.Asset("Face Front (+Z)", AssetKind.TEXTURE, { textureFront }, { textureFront = it }),
+        Prop.Asset("Face Back (-Z)", AssetKind.TEXTURE, { textureBack }, { textureBack = it }),
+        Prop.Asset("Face Right (+X)", AssetKind.TEXTURE, { textureRight }, { textureRight = it }),
+        Prop.Asset("Face Left (-X)", AssetKind.TEXTURE, { textureLeft }, { textureLeft = it }),
         Prop.F("Tiling", { tiling }, { tiling = it.coerceAtLeast(0.01f) }),
+        Prop.F("UV Offset X", { offsetX }, { offsetX = it }, 0.05f),
+        Prop.F("UV Offset Y", { offsetY }, { offsetY = it }, 0.05f),
+        Prop.F("UV Rotation", { uvRotation }, { uvRotation = it }, 5f),
+        Prop.Choice("Texture Wrap", listOf("Repeat", "Clamp", "Mirror"), { wrapMode }, { wrapMode = it }),
+        Prop.B("Pixel Filter", { pixelFilter }, { pixelFilter = it }),
         Prop.F("Specular", { specular }, { specular = it.coerceIn(0f, 2f) }, 0.05f),
         Prop.F("Shininess", { shininess }, { shininess = it.coerceIn(1f, 256f) }, 1f),
         Prop.F("Emission", { emission }, { emission = it.coerceIn(0f, 4f) }, 0.05f),
@@ -326,6 +365,19 @@ class MeshRenderer : Component() {
         Prop.Asset("Shader", AssetKind.SHADER, { shader }, { shader = it }),
         Prop.F("Shader Param", { shaderParam }, { shaderParam = it }),
     )
+
+    /** Texture for one cube face (0=+Z 1=-Z 2=+X 3=-X 4=+Y 5=-Y), falling back to [texture]. */
+    fun faceTexture(face: Int): String {
+        if (textureMode != 1) return texture
+        val f = when (face) {
+            0 -> textureFront; 1 -> textureBack; 2 -> textureRight
+            3 -> textureLeft; 4 -> textureTop; else -> textureBottom
+        }
+        return f.ifBlank { texture }
+    }
+
+    val usesPerFace: Boolean get() = textureMode == 1 && mesh == 0 &&
+        listOf(textureTop, textureBottom, textureFront, textureBack, textureRight, textureLeft).any { it.isNotBlank() }
 
     companion object {
         val MESHES = listOf("Cube", "Sphere", "Plane", "Cylinder", "Cone", "Torus", "Capsule", "Pyramid", "Custom Model")
@@ -339,6 +391,11 @@ class Camera3D : Component() {
     var far = 500f
     var skyTop = 0xFF3B7BD4.toInt()
     var skyHorizon = 0xFFBFD8F0.toInt()
+    /** Sky rendering: 0 gradient, 1 real sky texture (equirectangular), 2 solid colour. */
+    var skyMode = 0
+    var skyTexture = ""
+    var skyGround = 0xFF5B6B52.toInt()
+    var exposure = 1f
     var follow = ""
     var offsetX = 0f
     var offsetY = 4f
@@ -356,6 +413,10 @@ class Camera3D : Component() {
         Prop.F("Far", { far }, { far = it.coerceAtLeast(1f) }, 1f),
         Prop.Color("Sky Top", { skyTop }, { skyTop = it }),
         Prop.Color("Sky Horizon", { skyHorizon }, { skyHorizon = it }),
+        Prop.Choice("Sky Mode", listOf("Gradient Sky", "Sky Texture (360°)", "Solid Color"), { skyMode }, { skyMode = it }),
+        Prop.Asset("Sky Texture", AssetKind.TEXTURE, { skyTexture }, { skyTexture = it }),
+        Prop.Color("Sky Ground", { skyGround }, { skyGround = it }),
+        Prop.F("Exposure", { exposure }, { exposure = it.coerceIn(0.1f, 3f) }, 0.05f),
         Prop.S("Follow Target", { follow }, { follow = it }),
         Prop.F("Offset X", { offsetX }, { offsetX = it }),
         Prop.F("Offset Y", { offsetY }, { offsetY = it }),

@@ -39,7 +39,7 @@ class Project(val dir: File) {
         dir.mkdirs(); assetsDir.mkdirs(); scenesDir.mkdirs()
         val o = JSONObject()
         o.put("name", name)
-        o.put("engine", "S Engine 1.0")
+        o.put("engine", "S Engine Professional 3.0")
         o.put("startScene", startScene)
         o.put("created", created)
         o.put("orientation", orientation)

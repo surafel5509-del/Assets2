@@ -20,7 +20,12 @@
 | **Physics 2D** | Fixed-step rigidbodies, oriented boxes & circles, gravity, friction/restitution, contact-point impulses, angular inertia/torque, optional rotation lock, triggers and grounded detection |
 | **Physics 3D** | Box/sphere rigidbodies, gravity, restitution/friction, raycasts, contact-point angular impulses and editable inertia/rotation lock |
 | **Particles** | Continuous or burst emitters with color/size curves, speed & size variance, gravity, drag, rotation/spin, textures and additive blending |
-| **Scripting** | JavaScript (ES6 subset via Rhino) with `start`, `update(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging, torque and impulses |
+| **Professional world (v3.0)** | Procedural **Terrain** ground with real height queries, **Grass** fields with wind, animated **Water** (waves/fresnel/foam), a ready-made procedural **Human** character with walk cycle, **UI Panels**, and true **3D particle emitters** (point/sphere/box shapes, billboards) |
+| **Sky & Sun editor** | Gradient sky, real **360° sky textures** (`Real Sky 360°` in the Asset Store, Camera3D → Sky Mode) or solid sky; a visible small **sun disc** in the sky with a **Sun editor**: colour, sunshine (intensity), temperature in Kelvin, elevation/azimuth, disc size, halo, 5 sun shader styles and an animated day cycle |
+| **Textures & materials** | One texture for the whole object **or a different texture on every cube face** (top/bottom/front/back/left/right, per-face in the MeshRenderer), plus tiling, UV offset & rotation, Repeat/Clamp/Mirror wrap and pixel filtering — per object |
+| **Particle presets** | **14 ready-made looks** for both 2D and 3D emitters: Fire, Smoke, Explosion, Sparks, Rain, Snow, Magic Trail, Healing, Confetti, Dust, Water Splash, Falling Leaves, Stars and Bubbles — pick one in the Inspector or call `self.burstPreset("Fire", 40)` |
+| **ZIP import & extract** | Import **project zips** on the Projects screen, or **asset-pack zips** (textures/sounds/scripts/models/scenes) from the editor's *📦 Import ZIP* button; extraction is protected against zip-slip, oversized and oversized-entry archives |
+| **Scripting** | JavaScript (ES6 subset via Rhino) with `awake`, `start`, `update(dt)`, `lateUpdate(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging, torque and impulses, an `events` bus, `game.timeScale` slow-motion, and a `world` API for sun/sky/terrain/water (`world.setSunTemperature(3200)`, `world.setTimeOfDay(0.5)`, `self.setFaceTexture("top", "Grass.png")`, …) |
 | **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference |
 | **Assets & animation** | Import images/sounds, edit sprite-sheet clips, set frame rate/order/loop and per-clip pivot in the Sprite & Animation Editor |
 | **Audio** | `AudioSource` component + `audio.play()` / `audio.beep()` |
@@ -29,7 +34,7 @@
 | **Player** | Full-screen runtime ("Build & Run") with landscape / portrait setting |
 
 ### Built-in components
-`SpriteRenderer`, `TextRenderer`, `Camera` (size, background, follow target with smoothing), `Rigidbody2D`, `Collider2D`, `Script`, `ParticleEmitter`, `AudioSource`.
+`SpriteRenderer`, `TextRenderer`, `Camera` (size, background, follow target with smoothing), `Rigidbody2D`, `Collider2D`, `Script`, `ParticleEmitter`, `AudioSource` — plus the Professional components `Sun`, `Terrain`, `Grass`, `Water`, `Human`, `UIPanel` and `ParticleEmitter3D` (Add Component → Rendering 3D / 2D, or the ＋ menu in the editor).
 
 ### Templates
 * **Empty 2D** – camera + square
@@ -37,6 +42,8 @@
 * **Space Shooter** *(2D)* – enemy waves, bullets, explosions, scoring and game-over flow
 * **Physics Sandbox** *(2D)* – drop rolling crates and bouncing balls into a ramp-and-wall arena
 * **3D Demo** – third-person movement, lights, models, pickups, raycasts and a tumbling angular crate
+* **Sunny Valley 3D** *(new)* – a full 3D adventure game: walk a human hero over procedural terrain and grass, splash by the animated pond, and collect 6 sun crystals under a real 360° sky with the Sun editor (try the day cycle!)
+* **Crystal Cavern 2D** *(new)* – a complete 2D particle platformer with UI-panel HUD, fire torches, spark rain, bubbles, patrol slimes, a water hazard and 8 crystals
 * **Hill Climb Racer** *(2D)* – spring-suspended 4×4, generated road, distinct Country/Desert/Frost/Moon stages, hazards, fuel, coins, garage upgrades, three rotating challenges and accelerometer balance controls. It is available from **New Project** and ships as the sample driving game.
 
 ---

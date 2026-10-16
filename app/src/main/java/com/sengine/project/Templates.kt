@@ -19,7 +19,10 @@ import com.sengine.engine.core.TextRenderer
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, HillClimbTemplate.template) }
+    val all: List<Template> by lazy {
+        listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, HillClimbTemplate.template,
+            ProTemplates.sunnyValley, ProTemplates.crystalCavern)
+    }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution
@@ -32,7 +35,13 @@ vec4 effect(vec4 color, vec2 uv) {
 """
 
     const val NEW_SCRIPT = """// S Engine behaviour script (JavaScript)
-// Globals: self/transform, input, time, scene, audio, log(), after(), every()
+// Globals: self/transform, input, time, scene, audio, game, world, events,
+// log(), after(), every(), find(), instantiate(), destroy()
+//
+// Lifecycle: awake(), start(), update(dt), lateUpdate(dt),
+// onCollision(other), onTrigger(other), onTap(), onDestroy()
+// Sun/sky from scripts: world.setSunshine(1.2), world.setTimeOfDay(0.5)
+// Particles: self.burstPreset("Fire", 40)  (14 presets)
 
 function start() {
     log("Hello from " + self.name);
@@ -345,7 +354,7 @@ function update(dt) {
 
     // ---------------------------------------------------------------- 3D demo
     private val demo3d = Template("3D Demo", "Third-person 3D sample with lights, pickups, raycasts, models and an angular-physics crate.") { p ->
-        installAssets(p, "Checker", "Wooden Crate", "Low-Poly Tree", "Rock", "Crystal", "Toon", "Pulse", "Player3D", "Coin Pickup", "Jump")
+        installAssets(p, "Checker", "Wooden Crate", "Low-Poly Tree", "Rock", "Crystal", "Toon", "Pulse", "Player3D", "Coin Pickup", "Jump", "Real Sky 360°")
         p.writeAsset("Coin3D.js", """// Spinning pickup
 var baseY;
 function start() { baseY = self.y; }
@@ -367,8 +376,13 @@ function onTrigger(other) {
         s.fog = true; s.fogStart = 25f; s.fogEnd = 70f
         val cam = obj3(s, "Main Camera", 0f, 5f, 10f)
         cam.rotX = -20f
-        cam.add(Camera3D().also { it.follow = "Player"; it.offsetY = 5f; it.offsetZ = 9f; it.postFx = 3; it.postIntensity = 0.6f })
-        obj3(s, "Sun", 0f, 10f, 0f).also { it.rotX = -50f; it.rotY = 30f }.add(Light().also { it.kind = 0; it.intensity = 1f })
+        cam.add(Camera3D().also {
+            it.follow = "Player"; it.offsetY = 5f; it.offsetZ = 9f; it.postFx = 3; it.postIntensity = 0.6f
+            it.skyMode = 1; it.skyTexture = "RealSky.png"
+        })
+        obj3(s, "Sun", 0f, 10f, 0f).add(com.sengine.engine.core.Sun().also {
+            it.sunshine = 1.25f; it.temperature = 5600f; it.elevation = 52f; it.azimuth = 35f; it.shader = 1
+        })
         obj3(s, "Lamp", -4f, 2.5f, -3f).add(Light().also { it.kind = 1; it.color = 0xFFFF9F40.toInt(); it.intensity = 1.6f; it.range = 9f })
         obj3(s, "Ground", 0f, -0.5f, 0f, 40f, 1f, 40f).mesh(0, 0xFFB8C4B0, "Checker.png", 10f).col3().body3(type = 2)
         val player = obj3(s, "Player", 0f, 1f, 0f, 0.8f, 1.6f, 0.8f).mesh(6, 0xFFFF7043).col3().body3(friction = 0.2f)

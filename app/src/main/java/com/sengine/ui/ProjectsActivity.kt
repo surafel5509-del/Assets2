@@ -58,7 +58,7 @@ class ProjectsActivity : AppCompatActivity() {
         }
         val titleBox = vbox()
         titleBox.addView(label("S Engine", 28f, C.TEXT, true))
-        titleBox.addView(label("2D & 3D game engine & editor for Android  •  Ultimate v2.0", 13f, C.DIM))
+        titleBox.addView(label("2D & 3D game engine & editor for Android  •  Professional v3.0", 13f, C.DIM))
         header.addView(titleBox, lp(0, WRAP, 1f))
         header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             lp(WRAP, WRAP).margins(0, 0, dp(8), 0))
@@ -244,8 +244,23 @@ class ProjectsActivity : AppCompatActivity() {
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
                 if (it.moveToFirst()) display = it.getString(0).substringBeforeLast('.')
             }
-            val p = contentResolver.openInputStream(uri)!!.use { ProjectManager.importZip(this, it, display) }
-            toast("Imported ${p.name}")
+            val isProject = contentResolver.openInputStream(uri)?.use {
+                com.sengine.project.ZipExtractor.containsProject(it)
+            } ?: false
+            if (isProject) {
+                val p = contentResolver.openInputStream(uri)!!.use { ProjectManager.importZip(this, it, display) }
+                toast("Imported project ${p.name}")
+            } else {
+                // asset-pack zip: create a fresh project and unpack the assets into it
+                var name = ProjectManager.sanitize(display).ifBlank { "Imported Assets" }
+                val base = name; var i = 2
+                while (ProjectManager.exists(this, name)) name = "$base ${i++}"
+                val p = ProjectManager.create(this, name, Templates.all.first())
+                val report = contentResolver.openInputStream(uri)!!.use {
+                    com.sengine.project.ZipExtractor.importAssetPack(p, it)
+                }
+                toast("Asset pack imported into ${p.name}: $report")
+            }
             refresh()
         } catch (e: Exception) {
             toast("Import failed: ${e.message}")

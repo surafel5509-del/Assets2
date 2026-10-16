@@ -109,6 +109,10 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         if (uri != null) importAsset(uri)
     }
 
+    private val zipLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importZipAsset(uri)
+    }
+
     private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) try {
             contentResolver.openOutputStream(uri)?.use { ProjectManager.exportZip(project, it) }
@@ -155,7 +159,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         inspector.rebuild()
         refreshAssets()
         updateModeUi()
-        appendConsole(0, "S Engine Ultimate 2.0 — project '${project.name}', scene '${scene.name}'")
+        appendConsole(0, "S Engine Professional 3.0 — project '${project.name}', scene '${scene.name}'")
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -297,6 +301,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         assetButtons.addView(button("Import Model") { importKind = AssetKind.MODEL; importLauncher.launch(arrayOf("*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Image") { importKind = AssetKind.TEXTURE; importLauncher.launch(arrayOf("image/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Sound") { importKind = AssetKind.SOUND; importLauncher.launch(arrayOf("audio/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("📦 Import ZIP") { zipLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         tabs.addView(assetButtons)
         tabs.addView(button("Clear", C.HEADER) { consoleText.text = "" }.apply { textSize = 12f })
         tabs.addView(button("▾", C.HEADER) { toggle(bottomContent) }.apply { textSize = 12f })
@@ -471,11 +476,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         val pm = PopupMenu(this, anchor)
         pm.menu.add("Empty"); pm.menu.add("Empty Child")
         val m2 = pm.menu.addSubMenu("2D Object")
-        listOf("Square", "Circle", "Triangle", "Text", "UI Text", "Camera", "Particle System",
+        listOf("Square", "Circle", "Triangle", "Text", "UI Text", "UI Panel", "Camera", "Particle System",
             "Physics Box", "Physics Ball", "Static Platform", "Trigger Zone", "Animated Sprite").forEach { m2.add(it) }
         val m3 = pm.menu.addSubMenu("3D Object")
         listOf("Cube", "Sphere", "Plane", "Cylinder", "Cone", "Torus", "Capsule", "Pyramid",
-            "Physics Cube 3D", "Physics Sphere 3D", "Ground 3D", "3D Camera", "Directional Light", "Point Light").forEach { m3.add(it) }
+            "Physics Cube 3D", "Physics Sphere 3D", "Ground 3D", "Terrain Ground", "Grass Field", "Water",
+            "Human", "Sun", "3D Particle System", "3D Camera", "Directional Light", "Point Light").forEach { m3.add(it) }
         pm.setOnMenuItemClickListener { if (!it.hasSubMenu()) createObject(it.title.toString()); true }
         pm.show()
     }
@@ -606,7 +612,11 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Toggle Bottom Panel" -> toggle(bottomPanel)
                 t == "Script API Reference" -> showText("Script API", ScriptEditorActivity.API_DOC)
                 t.startsWith("About") -> showText("About S Engine",
-                    "S Engine Ultimate 2.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                    "S Engine Professional 3.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                        "• 3D world: terrain ground, 360° sky textures, Sun editor (colour / sunshine / Kelvin / shaders), grass, water, human characters\n" +
+                        "• Materials: per-face cube textures, UV offset/rotation, wrap & pixel filtering\n" +
+                        "• 14 particle presets for 2D + true 3D particle emitters, UI panels\n" +
+                        "• ZIP asset-pack import & safe extraction, 10 game templates\n" +
                         "• 3D: meshes, OBJ models, Blinn-Phong lights, fog, sky, 3D physics, orbit editor\n" +
                         "• Sprite animation editor, asset store, visual blueprints, GLSL shaders & post FX\n" +
                         "• Build real installable APKs of your game\n" +
@@ -878,6 +888,28 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             toast("Imported $n")
         } catch (e: Exception) {
             toast("Import failed: ${e.message}")
+        }
+    }
+
+    /** Import a .zip asset pack (textures / sounds / scripts / models / scenes) into this project. */
+    private fun importZipAsset(uri: Uri) {
+        try {
+            val isProject = contentResolver.openInputStream(uri)?.use {
+                com.sengine.project.ZipExtractor.containsProject(it)
+            } ?: false
+            if (isProject) {
+                toast("That ZIP is a full project — import it from the Projects screen")
+                return
+            }
+            val report = contentResolver.openInputStream(uri)!!.use {
+                com.sengine.project.ZipExtractor.importAssetPack(project, it)
+            }
+            refreshAssets()
+            showTab(1)
+            appendConsole(0, "ZIP import: $report")
+            toast("ZIP imported: $report")
+        } catch (e: Exception) {
+            toast("ZIP import failed: ${e.message}")
         }
     }
 

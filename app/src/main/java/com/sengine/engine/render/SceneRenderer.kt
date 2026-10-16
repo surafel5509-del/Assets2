@@ -8,9 +8,16 @@ import com.sengine.engine.core.Camera3D
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.Collider3D
 import com.sengine.engine.core.GameObject
+import com.sengine.engine.core.GrassField
+import com.sengine.engine.core.Human
 import com.sengine.engine.core.Light
 import com.sengine.engine.core.MeshRenderer
 import com.sengine.engine.core.ParticleEmitter
+import com.sengine.engine.core.ParticleEmitter3D
+import com.sengine.engine.core.Sun
+import com.sengine.engine.core.Terrain
+import com.sengine.engine.core.UIPanel
+import com.sengine.engine.core.Water
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.math.Affine
@@ -43,7 +50,13 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
     private val tmp2 = Affine()
     private val m4 = FloatArray(16)
     private val m4b = FloatArray(16)
+    private val mPart = FloatArray(16)
     private val rnd = java.util.Random()
+    // generated-mesh caches (GL thread only)
+    private val terrainCache = HashMap<String, Mesh>()
+    private val grassCache = HashMap<String, Mesh>()
+    private val waterCache = HashMap<String, Mesh>()
+    private val humanMat = MeshRenderer()
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         shaders.init()
@@ -133,11 +146,29 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             .map { it.value }
 
     private fun isScreenSpace(go: GameObject): Boolean =
-        go.get<SpriteRenderer>()?.screenSpace == true || go.get<TextRenderer>()?.screenSpace == true
+        go.get<SpriteRenderer>()?.screenSpace == true || go.get<TextRenderer>()?.screenSpace == true || go.getAny<UIPanel>() != null
 
     /** Draws sprite / text / particles of [go]. When [m3] is given the object is placed in 3D with that matrix. */
     private fun drawObject2D(go: GameObject, ppu: Float, m3: FloatArray?) {
         val w = go.world
+        go.get<UIPanel>()?.let { panel ->
+            // border (slightly larger quad behind) + fill + optional centred text
+            if (panel.borderWidth > 0f) {
+                tmp2.a = w.scaleX + panel.borderWidth * 2; tmp2.b = 0f; tmp2.c = 0f; tmp2.d = w.scaleY + panel.borderWidth * 2; tmp2.tx = 0f; tmp2.ty = 0f
+                tmp.setMul(w, tmp2)
+                r.quad(tmp, panel.borderColor, 0, null, ppu)
+            }
+            r.quad(w, panel.color, 0, null, ppu)
+            if (panel.text.isNotEmpty()) {
+                val tex = textures.text(panel.text, false, 1)
+                val lines = panel.text.count { it == '\n' } + 1
+                val hh = panel.textSize * lines
+                val ww = hh * tex.w / tex.h
+                tmp2.a = ww; tmp2.b = 0f; tmp2.c = 0f; tmp2.d = hh; tmp2.tx = 0f; tmp2.ty = 0f
+                tmp.setMul(w, tmp2)
+                r.quad(tmp, panel.textColor, 0, tex, 100f)
+            }
+        }
         go.get<SpriteRenderer>()?.let { sr ->
             val texName = sr.animTexture ?: sr.texture
             val tex = if (texName.isNotBlank()) textures.image(texName) else null
@@ -240,7 +271,14 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         }
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        r3.drawSky(v, cam?.skyTop ?: 0xFF3B7BD4.toInt(), cam?.skyHorizon ?: 0xFFBFD8F0.toInt())
+        val sun = scene.objects.firstOrNull { it.isActiveInHierarchy() && it.getAny<Sun>() != null }?.getAny<Sun>()
+        val skyTex = if (cam != null && cam.skyMode == 1 && cam.skyTexture.isNotBlank()) textures.image(cam.skyTexture) else null
+        if (cam != null && cam.skyMode == 2) {
+            GLES20.glClearColor(GL.r(cam.skyTop), GL.g(cam.skyTop), GL.b(cam.skyTop), 1f)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        }
+        r3.drawSky(v, cam?.skyTop ?: 0xFF3B7BD4.toInt(), cam?.skyHorizon ?: 0xFFBFD8F0.toInt(),
+            cam?.skyGround ?: 0xFF5B6B52.toInt(), skyTex, sun, cam?.exposure ?: 1f)
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthFunc(GLES20.GL_LEQUAL)
@@ -250,10 +288,17 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val objs = sortedObjects()
         val transparent = ArrayList<Pair<Float, GameObject>>()
         for (go in objs) {
+            // world systems are opaque (water is handled in the transparent pass below)
+            go.get<Terrain>()?.let { drawTerrain(go, it); continue }
+            go.get<GrassField>()?.let { drawGrass(go, it); continue }
+            go.get<Human>()?.let { drawHuman(go, it); continue }
             val mr = go.get<MeshRenderer>() ?: continue
             if (GL.a(mr.color) < 0.999f) { transparent.add(v.distanceTo(go.world3[12], go.world3[13], go.world3[14]) to go); continue }
             drawMesh(go, mr)
         }
+        // water + 3D particles (transparent, sorted with the transparent pass)
+        for (go in objs) if (go.getAny<Water>() != null || go.getAny<ParticleEmitter3D>() != null)
+            transparent.add(v.distanceTo(go.world3[12], go.world3[13], go.world3[14]) to go)
         // transparent meshes, sprites, text & particles: back to front, no depth writes
         GLES20.glDepthMask(false)
         for (go in objs) {
@@ -263,6 +308,8 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         }
         r.begin(v.viewProj)
         for ((_, go) in transparent.sortedByDescending { it.first }) {
+            go.getAny<Water>()?.let { drawWater(go, it); continue }
+            go.getAny<ParticleEmitter3D>()?.let { drawParticles3D(go, it, v); continue }
             val mr = go.get<MeshRenderer>()
             if (mr != null) drawMesh(go, mr) else drawObject2D(go, 100f, go.world3)
         }
@@ -276,9 +323,125 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val mesh = if (mr.mesh == MeshRenderer.MESHES.size - 1) {
             (if (mr.model.isNotBlank()) Meshes.model(engine.project.assetFile(mr.model)) else null) ?: Meshes.primitive(0)
         } else Meshes.primitive(mr.mesh)
-        val tex = if (mr.texture.isNotBlank()) textures.image(mr.texture) else null
         val prog = if (mr.shader.isNotBlank()) shaders.mesh(mr.shader) else null
+        if (mr.usesPerFace) {
+            // cube geometry is built face by face (+Z,-Z,+X,-X,+Y,-Y), 6 vertices each:
+            // one draw per face so every side can carry its own texture.
+            for (face in 0 until 6) {
+                val texName = mr.faceTexture(face)
+                val tex = if (texName.isNotBlank()) textures.image(texName) else null
+                r3.drawMesh(mesh, go.world3, mr, tex, prog, vertexStart = face * 6, vertexCount = 6)
+            }
+            return
+        }
+        val tex = if (mr.texture.isNotBlank()) textures.image(mr.texture) else null
         r3.drawMesh(mesh, go.world3, mr, tex, prog)
+    }
+
+    // ------------------------------------------------------------ world systems
+    private fun terrainKey(t: Terrain) =
+        "${t.width}|${t.depth}|${t.segments}|${t.height}|${t.seed}|${t.tiling}|${t.flatShading}"
+
+    private fun drawTerrain(go: GameObject, t: Terrain) {
+        val mesh = terrainCache.getOrPut(terrainKey(t)) {
+            if (terrainCache.size > 8) terrainCache.clear()
+            Meshes.terrain(t)
+        }
+        humanMat.color = t.color; humanMat.tiling = 1f; humanMat.texture = ""
+        humanMat.offsetX = 0f; humanMat.offsetY = 0f; humanMat.uvRotation = 0f
+        val tex = if (t.texture.isNotBlank()) textures.image(t.texture) else null
+        r3.drawMesh(mesh, go.world3, humanMat, tex, null)
+    }
+
+    private fun drawGrass(go: GameObject, g: GrassField) {
+        val key = "${g.blades}|${g.areaX}|${g.areaZ}|${g.bladeHeight}|${g.bladeWidth}|${g.seed}"
+        val mesh = grassCache.getOrPut(key) {
+            if (grassCache.size > 8) grassCache.clear()
+            Meshes.grass(g)
+        }
+        humanMat.color = g.colorBottom; humanMat.tiling = 1f
+        humanMat.offsetX = 0f; humanMat.offsetY = 0f; humanMat.uvRotation = 0f
+        val tex = if (g.texture.isNotBlank()) textures.image(g.texture) else null
+        r3.drawMesh(mesh, go.world3, humanMat, tex, null,
+            rampTopColor = g.colorTop, windStrength = g.windStrength * 0.12f, windSpeed = g.windSpeed)
+    }
+
+    private fun drawWater(go: GameObject, w: Water) {
+        val key = "${w.sizeX}|${w.sizeZ}"
+        val mesh = waterCache.getOrPut(key) {
+            if (waterCache.size > 8) waterCache.clear()
+            Meshes.waterPlane(w.sizeX, w.sizeZ)
+        }
+        r3.drawWater(mesh, go.world3, w)
+    }
+
+    /** Procedural human: head + hair, torso, swinging arms/legs (origin at the feet). */
+    private fun drawHuman(go: GameObject, h: Human) {
+        val world = go.world3
+        val height = h.height
+        val swingDeg = if (h.isWalking) (kotlin.math.sin(h.walkPhase.toDouble()) * Math.toDegrees(h.swing.toDouble())).toFloat() else 0f
+        fun part(mesh: Int, color: Int, x: Float, y: Float, z: Float, rx: Float, sx: Float, sy: Float, sz: Float) {
+            Mat4.trs(mPart, x, y, z, rx, 0f, 0f, sx, sy, sz)
+            Mat4.mul(m4, world, mPart)
+            humanMat.color = color; humanMat.tiling = 1f
+            humanMat.offsetX = 0f; humanMat.offsetY = 0f; humanMat.uvRotation = 0f
+            // copy because drawMesh keeps reading the matrix during the call only
+            val m = m4.copyOf()
+            r3.drawMesh(Meshes.primitive(mesh), m, humanMat, null, null)
+        }
+        val legLen = height * 0.48f
+        val hipY = legLen
+        // legs (swing around the hip) + shoes
+        for (side in intArrayOf(-1, 1)) {
+            val sw = if (side < 0) swingDeg else -swingDeg
+            val rad = Math.toRadians(sw.toDouble())
+            val footZ = (kotlin.math.sin(rad) * legLen).toFloat()
+            val footY = hipY - (kotlin.math.cos(rad) * legLen).toFloat()
+            part(6, h.pantsColor, side * height * 0.10f, hipY - legLen / 2f + (hipY - footY) * 0f, footZ * 0.5f, sw, height * 0.13f, legLen, height * 0.13f)
+            part(0, h.shoesColor, side * height * 0.10f, (hipY - footY) + height * 0.03f, footZ, 0f, height * 0.14f, height * 0.06f, height * 0.24f)
+        }
+        // torso + arms
+        val torsoH = height * 0.34f
+        val torsoY = hipY + torsoH / 2f
+        part(0, h.shirtColor, 0f, torsoY, 0f, 0f, height * 0.34f, torsoH, height * 0.18f)
+        val armLen = height * 0.32f
+        for (side in intArrayOf(-1, 1)) {
+            val sw = if (side < 0) -swingDeg else swingDeg
+            val rad = Math.toRadians(sw.toDouble())
+            val handZ = (kotlin.math.sin(rad) * armLen).toFloat()
+            part(6, h.shirtColor, side * height * 0.23f, torsoY + torsoH * 0.28f, handZ * 0.45f, sw, height * 0.10f, armLen, height * 0.10f)
+            part(1, h.skinColor, side * height * 0.23f, torsoY + torsoH * 0.28f - armLen * 0.52f, handZ, 0f, height * 0.09f, height * 0.09f, height * 0.09f)
+        }
+        // head + hair + eyes
+        val headR = height * 0.115f
+        val headY = hipY + torsoH + headR * 1.15f
+        part(1, h.skinColor, 0f, headY, 0f, 0f, headR * 2f, headR * 2.1f, headR * 2f)
+        part(1, h.hairColor, 0f, headY + headR * 0.38f, headR * 0.18f, 0f, headR * 2.05f, headR * 1.25f, headR * 2.05f)
+        for (side in intArrayOf(-1, 1))
+            part(0, 0xFF212121.toInt(), side * headR * 0.36f, headY, -headR * 0.92f, 0f, headR * 0.22f, headR * 0.3f, headR * 0.08f)
+    }
+
+    private fun drawParticles3D(go: GameObject, pe: ParticleEmitter3D, v: View3D) {
+        if (pe.particles.isEmpty()) return
+        val tex = if (pe.texture.isNotBlank()) textures.image(pe.texture) else null
+        if (pe.additive) GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE)
+        // camera-facing billboards built from the view matrix axes
+        val right = floatArrayOf(v.view[0], v.view[4], v.view[8])
+        val up = floatArrayOf(v.view[1], v.view[5], v.view[9])
+        for (p in pe.particles) {
+            val t = (p.age / p.life).coerceIn(0f, 1f)
+            val size = (pe.startSize + (pe.endSize - pe.startSize) * t) * p.sizeScale
+            if (size <= 0f) continue
+            val c = lerpColor(pe.startColor, pe.endColor, t)
+            // billboard model matrix: centre + right/up * corner is folded into a TRS approximation
+            Mat4.identity(m4)
+            m4[0] = right[0] * size; m4[1] = right[1] * size; m4[2] = right[2] * size
+            m4[4] = up[0] * size; m4[5] = up[1] * size; m4[6] = up[2] * size
+            m4[8] = 0f; m4[9] = 0f; m4[10] = size
+            m4[12] = p.x; m4[13] = p.y; m4[14] = p.z
+            r.quadModel(m4, c, if (tex != null) 0 else 1, tex, 100f)
+        }
+        if (pe.additive) GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
     }
 
     private fun meshBounds(go: GameObject): Pair<FloatArray, FloatArray> {

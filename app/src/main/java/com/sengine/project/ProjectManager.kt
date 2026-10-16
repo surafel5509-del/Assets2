@@ -5,7 +5,6 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 object ProjectManager {
@@ -63,17 +62,8 @@ object ProjectManager {
     fun importZip(ctx: Context, input: InputStream, fallbackName: String): Project {
         val tmp = File(ctx.cacheDir, "import_${System.currentTimeMillis()}")
         tmp.mkdirs()
-        ZipInputStream(input).use { zip ->
-            while (true) {
-                val e = zip.nextEntry ?: break
-                val f = File(tmp, e.name)
-                if (!f.canonicalPath.startsWith(tmp.canonicalPath)) continue // zip-slip guard
-                if (e.isDirectory) f.mkdirs() else {
-                    f.parentFile?.mkdirs()
-                    f.outputStream().use { zip.copyTo(it) }
-                }
-            }
-        }
+        // safe extraction (zip-slip guard + size/entry limits)
+        ZipExtractor.extract(input, tmp)
         // project root is the folder containing project.json
         val metaDir = tmp.walkTopDown().firstOrNull { it.name == "project.json" }?.parentFile
             ?: throw IllegalArgumentException("Not an S Engine project (project.json missing)")

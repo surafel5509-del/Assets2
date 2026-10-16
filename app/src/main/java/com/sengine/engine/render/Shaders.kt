@@ -42,6 +42,11 @@ class MeshProgram(val id: Int) {
     val uUnlit = GLES20.glGetUniformLocation(id, "uUnlit")
     val uFogColor = GLES20.glGetUniformLocation(id, "uFogColor")
     val uFog = GLES20.glGetUniformLocation(id, "uFog")
+    val uUVOffset = GLES20.glGetUniformLocation(id, "uUVOffset")
+    val uUVRot = GLES20.glGetUniformLocation(id, "uUVRot")
+    val uWind = GLES20.glGetUniformLocation(id, "uWind")
+    val uColorB = GLES20.glGetUniformLocation(id, "uColorB")
+    val uRamp = GLES20.glGetUniformLocation(id, "uRamp")
     val uTime = GLES20.glGetUniformLocation(id, "uTime")
     val uParam = GLES20.glGetUniformLocation(id, "uParam")
     val uResolution = GLES20.glGetUniformLocation(id, "uResolution")
@@ -174,17 +179,32 @@ void main() {
 uniform mat4 uMVP;
 uniform mat4 uModel;
 uniform mat4 uNormalMat;
+uniform vec2 uUVOffset;
+uniform float uUVRot;
+uniform vec3 uWind;
+uniform float uTime;
 attribute vec3 aPos;
 attribute vec3 aNormal;
 attribute vec2 aUV;
 varying vec3 vWorld;
 varying vec3 vNormal;
 varying vec2 vUV;
+varying vec2 vRawUV;
 void main() {
-  vWorld = (uModel * vec4(aPos, 1.0)).xyz;
+  vec3 p = aPos;
+  if (uWind.x > 0.001) {
+    vec4 wp0 = uModel * vec4(aPos, 1.0);
+    float bw = aUV.y * aUV.y;
+    p.x += sin(uTime * uWind.y + wp0.x * 0.35 + wp0.z * 0.27 + aUV.x * 6.2831) * uWind.x * bw;
+    p.z += cos(uTime * uWind.y * 0.83 + wp0.x * 0.21 + wp0.z * 0.31) * uWind.x * 0.6 * bw;
+  }
+  vWorld = (uModel * vec4(p, 1.0)).xyz;
   vNormal = (uNormalMat * vec4(aNormal, 0.0)).xyz;
-  vUV = aUV;
-  gl_Position = uMVP * vec4(aPos, 1.0);
+  float cr = cos(uUVRot); float sr = sin(uUVRot);
+  vec2 c = aUV - 0.5;
+  vUV = vec2(c.x * cr - c.y * sr, c.x * sr + c.y * cr) + 0.5 + uUVOffset;
+  vRawUV = aUV;
+  gl_Position = uMVP * vec4(p, 1.0);
 }
 """
 
@@ -193,7 +213,10 @@ precision mediump float;
 varying vec3 vWorld;
 varying vec3 vNormal;
 varying vec2 vUV;
+varying vec2 vRawUV;
 uniform vec4 uColor;
+uniform vec4 uColorB;
+uniform float uRamp;
 uniform sampler2D uTex;
 uniform float uUseTex;
 uniform float uTiling;
@@ -215,6 +238,7 @@ uniform vec2 uResolution;
 $effect
 void main() {
   vec4 base = uColor;
+  if (uRamp > 0.5) base = mix(uColor, uColorB, clamp(vRawUV.y, 0.0, 1.0));
   vec2 uv = vUV * uTiling;
   if (uUseTex > 0.5) base *= texture2D(uTex, uv);
   vec3 col = base.rgb;

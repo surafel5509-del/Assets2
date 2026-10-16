@@ -163,13 +163,62 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         go.getAny<SpriteRenderer>()?.enabled = v
         go.getAny<TextRenderer>()?.enabled = v
     }
-    fun setTexture(name: String) { go.getAny<SpriteRenderer>()?.texture = name }
+    fun setTexture(name: String) {
+        go.getAny<SpriteRenderer>()?.texture = name
+        go.getAny<com.sengine.engine.core.MeshRenderer>()?.texture = name
+    }
+    /** Give one face of a cube its own texture: face is "top","bottom","front","back","left" or "right". */
+    fun setFaceTexture(face: String, name: String) {
+        val mr = go.getAny<com.sengine.engine.core.MeshRenderer>() ?: return
+        mr.textureMode = 1
+        when (face.lowercase()) {
+            "top", "+y" -> mr.textureTop = name
+            "bottom", "-y" -> mr.textureBottom = name
+            "front", "+z" -> mr.textureFront = name
+            "back", "-z" -> mr.textureBack = name
+            "right", "+x" -> mr.textureRight = name
+            "left", "-x" -> mr.textureLeft = name
+        }
+    }
+    fun setTiling(v: Double) { go.getAny<com.sengine.engine.core.MeshRenderer>()?.tiling = v.toFloat() }
     fun getFlipX(): Boolean = go.getAny<SpriteRenderer>()?.flipX ?: false
     fun setFlipX(v: Boolean) { go.getAny<SpriteRenderer>()?.flipX = v }
 
     // particles
-    fun burst(n: Double) { go.getAny<ParticleEmitter>()?.let { it.pendingBurst += n.toInt() } }
-    fun setEmitting(v: Boolean) { go.getAny<ParticleEmitter>()?.emitting = v }
+    fun burst(n: Double) {
+        go.getAny<ParticleEmitter>()?.let { it.pendingBurst += n.toInt() }
+        go.getAny<com.sengine.engine.core.ParticleEmitter3D>()?.let { it.pendingBurst += n.toInt() }
+    }
+    /** Apply one of the 14 built-in particle presets (Fire, Rain, Magic Trail, ...) and burst it. */
+    fun burstPreset(preset: String, n: Double) {
+        val idx = com.sengine.engine.core.ParticlePresets.indexOf(preset)
+        if (idx < 0) { engine.log(1, "burstPreset: unknown preset '$preset'"); return }
+        go.getAny<ParticleEmitter>()?.let {
+            it.preset = idx; com.sengine.engine.core.ParticlePresets.apply2D(it, idx); it.pendingBurst += n.toInt()
+        }
+        go.getAny<com.sengine.engine.core.ParticleEmitter3D>()?.let {
+            it.preset = idx; com.sengine.engine.core.ParticlePresets.apply3D(it, idx); it.pendingBurst += n.toInt()
+        }
+    }
+    fun setEmitting(v: Boolean) {
+        go.getAny<ParticleEmitter>()?.emitting = v
+        go.getAny<com.sengine.engine.core.ParticleEmitter3D>()?.emitting = v
+    }
+
+    // human / world helpers
+    private fun human() = go.getAny<com.sengine.engine.core.Human>()
+        ?: engine.scene.childrenOf(go).firstNotNullOfOrNull { it.getAny<com.sengine.engine.core.Human>() }
+    fun setWalking(v: Boolean) { human()?.walking = v }
+    fun isWalking(): Boolean = human()?.isWalking ?: false
+    /** Rotate (3D Y) to face a world point. */
+    fun lookAt(x: Double, y: Double, z: Double) {
+        val w = go.computeWorld3()
+        go.rotY = (Math.toDegrees(Math.atan2(x - w[12], z - w[14]))).toFloat()
+    }
+    fun getSpeed(): Double {
+        val rb = rb3 ?: return 0.0
+        return Math.sqrt((rb.vx * rb.vx + rb.vz * rb.vz).toDouble())
+    }
 
     // camera
     fun getSize(): Double = (go.getAny<Camera2D>()?.size ?: 0f).toDouble()
@@ -300,6 +349,55 @@ class SAudio(private val engine: Engine) {
     fun play(name: String, volume: Double) = engine.audio.play(name, volume.toFloat())
     fun beep() = engine.audio.beep()
     fun stopAll() = engine.audio.stopAll()
+}
+
+/** `game` global: flow control for the whole game. */
+class SGame(private val engine: Engine) {
+    fun getTimeScale(): Double = engine.timeScale.toDouble()
+    fun setTimeScale(v: Double) { engine.timeScale = v.toFloat().coerceIn(0f, 4f) }
+    fun getFps(): Double = engine.fps.toDouble()
+    fun pause() = engine.pause()
+    fun resume() = engine.play()
+    fun stop() = engine.stop()
+    fun shake(amount: Double) = engine.shake(amount.toFloat())
+}
+
+/** `world` global: sun, sky, terrain and water control from scripts. */
+class SWorld(private val engine: Engine, private val sys: ScriptSystem) {
+    private fun sun() = engine.scene.objects.firstOrNull { it.getAny<com.sengine.engine.core.Sun>() != null }
+        ?.getAny<com.sengine.engine.core.Sun>()
+    private fun camera3D() = engine.mainCamera3D()?.getAny<com.sengine.engine.core.Camera3D>()
+
+    fun setSunColor(hex: String) {
+        try { sun()?.color = Component.parseColor(hex) } catch (_: Exception) {}
+    }
+    fun setSunshine(v: Double) { sun()?.let { it.sunshine = v.toFloat().coerceIn(0f, 6f) } }
+    fun setSunTemperature(kelvin: Double) { sun()?.let { it.temperature = kelvin.toFloat().coerceIn(1000f, 12000f) } }
+    /** 0 = sunrise, 0.5 = noon, 1 = sunset (also enables the day cycle position). */
+    fun setTimeOfDay(fraction: Double) {
+        sun()?.let { it.animateDay = true; it.dayFraction = fraction.toFloat().coerceIn(0f, 1f) }
+    }
+    fun getTimeOfDay(): Double = sun()?.dayFraction?.toDouble() ?: 0.0
+    fun setSkyColors(topHex: String, horizonHex: String) {
+        try {
+            camera3D()?.let {
+                it.skyTop = Component.parseColor(topHex); it.skyHorizon = Component.parseColor(horizonHex)
+            }
+        } catch (_: Exception) {}
+    }
+    fun setSkyTexture(name: String) { camera3D()?.let { it.skyMode = 1; it.skyTexture = name } }
+    /** Height of the first Terrain in the scene at world x/z (0 when there is none). */
+    fun terrainHeight(x: Double, z: Double): Double {
+        val go = engine.scene.objects.firstOrNull { it.getAny<com.sengine.engine.core.Terrain>() != null } ?: return 0.0
+        val t = go.getAny<com.sengine.engine.core.Terrain>()!!
+        val w = go.world3
+        return t.heightAt(x.toFloat(), z.toFloat(), w[12], w[13], w[14]).toDouble()
+    }
+    /** Y of the first Water surface in the scene (its object Y), or null-ish -999. */
+    fun waterLevel(): Double {
+        val go = engine.scene.objects.firstOrNull { it.getAny<com.sengine.engine.core.Water>() != null } ?: return -999.0
+        return go.world3[13].toDouble()
+    }
 }
 
 class SConsole(private val engine: Engine) {
