@@ -18,6 +18,13 @@ adb logcat -s SEngine.GL SEngine:V
 
 The same lines also appear in the editor console (the engine log).
 
+## 0a. Newer Android phone (the planned device)
+
+- Current phones normally offer OpenGL ES 3.x, so T1-T8 are the cases that matter. T9 is **NOT RUN** on such a device, because the app has no switch to force the ES 2 path.
+- The `GL version` value will read something like `OpenGL ES 3.2 ...`. The app still labels the backend `OpenGL ES 3.0` and `GLES 3.0`. That is intended: the backend is the ES 3 shader and context path, and any ES 3.x driver is accepted. Record the driver's full version string, so the difference is visible in the report.
+- Before starting, enable Developer options and USB debugging, and check that `adb devices` lists the phone.
+- Install the CI debug APK over any earlier build. Clear app data first if you want a clean project list.
+
 ## 1. Expected log lines (checked in every run)
 
 The app writes these lines to the `SEngine.GL` tag and to the engine console. Their exact wording comes from `SceneRenderer.kt`, `GlSurface.kt`, and the two activities.
