@@ -104,7 +104,7 @@ Not yet done in Phase 1 (honest gaps):
 
 - [x] Source tree, Gradle files, manifest, CI config and GL call sites mapped (§2–§5).
 - [x] Baseline CI on the `69b25c4c` branch recorded as green (§1).
-- [ ] Local Gradle build — blocked by the sandbox (no Android SDK, hosts unreachable). CI is the only build check.
+- [x] Build verified by CI: `Test and build Android APKs` succeeded on `2aa8649` (unit tests and debug/release APKs). Local Gradle build remains blocked by the sandbox (no Android SDK; Maven/Google hosts unreachable).
 - [x] Renderer classes, shaders and GL call counts listed (§5).
 - [x] Scene and project schema recorded (§7).
 - [ ] Representative scene and project fixtures — **absent; still to add.**
@@ -114,5 +114,9 @@ Not yet done in Phase 1 (honest gaps):
 
 - Unit tests `GraphicsApiTest` (9 tests) and `ShaderSourcesTest` (13 tests) were written under `app/src/test/java/com/sengine/render/`.
 - Because Gradle and the Android SDK are unavailable in the sandbox, these tests were compiled with Kotlin 2.4.21 (JVM 17) and run through a local JUnit-compatible harness (the same `@Test` and `Assert` semantics, no Gradle). Result: **22 of 22 passed.** Mutation checks (a renamed ES 3 attribute, an ES 3 token leaking into ES 2, and a varying type mismatch) each made the suite fail, so the lint tests detect the errors they target.
-- The harness is not part of the repository. The authoritative run is `./gradlew testDebugUnitTest` in CI.
+- The harness is not part of the repository.
+- **CI (authoritative build check):**
+  - Run `38865877370` on `04c9185` (first push): **failure** in `:app:compileDebugKotlin`, three unresolved `EGL14.EGL_OPENGL_ES3_BIT` references in `GlSurface.kt`. The constant is not in `EGL14`. Fixed by declaring the EGL_KHR_create_context value `0x40` locally.
+  - Run `38866267838` on `2aa8649`: **success.** Steps `Run unit tests` (`testDebugUnitTest`, which includes the new `render` tests) and `Assemble debug and release APKs` both succeeded, and the APK artifact was uploaded. The per-test count was not retrieved, because the CI log and artifact storage were unreachable from the sandbox; the step result is the evidence.
+  - Lesson: the sandbox can only type-check pure-Kotlin code. Android-facing code must be validated by CI until a local Android SDK is available.
 - `ShaderDiagnostics` mapping tests and the ES 3 shader lint tests validate the static properties of the sources. They do **not** prove that the GLSL compiles on a real driver; that requires an on-device run.
