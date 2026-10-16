@@ -136,3 +136,27 @@ Not yet done in Phase 1 (honest gaps):
   - Method: each source was checked as `#version 310 es` with `layout(location)` and `layout(binding)` added, because the SPIR-V path requires them. Those are the only changes. The ES 2 sources were not checked.
   - Limits: this is a reference compiler, not a mobile driver. It does not prove the shaders run on Adreno, Mali or PowerVR drivers. The tool lives in `/tmp` and is not part of the repository.
 - `ShaderDiagnostics` mapping tests and the ES 3 shader lint tests validate the static properties of the sources. They do **not** prove that the GLSL compiles on a real driver; that requires an on-device run.
+
+## 11. Phase 2 status (2D parity and performance)
+
+Phase 1's device gate is still open, so Phase 2 is started but **not complete**. edition.md asks for one phase at a time; the Phase 2 work below does not change any GL behaviour and does not claim the Phase 2 gate.
+
+Done (slice 1, "pin the 2D rules before batching"):
+
+- `render/Draw2DRules.kt` (no Android or GL imports): draw order (`order`, then scene index; inactive, destroyed and inactive-parent objects excluded), pivot offset, UV and flip mapping (`quadUvInto`, no allocation), text line count, height, width and alignment origin, particle `t`, size and colour lerp.
+- `Renderer2D.quadModel` and `SceneRenderer` (sprite, text, particles, draw order) now call these functions. The formulas are the same as before; each one was checked against the original inline code.
+- `app/src/test/java/com/sengine/render/Draw2DRulesTest.kt`: 17 tests covering ordering, pivots, UV flips, text alignment, particle interpolation and colour truncation.
+
+Verification:
+
+- Local run (sandbox only): the real `Draw2DRules.kt`, `Draw2DRulesTest.kt` and the `GameObject`/`Component`/`Prop`/`Affine`/`Mat4` sources were compiled with kotlinc 2.4.21 (JVM 17). A minimal `org.json` stub and a JUnit-compatible runner were used, because Maven is unreachable. Result: **17 of 17 passed**.
+- Mutation checks: flipping the pivot sign made 2 tests fail; reversing the index tie-break made 2 tests fail.
+- `Renderer2D.kt` and `SceneRenderer.kt` cannot be compiled in the sandbox (no Android SDK). They are checked only by CI, and the CI result is the authoritative build check.
+
+Still open for Phase 2 (needs a device or is not yet started):
+
+- Batching: not started. It must reproduce `Draw2DRules` results. Visual equivalence needs an on-device comparison.
+- Visual validation of text, particles, grid and gizmos on ES 3. Needs a device.
+- Frame time and memory on the low-memory target (Samsung Galaxy J4 Core, 1 GB). Needs a device.
+- Per-frame allocation: `sortedObjects()` builds new lists each frame, and `drawScreenUI` calls it again. Not changed in this slice.
+- Unbounded image texture cache and 72 px text bitmaps (see the risks list in section 8).

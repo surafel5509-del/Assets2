@@ -20,7 +20,7 @@ class Renderer2D {
     private val model = FloatArray(16)
     private val mvp = FloatArray(16)
     private val tmp = Affine()
-    private val defaultUv = floatArrayOf(0f, 1f, 1f, 0f)
+    private val uvOut = FloatArray(4)
 
     var drawCalls = 0
     var time = 0f
@@ -64,12 +64,8 @@ class Renderer2D {
         GLES20.glUniform4f(p.uColor, GL.r(color), GL.g(color), GL.b(color), GL.a(color))
         GLES20.glUniform1f(p.uShape, shape.toFloat())
         GLES20.glUniform1f(p.uAA, aaPixels.coerceAtLeast(1f))
-        val q = uv ?: defaultUv
-        val u0 = if (flipX) q[2] else q[0]
-        val u1 = if (flipX) q[0] else q[2]
-        val v0 = if (flipY) q[3] else q[1]
-        val v1 = if (flipY) q[1] else q[3]
-        GLES20.glUniform4f(p.uUV, u0, v0, u1, v1)
+        Draw2DRules.quadUvInto(uvOut, uv, flipX, flipY)
+        GLES20.glUniform4f(p.uUV, uvOut[0], uvOut[1], uvOut[2], uvOut[3])
         if (p.uTime >= 0) GLES20.glUniform1f(p.uTime, time)
         if (p.uParam >= 0) GLES20.glUniform1f(p.uParam, param)
         if (p.uResolution >= 0) GLES20.glUniform2f(p.uResolution, resW, resH)

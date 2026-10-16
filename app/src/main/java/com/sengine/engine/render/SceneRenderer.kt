@@ -205,11 +205,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         if (editing) drawEditorOverlay(view, editor!!)
     }
 
-    private fun sortedObjects(): List<GameObject> =
-        engine.scene.objects.withIndex()
-            .filter { it.value.isActiveInHierarchy() }
-            .sortedWith(compareBy({ it.value.order }, { it.index }))
-            .map { it.value }
+    private fun sortedObjects(): List<GameObject> = Draw2DRules.drawOrder(engine.scene.objects)
 
     private fun isScreenSpace(go: GameObject): Boolean =
         go.get<SpriteRenderer>()?.screenSpace == true || go.get<TextRenderer>()?.screenSpace == true
@@ -222,8 +218,8 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             val tex = if (texName.isNotBlank()) textures.image(texName) else null
             val prog = if (sr.shader.isNotBlank()) shaders.sprite(sr.shader) else null
             val shape = if (tex != null) 0 else sr.shape
-            val pivotX = 0.5f - sr.pivotX
-            val pivotY = 0.5f - sr.pivotY
+            val pivotX = Draw2DRules.pivotOffset(sr.pivotX)
+            val pivotY = Draw2DRules.pivotOffset(sr.pivotY)
             if (m3 != null) {
                 val spriteMatrix = if (pivotX == 0f && pivotY == 0f) m3 else {
                     Mat4.trs(m4b, pivotX, pivotY, 0f, 0f, 0f, 0f, 1f, 1f, 1f)
@@ -242,10 +238,9 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         go.get<TextRenderer>()?.let { tr ->
             if (tr.text.isNotEmpty()) {
                 val tex = textures.text(tr.text, tr.bold, tr.align)
-                val lines = tr.text.count { it == '\n' } + 1
-                val hh = tr.size * lines
-                val ww = hh * tex.w / tex.h
-                val ox = when (tr.align) { 0 -> ww / 2; 2 -> -ww / 2; else -> 0f }
+                val hh = Draw2DRules.textHeight(tr.size, Draw2DRules.textLineCount(tr.text))
+                val ww = Draw2DRules.textWidth(hh, tex.w.toFloat(), tex.h.toFloat())
+                val ox = Draw2DRules.textOriginX(tr.align, ww)
                 if (m3 != null) {
                     Mat4.trs(m4b, ox, 0f, 0f, 0f, 0f, 0f, ww, hh, 1f)
                     Mat4.mul(m4, m3, m4b)
@@ -265,10 +260,10 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val tex = if (pe.texture.isNotBlank()) textures.image(pe.texture) else null
         if (pe.additive) GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE)
         for (p in pe.particles) {
-            val t = (p.age / p.life).coerceIn(0f, 1f)
-            val size = (pe.startSize + (pe.endSize - pe.startSize) * t) * p.sizeScale
+            val t = Draw2DRules.particleT(p.age, p.life)
+            val size = Draw2DRules.particleSize(pe.startSize, pe.endSize, t, p.sizeScale)
             if (size <= 0f) continue
-            val c = lerpColor(pe.startColor, pe.endColor, t)
+            val c = Draw2DRules.lerpColor(pe.startColor, pe.endColor, t)
             if (z != null) {
                 Mat4.trs(m4, p.x, p.y, z, 0f, 0f, p.rotation, size, size, size)
                 r.quadModel(m4, c, if (tex != null) 0 else 1, tex, 100f)
@@ -278,11 +273,6 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             }
         }
         if (pe.additive) GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-    }
-
-    private fun lerpColor(a: Int, b: Int, t: Float): Int {
-        fun ch(s: Int) = (((a shr s) and 0xFF) + ((((b shr s) and 0xFF) - ((a shr s) and 0xFF)) * t)).toInt() and 0xFF
-        return (ch(24) shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 
     // ------------------------------------------------------------------ Screen-space UI
