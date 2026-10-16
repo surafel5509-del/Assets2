@@ -100,8 +100,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             val mode = when (engine.mode) { Engine.Mode.EDIT -> "EDIT"; Engine.Mode.PLAY -> "▶ PLAYING"; Engine.Mode.PAUSED -> "⏸ PAUSED" }
             statsText.text = "$mode  •  ${engine.scene.name}  •  ${engine.fps.toInt()} FPS  •  ${GraphicsStatus.label()}  •  $count objects" +
                 (if (state.mode3D) "  •  3D" else "") + (if (controller.snap) "  •  snap" else "") +
-                if (state.showProfiler) String.format("\nscripts %.2f ms  •  physics %.2f ms  •  render %.2f ms  •  %d draw calls  •  heap %d MB",
-                    engine.scriptMs, engine.physicsMs, engine.renderMs, engine.drawCalls,
+                if (state.showProfiler) String.format("\nscripts %.2f ms  •  physics %.2f ms  •  render %.2f ms  •  %d draw calls  •  tex %d KB  •  heap %d MB",
+                    engine.scriptMs, engine.physicsMs, engine.renderMs, engine.drawCalls, engine.textureBytes / 1024,
                     (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1048576) else ""
             handler.postDelayed(this, 200)
         }

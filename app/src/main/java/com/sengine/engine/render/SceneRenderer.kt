@@ -42,7 +42,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
     private val r3 = Renderer3D()
     private val shaders = ShaderLibrary(engine.project) { engine.log(2, it) }
     private val post = PostProcessor()
-    private val textures = TextureCache(engine.project)
+    private val textures = TextureCache(engine.project).also { cache -> cache.onLog = { lvl, msg -> engine.log(lvl, msg) } }
     private val gameView3D = View3D()
     private val shakeView = View2D()
     private val uiView = View2D()
@@ -149,6 +149,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         synchronized(engine.lock) {
             engine.tick(dt)
             val t0 = System.nanoTime()
+            textures.beginFrame()
             r.drawCalls = 0; r3.drawCalls = 0
             val time = engine.time.toFloat()
             r.time = time; r3.time = time
@@ -173,6 +174,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
 
             if (post.active && postProg != null) r.drawCalls += post.end(postProg, time, intensity)
             engine.drawCalls = r.drawCalls + r3.drawCalls
+            engine.textureBytes = textures.usedBytes
             engine.renderMs = (System.nanoTime() - t0) / 1e6f
         }
     }

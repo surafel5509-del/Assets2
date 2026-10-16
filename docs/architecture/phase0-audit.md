@@ -62,7 +62,7 @@ Count of `GLES20.` / `GLSurfaceView` / `GL10` references per file at HEAD:
 Known GL-related risks found in the audit (not yet addressed unless noted in §8):
 - `GL.compile` returned a program id even when linking failed, so shader errors were silent.
 - `ShaderLibrary.source()` reads the `.glsl` asset from disk on every sprite/mesh/post lookup, even when the file has not changed. Cached programs are reused by timestamp, but the file is still read each time. (Pre-existing; not changed in this phase.)
-- Image texture cache is unbounded; text bitmaps are 72 px and the text cache is capped at 128 entries.
+- Image texture cache is unbounded; text bitmaps are 72 px and the text cache is capped at 128 entries. *(Image and text cache bounding was addressed in Phase 2 slice 2; see section 11.)*
 - Ad-hoc GL state toggles across passes; per-draw uniform updates; immediate-mode vertex pointers from heap buffers.
 - `PostProcessor` has no context-loss handling.
 
@@ -159,4 +159,23 @@ Still open for Phase 2 (needs a device or is not yet started):
 - Visual validation of text, particles, grid and gizmos on ES 3. Needs a device.
 - Frame time and memory on the low-memory target (Samsung Galaxy J4 Core, 1 GB). Needs a device.
 - Per-frame allocation: `sortedObjects()` builds new lists each frame, and `drawScreenUI` calls it again. Not changed in this slice.
-- Unbounded image texture cache and 72 px text bitmaps (see the risks list in section 8).
+- 72 px text bitmaps are fixed size and not DPI-aware. The texture budget value (64 MB) is a guess until measured on the low-memory target.
+
+### Slice 2: bounded GPU texture memory
+
+Done:
+
+- `render/TextureBudget.kt` (no GL or Android imports): a byte budget with LRU order. Textures used in the current frame are pinned and never chosen for eviction. `plan()` is read-only and reports when the budget is still exceeded because everything resident is pinned.
+- `render/Textures.kt`: image and text textures are both tracked. When an upload would exceed the budget, the least recently used unpinned textures are deleted with `glDeleteTextures`. An evicted image reloads from disk on next use. The old fixed cap of 128 text entries is replaced by the byte budget. Each image file is stat-checked at most once per frame, not once per draw. Warnings go to the engine log (level 1).
+- `SceneRenderer` calls `textures.beginFrame()` once per frame and publishes `engine.textureBytes`. The editor profiler line shows `tex N KB`.
+- Default budget: 64 MB, not measured. Tune it on the Galaxy J4 Core.
+
+Why eviction is safe: rendering is immediate-mode, so a deleted texture is never referenced by a later draw in the same frame. Pinning is kept anyway, because batching would need it. Batching must keep this rule.
+
+Verification:
+
+- Local run (sandbox): `TextureBudgetTest` (9 tests) compiled with kotlinc 2.4.21 and run on JVM 17 through the same minimal runner used for slice 1. Result: **9 of 9 passed**.
+- Mutation checks: removing the pin check fails 2 tests. Making `plan()` read the LRU list (which reorders it) fails 4 tests.
+- `Textures.kt` and `SceneRenderer.kt` cannot be compiled in the sandbox (no Android SDK). CI is the build check. GL upload, eviction and reload have not been run on a device.
+- Not verified: actual GPU memory use, eviction hitches, and whether 64 MB is right for the 1 GB target.
+

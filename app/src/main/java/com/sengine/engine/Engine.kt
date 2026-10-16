@@ -55,6 +55,8 @@ class Engine(val project: Project, initialScene: Scene) {
     @Volatile var physicsMs = 0f
     @Volatile var renderMs = 0f
     @Volatile var drawCalls = 0
+    /** Bytes of GPU texture memory held by the renderer's texture cache (see TextureBudget). */
+    @Volatile var textureBytes = 0L
     private var fpsAcc = 0f
     private var fpsFrames = 0
 
