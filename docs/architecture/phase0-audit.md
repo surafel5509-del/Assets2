@@ -87,7 +87,7 @@ Known GL-related risks found in the audit (not yet addressed unless noted in §8
 
 ### Findings from the fixture work
 
-1. **Unknown component types are silently dropped (data-loss risk, not yet fixed).** `SceneSerializer.applyObjectJson` runs `ComponentRegistry.create(type) ?: continue`. A component whose type this build does not know (a newer engine version, or a renamed type) is removed from the scene in memory, and the next save writes the scene without it. This conflicts with the rule "never silently discard project data". The same applies to unknown object-level keys. The fix needs a design decision: keep unknown component JSON verbatim and write it back, and decide whether the editor should show it. It is the first item for the next step.
+1. **Unknown data was silently dropped (fixed).** `SceneSerializer` used to skip any component whose type this build did not know, and the next save removed it. Unknown components, object-level keys, and scene-level keys are now kept verbatim on the model (`GameObject.unknownComponents`, `GameObject.unknownFields`, `Scene.unknownFields`) and written back on save. Duplicating an object copies them too. Known fields keep priority, and scenes with no unknown data save exactly as before (the fixture tests check this). Limits: unknown components are not shown in the inspector, and they are written after the known components of the same object, so their position in the list is not kept. Covered by `UnknownDataPreservationTest`.
 2. **Float noise in saved files.** The saver writes `Float` values as `Double` (`0.4f` becomes `0.4000000059604645`). Loading is unaffected, but saved files and diffs are noisy. Formatting through `Float.toString()` would fix it. This is cosmetic and is not changed here.
 3. **No `schemaVersion`** in `project.json` or scene JSON (see above). The legacy fixture shows that missing fields currently act as the schema-version mechanism.
 
@@ -119,7 +119,8 @@ Not yet done in Phase 1 (honest gaps):
 - [x] Build verified by CI: `Test and build Android APKs` succeeded on `2aa8649` (unit tests and debug/release APKs). Local Gradle build remains blocked by the sandbox (no Android SDK; Maven/Google hosts unreachable).
 - [x] Renderer classes, shaders and GL call counts listed (§5).
 - [x] Scene and project schema recorded (§7).
-- [x] Representative scene and project fixtures added with `SceneFixtureTest` (§7). Unknown-component data loss found and recorded (§7, finding 1); not yet fixed.
+- [x] Representative scene and project fixtures added with `SceneFixtureTest` (§7).
+- [x] Unknown-data loss fixed: unknown components and keys are preserved on load/save (§7, finding 1).
 - [x] Audit report and implementation checklist (this document).
 
 ## 10. Verification log for this branch
