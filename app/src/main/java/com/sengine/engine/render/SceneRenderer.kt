@@ -2,6 +2,7 @@ package com.sengine.engine.render
 
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import android.util.Log
 import com.sengine.engine.Engine
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Camera3D
@@ -15,6 +16,15 @@ import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.math.Affine
 import com.sengine.engine.math.Mat4
+import com.sengine.engine.platform.android.GlInfo
+import com.sengine.engine.platform.android.GlSurface
+import com.sengine.engine.platform.android.GraphicsStatus
+import com.sengine.engine.render.api.GraphicsBackend
+import com.sengine.engine.render.api.GraphicsBackendSelector
+import com.sengine.engine.render.api.GraphicsInitException
+import com.sengine.engine.render.api.ShaderSourceSet
+import com.sengine.engine.render.gles2.Gles2Shaders
+import com.sengine.engine.render.gles3.Gles3Shaders
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
@@ -44,14 +54,68 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
     private val m4 = FloatArray(16)
     private val m4b = FloatArray(16)
     private val rnd = java.util.Random()
+    /** True when the last context could not start the renderer; frames then show an error colour only. */
+    private var initFailed = false
 
+    /**
+     * Runs on the GL thread every time a context is created (first start, resume, or after the
+     * driver dropped the context). All GPU objects from a previous context are abandoned here and
+     * rebuilt, so no handle from an old context is ever reused.
+     */
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        shaders.init()
-        r.init(shaders)
-        r3.init(shaders)
-        post.init()
-        textures.clear()
         lastNs = System.nanoTime()
+        initFailed = false
+        var description = ""
+        try {
+            val caps = GlInfo.query()
+            val selected = GraphicsBackendSelector.select(caps)
+            description = caps.describe(selected)
+            if (selected == null) {
+                throw GraphicsInitException("Unsupported OpenGL context. S Engine needs OpenGL ES 2.0 or 3.0. $description")
+            }
+            // Report the context that was really created, from the driver's own strings.
+            report(description, 0)
+            // ES 3 context: prefer the ES 3 shader set. If it fails to build on this driver, fall back to the
+            // ES 2 (GLSL ES 1.00) set on the same context; the draw calls are identical, only the shaders differ.
+            val candidates = if (selected == GraphicsBackend.GLES30) {
+                listOf(GraphicsBackend.GLES30 to Gles3Shaders, GraphicsBackend.GLES20 to Gles2Shaders)
+            } else {
+                listOf(GraphicsBackend.GLES20 to Gles2Shaders)
+            }
+            var active: Pair<GraphicsBackend, ShaderSourceSet>? = null
+            var lastError: GraphicsInitException? = null
+            for ((backend, sources) in candidates) {
+                try {
+                    shaders.init(sources)
+                    r.init(shaders, sources)
+                    r3.init(shaders, sources)
+                    active = backend to sources
+                    break
+                } catch (e: GraphicsInitException) {
+                    lastError = e
+                    report("${backend.label} shaders could not be built: ${e.message}", 2)
+                }
+            }
+            val (activeBackend, activeSources) = active ?: throw (lastError ?: GraphicsInitException("No shader set could be built"))
+            post.init()
+            textures.clear()
+            val shaderNote = if (activeBackend == selected) "" else " | fell back to ${activeBackend.label} shaders"
+            GraphicsStatus.succeeded(activeBackend, description + " | shader dialect: ${activeSources.dialect.name}" + shaderNote)
+            report("Renderer ready: ${activeBackend.label}, shader dialect ${activeSources.dialect.name}$shaderNote", 0)
+            val errors = GL.drainErrors()
+            if (errors.isNotEmpty()) {
+                report("GL errors after renderer init: " + errors.joinToString { "0x" + Integer.toHexString(it) }, 2)
+            }
+        } catch (e: Throwable) {
+            initFailed = true
+            GraphicsStatus.failed(e.message ?: e.javaClass.simpleName, description)
+            report("Graphics init failed: ${e.message ?: e.javaClass.simpleName}", 2)
+        }
+    }
+
+    private fun report(message: String, level: Int) {
+        if (level >= 2) Log.e(GlSurface.TAG, message) else Log.i(GlSurface.TAG, message)
+        engine.log(level, message)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -64,6 +128,11 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        if (initFailed) {
+            GLES20.glClearColor(0.35f, 0f, 0f, 1f)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            return
+        }
         val now = System.nanoTime()
         val dt = ((now - lastNs) / 1e9f).coerceIn(0f, 0.1f)
         lastNs = now

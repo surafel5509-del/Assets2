@@ -46,6 +46,8 @@ import com.sengine.engine.core.Scene
 import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
+import com.sengine.engine.platform.android.GlSurface
+import com.sengine.engine.platform.android.GraphicsStatus
 import com.sengine.engine.render.EditorState
 import com.sengine.engine.render.SceneRenderer
 import com.sengine.engine.render.Tool
@@ -96,7 +98,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             val count = engine.scene.objects.size
             if (engine.mode != Engine.Mode.EDIT && count != lastObjectCount) refreshHierarchy()
             val mode = when (engine.mode) { Engine.Mode.EDIT -> "EDIT"; Engine.Mode.PLAY -> "▶ PLAYING"; Engine.Mode.PAUSED -> "⏸ PAUSED" }
-            statsText.text = "$mode  •  ${engine.scene.name}  •  ${engine.fps.toInt()} FPS  •  $count objects" +
+            statsText.text = "$mode  •  ${engine.scene.name}  •  ${engine.fps.toInt()} FPS  •  ${GraphicsStatus.label()}  •  $count objects" +
                 (if (state.mode3D) "  •  3D" else "") + (if (controller.snap) "  •  snap" else "") +
                 if (state.showProfiler) String.format("\nscripts %.2f ms  •  physics %.2f ms  •  render %.2f ms  •  %d draw calls  •  heap %d MB",
                     engine.scriptMs, engine.physicsMs, engine.renderMs, engine.drawCalls,
@@ -251,7 +253,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         // viewport
         val vp = FrameLayout(this)
         glView = GLSurfaceView(this).apply {
-            setEGLContextClientVersion(2)
+            GlSurface.install(this) { engine.log(0, it) }
             setRenderer(SceneRenderer(engine, state))
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         }

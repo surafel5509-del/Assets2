@@ -2,7 +2,7 @@
 
 **S Engine** is a 2D game engine **and** full visual editor that runs entirely on an Android phone or tablet – think "a small Unity in your pocket". Create a project, build scenes with a hierarchy / inspector / gizmos, write JavaScript behaviours in the built-in code editor, press **Play** to test immediately, then run your game full-screen.
 
-> Written from scratch in Kotlin. OpenGL ES 2.0 renderer, custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
+> Written from scratch in Kotlin. OpenGL ES 3.0 renderer (ES 2.0 fallback), custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
 
 ---
 
@@ -99,7 +99,7 @@ Requirements: JDK 17 and the Android SDK (API 34). Android Studio Hedgehog or ne
 
 Every push is also built by GitHub Actions (`.github/workflows/android.yml`); download the APK from the run's **Artifacts** section.
 
-Minimum Android version: 8.0 (API 26). Requires OpenGL ES 2.0.
+Minimum Android version: 8.0 (API 26). Requires OpenGL ES 2.0 at minimum. The renderer uses OpenGL ES 3.0 when the device driver supports it and falls back to ES 2.0 otherwise; the Editor and Player show the active backend (for example `GLES 3.0` or `GLES 2.0 (fallback)`). The manifest keeps ES 2.0 as the hard requirement, so ES 3.0 support is checked at runtime, not by install filtering.
 
 ## Project layout
 
@@ -112,7 +112,7 @@ app/src/main/java/com/sengine/
 │   ├── math/Affine.kt       2D transforms
 │   ├── physics/             fixed-step 2D & 3D physics with angular contact impulses
 │   ├── anim/                sprite-sheet clips, normalized pivots and runtime animation
-│   ├── render/              GLES2 renderer, textures/text/particles, editor grid & gizmos
+│   ├── render/              OpenGL ES renderer (ES 3.0 primary, ES 2.0 fallback), textures/text/particles, editor grid & gizmos
 │   └── script/              Rhino JavaScript runtime + script API
 ├── project/                 project storage, zip import/export, templates
 └── ui/                      Projects screen, Editor (hierarchy, inspector, viewport, assets, console),

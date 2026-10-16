@@ -3,6 +3,7 @@ package com.sengine.engine.render
 import android.opengl.GLES20
 import com.sengine.engine.math.Affine
 import com.sengine.engine.math.Mat4
+import com.sengine.engine.render.api.ShaderSourceSet
 import java.nio.FloatBuffer
 
 /** Immediate-mode drawing of shaped / textured quads (optionally with custom shaders) and coloured 3D lines. */
@@ -26,9 +27,9 @@ class Renderer2D {
     var resW = 1f
     var resH = 1f
 
-    fun init(shaders: ShaderLibrary) {
+    fun init(shaders: ShaderLibrary, sources: ShaderSourceSet) {
         this.shaders = shaders
-        lineProg = GL.compile(LINE_VS, LINE_FS)
+        lineProg = GL.compileOrThrow("line (${sources.dialect.name})", sources.lineVs, sources.lineFs)
         lPos = GLES20.glGetAttribLocation(lineProg, "aPos")
         lColor = GLES20.glGetAttribLocation(lineProg, "aColor")
         lMVP = GLES20.glGetUniformLocation(lineProg, "uMVP")
@@ -175,20 +176,5 @@ class Renderer2D {
         GLES20.glDisableVertexAttribArray(lColor)
         lineCount = 0
         drawCalls++
-    }
-
-    companion object {
-        const val LINE_VS = """
-uniform mat4 uMVP;
-attribute vec3 aPos;
-attribute vec4 aColor;
-varying vec4 vColor;
-void main() { vColor = aColor; gl_Position = uMVP * vec4(aPos, 1.0); }
-"""
-        const val LINE_FS = """
-precision mediump float;
-varying vec4 vColor;
-void main() { gl_FragColor = vColor; }
-"""
     }
 }
