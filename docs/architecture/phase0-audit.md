@@ -77,7 +77,19 @@ Known GL-related risks found in the audit (not yet addressed unless noted in §8
 - `project.json`: `name`, `engine` ("S Engine 1.0"), `startScene`, `created`, `orientation`, `controlScheme`. **No `schemaVersion`.**
 - Scene JSON: `name`, `gravity*`, `ambient`, `fog*`, `nextId`, `objects`. **No `schemaVersion`.**
 - `edition.md` §7 requires a schema version and a migration when the schema changes. Adding the field is deferred until a schema change actually needs a migration, so that no unversioned data is rewritten without a reason.
-- **Open Phase 0 item:** representative scene and project fixtures do not exist in the repository. They should be added before Phase 2 changes any scene-facing rendering behaviour, so that visual and serialization regressions can be compared against them.
+- **Fixtures (added):** `app/src/test/resources/fixtures/project/` contains a complete project folder in the current format:
+  - `project.json`.
+  - `scenes/Main.scene.json`: a 2D scene with a camera (custom post shader), a sprite with a hierarchy child, a static ground with a custom shader, particles, text, audio, script, animator, and a disabled object.
+  - `scenes/Arena3D.scene.json`: a 3D scene with fog, a directional light, sphere and plane meshes, and 3D physics.
+  - `scenes/Legacy.scene.json`: a minimal old-style scene that omits `gravity3D`, `ambient`, `fog*`, and `nextId`.
+  - `SceneFixtureTest` (10 tests) checks the loader's values, that a save reproduces each fixture's structure, that a second load/save cycle is stable, and that missing legacy fields get defaults and are written in the current format on save.
+  - Numbers are compared with a tolerance because the saver widens floats to doubles.
+
+### Findings from the fixture work
+
+1. **Unknown component types are silently dropped (data-loss risk, not yet fixed).** `SceneSerializer.applyObjectJson` runs `ComponentRegistry.create(type) ?: continue`. A component whose type this build does not know (a newer engine version, or a renamed type) is removed from the scene in memory, and the next save writes the scene without it. This conflicts with the rule "never silently discard project data". The same applies to unknown object-level keys. The fix needs a design decision: keep unknown component JSON verbatim and write it back, and decide whether the editor should show it. It is the first item for the next step.
+2. **Float noise in saved files.** The saver writes `Float` values as `Double` (`0.4f` becomes `0.4000000059604645`). Loading is unaffected, but saved files and diffs are noisy. Formatting through `Float.toString()` would fix it. This is cosmetic and is not changed here.
+3. **No `schemaVersion`** in `project.json` or scene JSON (see above). The legacy fixture shows that missing fields currently act as the schema-version mechanism.
 
 ## 8. Phase 1 status on this branch
 
@@ -107,7 +119,7 @@ Not yet done in Phase 1 (honest gaps):
 - [x] Build verified by CI: `Test and build Android APKs` succeeded on `2aa8649` (unit tests and debug/release APKs). Local Gradle build remains blocked by the sandbox (no Android SDK; Maven/Google hosts unreachable).
 - [x] Renderer classes, shaders and GL call counts listed (§5).
 - [x] Scene and project schema recorded (§7).
-- [ ] Representative scene and project fixtures — **absent; still to add.**
+- [x] Representative scene and project fixtures added with `SceneFixtureTest` (§7). Unknown-component data loss found and recorded (§7, finding 1); not yet fixed.
 - [x] Audit report and implementation checklist (this document).
 
 ## 10. Verification log for this branch
