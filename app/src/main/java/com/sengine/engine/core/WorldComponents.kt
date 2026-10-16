@@ -412,7 +412,7 @@ object ParticlePresets {
         Preset("Water Splash", 110f, 0.85f, 4.6f, 48f, 90f, 0.17f, 0.03f, 0xCCB3E5FC.toInt(), 0x000288D1, 8f, 0.05f, false),
         Preset("Falling Leaves", 24f, 5f, 0.9f, 70f, -90f, 0.26f, 0.2f, 0xFF9CCC65.toInt(), 0xFF558B2F.toInt(), 0.55f, 0.7f, false),
         Preset("Stars", 50f, 1.7f, 0.45f, 360f, 90f, 0.2f, 0.0f, 0xFFFFFF9D.toInt(), 0x00FF8F00, 0f, 0.25f, true),
-        Preset("Bubbles", 40f, 2.8f, 1.3f, 30f, 90f, 0.15f, 0.3f, 0x99E1F5FE, 0x224FC3F7, -1.8f, 0.1f, false),
+        Preset("Bubbles", 40f, 2.8f, 1.3f, 30f, 90f, 0.15f, 0.3f, 0x99E1F5FE.toInt(), 0x224FC3F7, -1.8f, 0.1f, false),
     )
 
     val NAMES: List<String> = all.map { it.name }

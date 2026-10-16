@@ -289,9 +289,12 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val transparent = ArrayList<Pair<Float, GameObject>>()
         for (go in objs) {
             // world systems are opaque (water is handled in the transparent pass below)
-            go.get<Terrain>()?.let { drawTerrain(go, it); continue }
-            go.get<GrassField>()?.let { drawGrass(go, it); continue }
-            go.get<Human>()?.let { drawHuman(go, it); continue }
+            val terrain = go.get<Terrain>()
+            val grass = go.get<GrassField>()
+            val human = go.get<Human>()
+            if (terrain != null) { drawTerrain(go, terrain); continue }
+            if (grass != null) { drawGrass(go, grass); continue }
+            if (human != null) { drawHuman(go, human); continue }
             val mr = go.get<MeshRenderer>() ?: continue
             if (GL.a(mr.color) < 0.999f) { transparent.add(v.distanceTo(go.world3[12], go.world3[13], go.world3[14]) to go); continue }
             drawMesh(go, mr)
@@ -308,8 +311,10 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         }
         r.begin(v.viewProj)
         for ((_, go) in transparent.sortedByDescending { it.first }) {
-            go.getAny<Water>()?.let { drawWater(go, it); continue }
-            go.getAny<ParticleEmitter3D>()?.let { drawParticles3D(go, it, v); continue }
+            val water = go.getAny<Water>()
+            val particles3d = go.getAny<ParticleEmitter3D>()
+            if (water != null) { drawWater(go, water); continue }
+            if (particles3d != null) { drawParticles3D(go, particles3d, v); continue }
             val mr = go.get<MeshRenderer>()
             if (mr != null) drawMesh(go, mr) else drawObject2D(go, 100f, go.world3)
         }

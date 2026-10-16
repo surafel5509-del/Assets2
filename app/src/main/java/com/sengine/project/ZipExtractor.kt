@@ -48,7 +48,8 @@ object ZipExtractor {
                 if (++entries > MAX_ENTRIES) throw IllegalArgumentException("ZIP has too many files (max $MAX_ENTRIES)")
                 val name = e.name
                 if (e.isDirectory) { safeFile(destDir, name)?.mkdirs(); continue }
-                val f = safeFile(destDir, name) ?: run { report.skipped.add(name); continue }
+                val f = safeFile(destDir, name)
+                if (f == null) { report.skipped.add(name); continue }
                 f.parentFile?.mkdirs()
                 var entryBytes = 0L
                 f.outputStream().use { out ->
