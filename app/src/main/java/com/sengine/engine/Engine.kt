@@ -23,7 +23,13 @@ import kotlin.random.Random
  * The runtime core. All scene mutation happens while holding [lock];
  * simulation runs on the GL thread via [tick].
  */
-class Engine(val project: Project, initialScene: Scene) {
+class Engine(
+    val project: Project,
+    initialScene: Scene,
+    internal val scriptStorageProject: Project = project,
+    audioEnabled: Boolean = true,
+    scriptsEnabled: Boolean = true,
+) {
 
     enum class Mode { EDIT, PLAY, PAUSED }
 
@@ -43,8 +49,8 @@ class Engine(val project: Project, initialScene: Scene) {
     val physics = PhysicsWorld()
     val physics3D = com.sengine.engine.physics.PhysicsWorld3D()
     val animation = com.sengine.engine.anim.AnimationSystem(project)
-    val scripts = ScriptSystem(this)
-    val audio = AudioSystem(project)
+    val scripts = ScriptSystem(this, scriptsEnabled)
+    val audio = AudioSystem(project, audioEnabled)
     val gameView = View2D()
 
     var time = 0.0; private set

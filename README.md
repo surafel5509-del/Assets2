@@ -11,6 +11,7 @@
 | Area | What you get |
 |---|---|
 | **Project manager** | Create from templates, open, play, rename, duplicate, delete, export / import projects as `.zip` |
+| **AI Game Builder** | Offline template planner plus reviewable, validated scene edits; optional authenticated Supabase Edge Function → OpenRouter mode. No AI-generated source is executed; template scripts run only during creation smoke checks, not when editing existing projects. See [setup and limits](docs/ai-game-builder.md). |
 | **Scene editor** | Viewport with grid, pan (drag) & pinch-zoom, tap-to-select, **Move / Rotate / Scale gizmos** with axis handles, snapping, frame selected |
 | **Hierarchy** | Parent/child tree, collapse, visibility toggle, rename / duplicate / delete / reorder / create child / unparent |
 | **Inspector** | Edit name, tag, sorting order, parent, transform (drag labels to scrub values), every component property, color picker, asset pickers, add / remove / reorder / reset components |
@@ -105,6 +106,7 @@ Minimum Android version: 8.0 (API 26). Requires OpenGL ES 2.0 at minimum. The re
 
 ```
 app/src/main/java/com/sengine/
+├── aibuilder/              versioned GameSpec, bounded tools, validation, provider and memory services
 ├── engine/
 │   ├── Engine.kt            main loop, play/pause/stop, camera follow, particles
 │   ├── Input.kt, AudioSystem.kt

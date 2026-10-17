@@ -90,6 +90,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastObjectCount = -1
+    private var openedSceneSave: String? = null
     private var importKind = AssetKind.TEXTURE
 
     private val ticker = object : Runnable {
@@ -138,6 +139,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         val scene = if (project.sceneExists(sceneName)) project.loadScene(sceneName) else Scene(sceneName).also {
             it.create("Main Camera").add(Camera2D())
         }
+        openedSceneSave = project.sceneFile(sceneName).takeIf { it.isFile }?.readText()
         engine = Engine(project, scene)
         tiltInput = TiltInputController(this, engine.input)
         history = History(engine)
@@ -170,6 +172,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
 
     override fun onResume() {
         super.onResume()
+        reloadExternalSceneIfChanged()
         glView.onResume()
         engine.log(0, "Activity resumed: GL surface resumed")
         if (project.controlScheme == "driveTilt") tiltInput?.start()
@@ -184,6 +187,27 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         engine.log(0, "Activity paused: GL surface paused")
         handler.removeCallbacks(ticker)
         if (engine.mode == Engine.Mode.EDIT && history.dirty) saveScene(silent = true)
+    }
+
+    /** Reload a validated file changed by the AI workspace while this editor was paused. */
+    private fun reloadExternalSceneIfChanged() {
+        if (!::engine.isInitialized || engine.mode != Engine.Mode.EDIT) return
+        val name = engine.scene.name
+        val file = project.sceneFile(name)
+        if (!file.isFile) return
+        val raw = try { file.readText() } catch (_: Exception) { return }
+        if (openedSceneSave == null || raw == openedSceneSave) return
+        try {
+            val reloaded = project.loadScene(name)
+            synchronized(engine.lock) { engine.replaceScene(reloaded) }
+            openedSceneSave = raw
+            history.clear(); history.dirty = false
+            state.selectedId = -1
+            refreshHierarchy(); inspector.rebuild(); updateTitle()
+            engine.log(0, "Reloaded externally saved changes to scene '$name'.")
+        } catch (e: Exception) {
+            engine.log(2, "Could not reload external changes to '$name': ${e.message}")
+        }
     }
 
     override fun onDestroy() {
@@ -229,6 +253,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         sep()
         tbtn("＋") { addObjectMenu(it) }
         tbtn("💾") { saveScene() }
+        tbtn("AI") { openAiBuilder() }
         tbtn("⋮") { mainMenu(it) }
         tbtn("▤") { toggle(inspectorPanel) }
         val tbScroll = HorizontalScrollView(this).apply { addView(tb); isHorizontalScrollBarEnabled = false; setBackgroundColor(C.HEADER) }
@@ -429,6 +454,15 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     // ================================================================== play / undo / save
+    private fun openAiBuilder() {
+        if (engine.mode != Engine.Mode.EDIT) {
+            toast("Stop play mode before opening the AI Builder")
+            return
+        }
+        if (!saveScene(silent = true)) return
+        startActivity(Intent(this, AiBuilderActivity::class.java).putExtra("project", project.name))
+    }
+
     private fun startPlay() {
         currentFocus?.let { it.clearFocus(); hideKeyboard(it) }
         consoleText.text = ""
@@ -453,14 +487,19 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         refreshHierarchy(); inspector.rebuild()
     }
 
-    private fun saveScene(silent: Boolean = false) {
-        if (engine.mode != Engine.Mode.EDIT) { if (!silent) toast("Stop play mode before saving"); return }
-        try {
+    private fun saveScene(silent: Boolean = false): Boolean {
+        if (engine.mode != Engine.Mode.EDIT) { if (!silent) toast("Stop play mode before saving"); return false }
+        return try {
             synchronized(engine.lock) { project.saveScene(engine.scene) }
             project.saveMeta()
+            openedSceneSave = project.sceneFile(engine.scene.name).takeIf { it.isFile }?.readText()
             history.dirty = false
             if (!silent) toast("Saved ${engine.scene.name}") else appendConsole(0, "Auto-saved ${engine.scene.name}")
-        } catch (e: Exception) { toast("Save failed: ${e.message}") }
+            true
+        } catch (e: Exception) {
+            toast("Save failed: ${e.message}")
+            false
+        }
     }
 
     // ================================================================== object creation
@@ -583,7 +622,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             else -> "Classic joystick"
         }
         val entries = listOf(
-            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Sprite & Animation Editor",
+            "Save Scene", "AI Game Builder", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Sprite & Animation Editor",
             "Control Scheme: $controlLabel", "Export Project (.zip)",
             (if (state.showProfiler) "Hide" else "Show") + " Profiler",
             (if (state.showGrid) "Hide" else "Show") + " Grid",
@@ -596,6 +635,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             val t = item.title.toString()
             when {
                 t == "Save Scene" -> saveScene()
+                t == "AI Game Builder" -> openAiBuilder()
                 t == "Scenes…" -> scenesDialog()
                 t.startsWith("Build & Run") -> { saveScene(silent = true); startActivity(Intent(this, PlayerActivity::class.java).putExtra("project", project.name)) }
                 t == "Build APK…" -> { saveScene(silent = true); startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
@@ -711,6 +751,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private fun openScene(name: String) {
         val s = project.loadScene(name)
         synchronized(engine.lock) { engine.replaceScene(s) }
+        openedSceneSave = project.sceneFile(name).takeIf { it.isFile }?.readText()
         history.clear(); history.dirty = false
         state.selectedId = -1
         refreshHierarchy(); inspector.rebuild(); updateTitle()
