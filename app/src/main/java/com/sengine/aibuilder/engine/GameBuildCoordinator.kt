@@ -6,6 +6,7 @@ import com.sengine.aibuilder.spec.GameAction
 import com.sengine.aibuilder.spec.GameBuildReport
 import com.sengine.aibuilder.spec.GameSpec
 import com.sengine.aibuilder.spec.GameSpecValidator
+import com.sengine.aibuilder.spec.GameTemplateCatalog
 import com.sengine.engine.Engine
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
