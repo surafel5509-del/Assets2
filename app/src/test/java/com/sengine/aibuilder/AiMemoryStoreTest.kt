@@ -52,7 +52,8 @@ class AiMemoryStoreTest {
     fun secretsAreRedactedAndRollbackSnapshotsAreLocalAndConsumable() {
         val dir = Files.createTempDirectory("ai-memory-private").toFile()
         val store = AiMemoryStore(dir)
-        val raw = "Change speed. api_key=abcdefghijk and sk-or-v1-abcdefghijklmnopqrstuvwxyz0123456789"
+        val fakeProviderKey = "sk-or-v1-" + "abcdefghijklmnopqrstuvwxyz0123456789"
+        val raw = "Change speed. api_key=abcdefghijk and $fakeProviderKey"
         val event = store.appendMessage("Demo", "user", raw)!!
         val saved = event.payload.optString("text")
         assertFalse(saved.contains("abcdefghijk"))

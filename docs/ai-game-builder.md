@@ -1,6 +1,6 @@
 # AI Game Builder for S Engine
 
-Status: implemented local-first vertical slice; secure model mode is ready for configuration, but no Supabase project or provider secret was deployed from this repository session.
+Status: implemented local-first vertical slice with three provider modes: Local Demo, Direct OpenRouter, and authenticated Secure Supabase. Direct OpenRouter needs a key entered by the device user at runtime; no provider secret is bundled in the app. No Supabase function or migration has been deployed from this repository session.
 
 ## What is implemented
 
@@ -25,13 +25,12 @@ The GameSpec has its own `schemaVersion` and currently accepts version 1 only. S
 
 ### AI provider boundary
 
-`AiProvider` is provider-neutral. Secure AI mode calls:
+`AiProvider` is provider-neutral and offers two network paths:
 
-`Android app → authenticated Supabase Edge Function → OpenRouter`
+- **Direct OpenRouter:** `Android app → OpenRouter`, using an OpenRouter API key entered by the user at runtime. The app encrypts that key with Android Keystore and sends it only as an HTTPS authorization header to OpenRouter. It skips Supabase Auth, Edge Functions, database sync, and cloud memory. There is no key embedded in source or the APK. The selected model ID, sanitized prompt, bounded retrieved context, and fresh project snapshot go to OpenRouter. Requests have timeouts, cancellation, response-size bounds, JSON-mode fallback when rejected, and actionable HTTP-status messages.
+- **Secure Supabase:** `Android app → authenticated Supabase Edge Function → OpenRouter`. The Android app contains no bundled OpenRouter credential. The Edge Function verifies the Supabase session, checks request and context sizes, enforces an atomic 30-requests-per-user-per-hour quota, calls OpenRouter with a 45-second timeout, asks for JSON output when supported, and retries once without JSON mode only when the provider rejects that feature.
 
-The Android app contains no OpenRouter credential. It sends the configured model ID, sanitized prompt, bounded retrieved context, and a fresh project snapshot. The Edge Function verifies the Supabase session, checks request and context sizes, enforces an atomic 30-requests-per-user-per-hour quota, calls OpenRouter with a 45-second timeout, asks for JSON output when supported, and retries once without JSON mode only when the provider rejects that feature. The Android client has timeouts, cancellation, response-size bounds, parser errors, and useful HTTP-status messages. Streaming is not implemented.
-
-To avoid a misleading offline fallback, choosing Secure AI and then encountering a network/provider failure produces an error; it does not silently switch to Demo mode.
+To avoid a misleading offline fallback, choosing either network mode and encountering a network/provider failure produces an error; it does not silently switch to Demo mode. Streaming is not implemented.
 
 ### Memory and privacy
 
@@ -39,11 +38,11 @@ Conversation history, project decisions, and build events live separately from t
 
 Memory is enabled by default and can be disabled or deleted in **AI Builder → Memory**. Existing local data remains until explicitly deleted. Common provider-key, bearer-token, password, and API-key assignment forms are redacted before prompt storage/forwarding. Supabase session tokens are AES-GCM encrypted with an Android Keystore key; passwords are never persisted. Rollback scene snapshots are device-only and are not synced.
 
-When Secure AI is selected and a Supabase user is signed in, history/build records are best-effort synced to `ai_memory_records`. This is private per-user PostgREST storage protected by RLS. App-local project files are **not** uploaded to Supabase. Optional embeddings/pgvector are not included: bounded structured retrieval is sufficient for the current slice and no embedding provider is configured.
+In Direct OpenRouter and Local Demo modes, memory storage is device-only and no Supabase requests are made. With memory enabled, bounded retrieved memory and project context are still included in network-mode prompts sent to the selected AI provider; disable memory to omit prior history. Only when Secure AI is selected and a Supabase user is signed in are history/build records best-effort synced to `ai_memory_records`, private per-user PostgREST storage protected by RLS. App-local project files are **not** uploaded to Supabase. Records synced in a previous Secure AI session remain in Supabase until deleted while using Secure mode; Direct-mode deletion is local only. Optional embeddings/pgvector are not included: bounded structured retrieval is sufficient for the current slice and no embedding provider is configured.
 
 ## Supabase deployment
 
-No live Supabase project was selected or modified for this build. The checked-out repo had no prior Supabase schema, credentials, or project configuration. The migration and function below are deployment artifacts; they are not evidence of a successful deployment.
+No live Supabase project has been configured or modified for this build. Credentials were inspected for the user-selected UDS project, but no schema, migration, or function was deployed there. The migration and function below are deployment artifacts; they are not evidence of a successful deployment.
 
 1. Create/select a Supabase project you control and configure Email Auth. Keep the project URL and publishable/anon key for the Android client. Never use a service-role key in the app.
 2. Apply the migration from the repository root:
@@ -67,8 +66,10 @@ No live Supabase project was selected or modified for this build. The checked-ou
    ```
 
    `supabase/config.toml` sets `verify_jwt = true`; the function also verifies the bearer session with Supabase Auth before using the provider secret.
-5. In S Engine, open AI Settings, enter the HTTPS Supabase project URL, the **publishable/anon key**, and an OpenRouter model ID. Sign in or create an account with Supabase Auth, uncheck Local Demo mode, and save. The app calls only `/functions/v1/ai-game-builder` for model requests.
+5. In S Engine, open AI Settings, enter the HTTPS Supabase project URL, the **publishable/anon key**, and an OpenRouter model ID. Sign in or create an account with Supabase Auth, leave Direct OpenRouter and Local Demo unchecked, and save. The app calls only `/functions/v1/ai-game-builder` for model requests.
 6. If email confirmation is enabled, confirm the account before sign-in. Tune Supabase Auth redirect/email settings according to your deployment. Do not enable public unauthenticated function access.
+
+Supabase deployment is optional: to bypass Supabase entirely, open AI Settings, enter the selected OpenRouter model and your own newly rotated OpenRouter API key in the Direct OpenRouter field, select **Direct OpenRouter**, and save. The key is encrypted on-device and sent only to OpenRouter over HTTPS; Direct mode keeps memory local. Never paste the key into source code, logs, or chat. The previously disclosed key should be revoked and replaced.
 
 The Edge Function has no database access to game project files and does not persist prompts by itself. Conversation sync goes through the RLS-protected table using the signed-in user's access token. It rejects oversized requests, validates the caller, and uses a service-role-only RPC for a 30/hour quota. This is a first-release limit, not a billing or abuse-prevention substitute for provider-side budgets/monitoring.
 
@@ -80,7 +81,7 @@ The Edge Function has no database access to game project files and does not pers
 4. The app validates, saves, reloads, and runs the headless smoke check. The existing editor opens; press Play to run the project through S Engine. The smoke check is not a visual/device test.
 5. Return to the Builder for another edit. Use Memory to inspect, disable, or delete saved history. Use **Undo AI edit** for the most recent supported single-scene edit where a local snapshot was recorded.
 
-Without a Supabase configuration/account, Local Demo remains available for offline template creation and the supported safe edits. Existing project editing in the editor, import/export, and runtime do not require AI configuration.
+Without a Supabase configuration/account, Local Demo remains available for offline template creation and supported safe edits. Direct OpenRouter also works without Supabase once the device user enters an OpenRouter key. Existing project editing in the editor, import/export, and runtime do not require AI configuration.
 
 ## Verified engine integration and current limitations
 
@@ -89,7 +90,7 @@ Audited source-level APIs: `ProjectManager`, `Project`, `Templates`, `Scene`, `S
 Known gaps:
 
 - The local Demo planner is intentionally narrow and keyword-based; it is not a language model and will explain unsupported edits.
-- Secure AI requires a deployed Supabase project, an Auth account, and a server-side OpenRouter secret. It has not been exercised against live credentials in this environment.
+- Secure AI requires a deployed Supabase project, an Auth account, and a server-side OpenRouter secret. It has not been exercised against live credentials in this environment. Direct OpenRouter still requires the device user to provide a valid key, have provider billing enabled, and select an available model; a live provider request has not been performed here.
 - Supabase is used for private AI memory and the protected provider boundary, not cloud game-project storage/collaboration or project version hosting.
 - No pgvector or semantic embedding search, streamed model responses, AI script generation, generated 3D assets, arbitrary removal operations, or multi-scene edit transaction is implemented.
 - Scene validation and two-frame startup do not replace the existing Play flow or a real Android/GPU rendering test. Device testing is still required for visual gameplay, input feel, and long-running stability.

@@ -52,12 +52,38 @@ class AiBuilderSettingsStore(context: Context) {
             .putString("ai_model", normalizedModel).apply()
     }
 
+    fun model(): String = prefs.getString("ai_model", DEFAULT_MODEL).orEmpty().takeIf(::validModel) ?: DEFAULT_MODEL
+
+    fun saveModel(value: String) {
+        val normalized = value.trim()
+        require(validModel(normalized)) { "Model name contains unsupported characters." }
+        prefs.edit().putString("ai_model", normalized).apply()
+    }
+
     fun useDemoMode(): Boolean = prefs.getBoolean("use_demo_mode", true)
-    fun setUseDemoMode(value: Boolean) { prefs.edit().putBoolean("use_demo_mode", value).apply() }
+    fun setUseDemoMode(value: Boolean) {
+        prefs.edit().putBoolean("use_demo_mode", value).apply()
+        if (value) prefs.edit().putBoolean("use_direct_openrouter", false).apply()
+    }
+    fun useDirectOpenRouterMode(): Boolean = prefs.getBoolean("use_direct_openrouter", false)
+    fun setUseDirectOpenRouterMode(value: Boolean) {
+        prefs.edit().putBoolean("use_direct_openrouter", value).apply()
+        if (value) prefs.edit().putBoolean("use_demo_mode", false).apply()
+    }
     fun rememberOnDevice(): Boolean = prefs.getBoolean("remember_memory", true)
     fun setRememberOnDevice(value: Boolean) { prefs.edit().putBoolean("remember_memory", value).apply() }
     fun hasSession(): Boolean = sessions.read() != null
     fun clearSession() = sessions.clear()
+    fun openRouterApiKey(): String? = sessions.readOpenRouterKey()
+    fun hasOpenRouterApiKey(): Boolean = openRouterApiKey() != null
+    fun saveOpenRouterApiKey(value: String) {
+        val key = value.trim()
+        require(key.length <= 512 && key.matches(Regex("sk-or-v1-[A-Za-z0-9_-]{16,}"))) {
+            "Enter a valid OpenRouter API key (it should start with sk-or-v1-)."
+        }
+        sessions.saveOpenRouterKey(key)
+    }
+    fun clearOpenRouterApiKey() = sessions.clearOpenRouterKey()
 
     internal fun sessionStore() = sessions
 
@@ -111,6 +137,32 @@ internal class SecureSessionStore(context: Context) {
         }
     }
 
+    @Synchronized fun saveOpenRouterKey(value: String) {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key())
+        val encrypted = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
+        val combined = ByteArray(cipher.iv.size + encrypted.size)
+        System.arraycopy(cipher.iv, 0, combined, 0, cipher.iv.size)
+        System.arraycopy(encrypted, 0, combined, cipher.iv.size, encrypted.size)
+        prefs.edit().putString("encrypted_openrouter_key", Base64.encodeToString(combined, Base64.NO_WRAP)).apply()
+    }
+
+    @Synchronized fun readOpenRouterKey(): String? {
+        val encoded = prefs.getString("encrypted_openrouter_key", null) ?: return null
+        return try {
+            val combined = Base64.decode(encoded, Base64.NO_WRAP)
+            if (combined.size < 29) throw IllegalArgumentException("Invalid encrypted key")
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, combined.copyOfRange(0, 12)))
+            String(cipher.doFinal(combined.copyOfRange(12, combined.size)), Charsets.UTF_8)
+                .takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            clearOpenRouterKey()
+            null
+        }
+    }
+
+    @Synchronized fun clearOpenRouterKey() { prefs.edit().remove("encrypted_openrouter_key").apply() }
     @Synchronized fun clear() { prefs.edit().remove("encrypted_session").apply() }
 
     private fun key(): SecretKey {
@@ -201,7 +253,7 @@ class SupabaseAuthClient(private val settings: AiBuilderSettingsStore) {
     }
 }
 
-/** OpenRouter is reached only by the authenticated Edge Function; this class has no provider-key field. */
+/** Secure Supabase-path client. OpenRouter credentials remain server-side in this provider path. */
 class SupabaseOpenRouterProvider(
     private val config: SupabasePublicConfig,
     private val auth: SupabaseAuthClient,
@@ -221,11 +273,13 @@ class SupabaseOpenRouterProvider(
             body, cancellation, maxResponseBytes = 300_000)
         if (result.status !in 200..299) {
             val message = when (result.status) {
-                401, 403 -> "Secure AI authorization failed. Sign in again and verify that the Edge Function is deployed."
+                401, 403 -> "Secure AI authorization failed. Sign in again and verify the Supabase Auth configuration."
+                404 -> "The Supabase function ai-game-builder was not found (HTTP 404). Deploy the function to this Supabase project, or choose Direct OpenRouter mode to bypass Supabase."
                 408, 504 -> "AI request timed out. Retry with a shorter prompt or a faster model."
+                422 -> "The secure backend rejected this model/request. Check the OpenRouter model ID and backend configuration."
                 429 -> "AI usage limit reached. Wait before retrying or ask your project administrator."
                 in 500..599 -> "Secure AI backend is temporarily unavailable (HTTP ${result.status})."
-                else -> "Secure AI request was rejected (HTTP ${result.status}). Check the configured model and backend setup."
+                else -> "Secure AI request was rejected (HTTP ${result.status}). Check the Supabase function and backend setup."
             }
             throw AiProviderException(message, result.status)
         }
@@ -305,13 +359,28 @@ internal object HttpJson {
         maxResponseBytes: Int,
         prefer: String? = null,
     ): HttpResult {
+        val headers = linkedMapOf("apikey" to config.anonKey, "Accept" to "application/json")
+        if (!accessToken.isNullOrBlank()) headers["Authorization"] = "Bearer $accessToken"
+        return requestUrl(url, method, headers, body, cancellation, maxResponseBytes, prefer)
+    }
+
+    /** Shared bounded TLS transport used by Supabase and the optional device-key OpenRouter mode. */
+    fun requestUrl(
+        url: String,
+        method: String,
+        headers: Map<String, String>,
+        body: Any?,
+        cancellation: RequestCancellation,
+        maxResponseBytes: Int,
+        prefer: String? = null,
+    ): HttpResult {
         cancellation.check()
-        val uri = try { URI(url) } catch (e: Exception) { throw AiProviderException("Configured Supabase endpoint is invalid.", cause = e) }
+        val uri = try { URI(url) } catch (e: Exception) { throw AiProviderException("Configured endpoint is invalid.", cause = e) }
         if (!uri.scheme.equals("https", true) || uri.host.isNullOrBlank() || uri.userInfo != null) {
-            throw AiProviderException("Supabase requests require a valid HTTPS endpoint.")
+            throw AiProviderException("Requests require a valid HTTPS endpoint.")
         }
         val connection = try { uri.toURL().openConnection() as HttpURLConnection } catch (e: Exception) {
-            throw AiProviderException("Could not open a connection to the configured Supabase endpoint.", cause = e)
+            throw AiProviderException("Could not open a connection to the configured endpoint.", cause = e)
         }
         try {
             cancellation.attach(connection)
@@ -319,9 +388,7 @@ internal object HttpJson {
             connection.connectTimeout = 15_000
             connection.readTimeout = 45_000
             connection.instanceFollowRedirects = false
-            connection.setRequestProperty("apikey", config.anonKey)
-            connection.setRequestProperty("Accept", "application/json")
-            if (!accessToken.isNullOrBlank()) connection.setRequestProperty("Authorization", "Bearer $accessToken")
+            headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
             if (body != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
@@ -348,7 +415,7 @@ internal object HttpJson {
                     val count = input.read(buffer)
                     if (count < 0) break
                     total += count
-                    if (total > maxResponseBytes) throw AiProviderException("Supabase response exceeded the ${maxResponseBytes / 1024} KB size limit.", status)
+                    if (total > maxResponseBytes) throw AiProviderException("Response exceeded the ${maxResponseBytes / 1024} KB size limit.", status)
                     out.write(buffer, 0, count)
                 }
                 String(out.toByteArray(), Charsets.UTF_8)
@@ -361,7 +428,7 @@ internal object HttpJson {
             throw e
         } catch (e: Exception) {
             if (cancellation.isCancelled) throw RequestCancelledException()
-            throw AiProviderException("Network request to Supabase failed. Check connectivity and retry.", cause = e)
+            throw AiProviderException("Network request failed. Check connectivity and retry.", cause = e)
         } finally {
             cancellation.detach(connection)
             connection.disconnect()

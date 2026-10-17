@@ -224,15 +224,23 @@ class AiBuilderActivity : AppCompatActivity() {
     private fun memoryKey(): String = selectedProjectName() ?: draftKey
 
     private fun updateStatus() {
-        val config = service.settings.config()
-        val secureReady = config != null && service.settings.hasSession()
-        val demo = service.settings.useDemoMode()
+        val settings = service.settings
+        val config = settings.config()
+        val demo = settings.useDemoMode()
+        val direct = !demo && settings.useDirectOpenRouterMode()
+        val secureReady = !demo && !direct && config != null && settings.hasSession()
         statusText.text = when {
-            demo -> "LOCAL DEMO MODE  •  No model/API calls. Uses installed S Engine templates and safe local edits."
+            demo -> "LOCAL DEMO  •  No network/model calls. Uses installed templates and safe local edits."
+            direct && settings.hasOpenRouterApiKey() -> "DIRECT OPENROUTER  •  No Supabase/Auth/backend. Key encrypted on this device; memory stays local.  •  ${settings.model()}"
+            direct -> "DIRECT OPENROUTER SETUP REQUIRED  •  Add your OpenRouter API key in Settings. No Supabase account is needed."
             secureReady -> "SECURE AI  •  Supabase-authenticated Edge Function → OpenRouter  •  ${config!!.model}"
-            else -> "SETUP REQUIRED  •  Configure Supabase URL + publishable key, then sign in. Local Demo remains available in Settings."
+            else -> "SETUP REQUIRED  •  Configure Supabase and sign in, or choose Direct OpenRouter/Local Demo in Settings."
         }
-        statusText.setTextColor(if (demo) 0xFFB7D7F0.toInt() else if (secureReady) 0xFF8EE3B2.toInt() else C.YELLOW)
+        statusText.setTextColor(when {
+            demo -> 0xFFB7D7F0.toInt()
+            direct && settings.hasOpenRouterApiKey() || secureReady -> 0xFF8EE3B2.toInt()
+            else -> C.YELLOW
+        })
     }
 
     private fun makePlan() {
@@ -471,7 +479,7 @@ class AiBuilderActivity : AppCompatActivity() {
         val key = memoryKey()
         val content = vbox().apply { setPadding(dp(18), dp(8), dp(18), dp(6)) }
         content.addView(label(service.memorySummary(key), 13f, C.TEXT))
-        content.addView(label("\nSensitive-looking key/token/password text is redacted before local storage and provider requests. Do not paste secrets into game prompts. You can inspect and delete this project's memory below.", 11f, C.DIM))
+        content.addView(label("\nSensitive-looking key/token/password text is redacted before local storage and provider requests. Do not paste secrets into game prompts. For AI requests, bounded retrieved memory and project context are sent to the selected provider; Direct OpenRouter does not sync them to Supabase. History synced during an earlier Secure AI session remains in Supabase until deleted there. You can inspect and delete this project's local memory below.", 11f, C.DIM))
         val remember = CheckBox(this).apply {
             text = "Remember chat, design decisions, and build summaries on this device"
             setTextColor(C.TEXT)
@@ -495,7 +503,7 @@ class AiBuilderActivity : AppCompatActivity() {
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("Delete memory for '$key'?")
-                    .setMessage("This removes this project's local AI messages, decisions, build events, and rollback snapshots. If Secure AI is configured, deletion is also attempted in Supabase.")
+                    .setMessage("This removes this project's local AI messages, decisions, build events, and rollback snapshots. In Secure Supabase mode, remote deletion is also attempted. Direct OpenRouter and Local Demo delete only local data; records synced during a previous Secure AI session remain in Supabase until deleted there.")
                     .setPositiveButton("Delete memory") { _, _ -> clearMemory(key) }
                     .setNegativeButton("Cancel", null)
                     .show()
@@ -525,7 +533,7 @@ class AiBuilderActivity : AppCompatActivity() {
         val settings = service.settings
         val config = settings.config()
         val box = vbox().apply { setPadding(dp(18), dp(8), dp(18), dp(5)) }
-        box.addView(label("OpenRouter is called only from the authenticated Supabase Edge Function. Never paste an OpenRouter secret here.", 12f, C.YELLOW))
+        box.addView(label("Direct OpenRouter calls the provider from this device without Supabase Auth or a backend. Your key is encrypted with Android Keystore. The prompt, bounded project snapshot, and (when memory is enabled) retrieved memory are sent to OpenRouter to generate a plan; they are not synced to Supabase. Provider charges may apply.", 12f, C.YELLOW))
         val url = field(config?.projectUrl.orEmpty())
         url.hint = "https://your-project.supabase.co"
         box.addView(label("Supabase project URL", 11f, C.DIM).apply { setPadding(0, dp(8), 0, dp(2)) })
@@ -537,8 +545,23 @@ class AiBuilderActivity : AppCompatActivity() {
         box.addView(anonKey, lp(MATCH, WRAP))
         val model = field(config?.model ?: AiBuilderSettingsStore.DEFAULT_MODEL)
         model.hint = "OpenRouter model ID, for example openai/gpt-4o-mini"
-        box.addView(label("OpenRouter model ID", 11f, C.DIM).apply { setPadding(0, dp(7), 0, dp(2)) })
+        box.addView(label("OpenRouter model ID (used by either OpenRouter mode)", 11f, C.DIM).apply { setPadding(0, dp(7), 0, dp(2)) })
         box.addView(model, lp(MATCH, WRAP))
+
+        val openRouterKey = field("").apply {
+            hint = if (settings.hasOpenRouterApiKey()) "Key saved encrypted; leave blank to keep it" else "sk-or-v1-…"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            isSaveEnabled = false
+        }
+        box.addView(label("Direct OpenRouter API key (stored encrypted on this device only)", 11f, C.DIM).apply { setPadding(0, dp(8), 0, dp(2)) })
+        box.addView(openRouterKey, lp(MATCH, WRAP))
+        box.addView(button("Forget saved OpenRouter key", C.PANEL2) {
+            settings.clearOpenRouterApiKey()
+            openRouterKey.text.clear()
+            openRouterKey.hint = "sk-or-v1-…"
+            toast("Saved OpenRouter key deleted from this device")
+            updateStatus()
+        }, lp(MATCH, WRAP).margins(0, dp(4), 0, dp(4)))
 
         val email = field("")
         email.hint = "Email"
@@ -555,29 +578,55 @@ class AiBuilderActivity : AppCompatActivity() {
             setTextColor(C.TEXT)
             isChecked = settings.useDemoMode()
         }
-        box.addView(demo, lp(MATCH, WRAP).margins(0, dp(6), 0, 0))
+        val direct = CheckBox(this).apply {
+            text = "Use Direct OpenRouter (no Supabase Auth or backend)"
+            setTextColor(C.TEXT)
+            isChecked = settings.useDirectOpenRouterMode() && !settings.useDemoMode()
+        }
+        box.addView(direct, lp(MATCH, WRAP).margins(0, dp(6), 0, 0))
+        box.addView(demo, lp(MATCH, WRAP))
         val remember = CheckBox(this).apply {
             text = "Remember chat/build memory on this device"
             setTextColor(C.TEXT)
             isChecked = settings.rememberOnDevice()
         }
         box.addView(remember, lp(MATCH, WRAP))
-        val authStatus = label(if (settings.hasSession()) "Supabase session stored encrypted with Android Keystore." else "Not signed in. Secure AI requires a Supabase Auth account.", 11f, C.DIM)
+        val authStatus = label(when {
+            direct.isChecked && settings.hasOpenRouterApiKey() -> "Direct OpenRouter key is encrypted with Android Keystore. No Supabase session is used."
+            direct.isChecked -> "Add an OpenRouter API key above, then choose Direct OpenRouter. No Supabase account is required."
+            settings.hasSession() -> "Supabase session stored encrypted with Android Keystore."
+            else -> "Secure Supabase mode requires an account. Direct OpenRouter does not."
+        }, 11f, C.DIM)
+        demo.setOnCheckedChangeListener { _, checked ->
+            if (checked) direct.isChecked = false
+            authStatus.text = if (demo.isChecked) "Local Demo makes no network/model calls." else "Secure Supabase mode requires an account. Direct OpenRouter does not."
+        }
+        direct.setOnCheckedChangeListener { _, checked ->
+            if (checked) demo.isChecked = false
+            authStatus.text = if (direct.isChecked) {
+                if (settings.hasOpenRouterApiKey()) "Direct OpenRouter key is encrypted with Android Keystore. No Supabase session is used."
+                else "Add an OpenRouter API key above. No Supabase account is required."
+            } else if (settings.hasSession()) "Supabase session stored encrypted with Android Keystore."
+            else "Secure Supabase mode requires an account. Direct OpenRouter does not."
+        }
         box.addView(authStatus, lp(MATCH, WRAP).margins(0, dp(4), 0, dp(7)))
         val buttons = vbox()
-        buttons.addView(button("Save backend settings", C.PANEL2) {
-            saveSettings(url, anonKey, model, demo, remember, authStatus)
+        buttons.addView(button("Save AI settings", C.PANEL2) {
+            saveSettings(url, anonKey, model, openRouterKey, demo, direct, remember, authStatus)
         }, lp(MATCH, WRAP).margins(0, 0, 0, dp(5)))
         buttons.addView(button("Sign in to Supabase", C.ACCENT, 0xFFFFFFFF.toInt()) {
-            authAction(url, anonKey, model, email, password, demo, remember, authStatus, signUp = false)
+            authAction(url, anonKey, model, email, password, demo, direct, remember, authStatus, signUp = false)
         }, lp(MATCH, WRAP).margins(0, 0, 0, dp(5)))
         buttons.addView(button("Create Supabase account", C.PANEL2) {
-            authAction(url, anonKey, model, email, password, demo, remember, authStatus, signUp = true)
+            authAction(url, anonKey, model, email, password, demo, direct, remember, authStatus, signUp = true)
         }, lp(MATCH, WRAP).margins(0, 0, 0, dp(5)))
         buttons.addView(button("Sign out", C.PANEL2) {
             service.settings.clearSession()
             settings.setUseDemoMode(true)
-            authStatus.text = "Signed out on this device."
+            settings.setUseDirectOpenRouterMode(false)
+            demo.isChecked = true
+            direct.isChecked = false
+            authStatus.text = "Signed out on this device. Local Demo is selected."
             updateStatus()
         }, lp(MATCH, WRAP))
         box.addView(buttons, lp(MATCH, WRAP))
@@ -594,16 +643,35 @@ class AiBuilderActivity : AppCompatActivity() {
         url: EditText,
         anon: EditText,
         model: EditText,
+        openRouterKey: EditText,
         demo: CheckBox,
+        direct: CheckBox,
         remember: CheckBox,
         status: android.widget.TextView,
     ) {
         try {
-            service.settings.saveConfig(url.text.toString(), anon.text.toString(), model.text.toString())
-            service.settings.setUseDemoMode(demo.isChecked)
-            service.settings.setRememberOnDevice(remember.isChecked)
-            status.text = if (service.settings.hasSession()) "Backend settings saved. Session is encrypted with Android Keystore."
-                else "Backend settings saved. Sign in to enable Secure AI."
+            val settings = service.settings
+            settings.saveModel(model.text.toString())
+            val enteredKey = openRouterKey.text.toString().trim()
+            if (enteredKey.isNotEmpty()) settings.saveOpenRouterApiKey(enteredKey)
+            if (!demo.isChecked && !direct.isChecked) {
+                settings.saveConfig(url.text.toString(), anon.text.toString(), model.text.toString())
+            }
+            if (direct.isChecked && !settings.hasOpenRouterApiKey()) {
+                throw IllegalArgumentException("Enter and save your OpenRouter API key, or select Local Demo / Secure Supabase.")
+            }
+            settings.setUseDemoMode(demo.isChecked)
+            settings.setUseDirectOpenRouterMode(direct.isChecked)
+            settings.setRememberOnDevice(remember.isChecked)
+            openRouterKey.text.clear()
+            openRouterKey.hint = if (settings.hasOpenRouterApiKey()) "Key saved encrypted; leave blank to keep it" else "sk-or-v1-…"
+            status.text = when {
+                direct.isChecked -> "Direct OpenRouter saved. No Supabase/Auth/backend is used; memory remains on this device."
+                demo.isChecked -> "Local Demo selected. No model or network requests will be made."
+                settings.hasSession() -> "Secure AI settings saved. Supabase session is encrypted with Android Keystore."
+                else -> "Supabase settings saved. Sign in to enable Secure AI, or select Direct OpenRouter."
+            }
+            status.setTextColor(if (direct.isChecked || settings.hasSession()) 0xFF8EE3B2.toInt() else C.DIM)
             updateStatus()
         } catch (e: Exception) {
             status.text = e.message ?: "Settings are invalid."
@@ -618,6 +686,7 @@ class AiBuilderActivity : AppCompatActivity() {
         email: EditText,
         password: EditText,
         demo: CheckBox,
+        direct: CheckBox,
         remember: CheckBox,
         status: android.widget.TextView,
         signUp: Boolean,
@@ -652,7 +721,11 @@ class AiBuilderActivity : AppCompatActivity() {
                 if (outcome != null) {
                     status.text = outcome.message
                     status.setTextColor(if (outcome.signedIn) 0xFF8EE3B2.toInt() else C.YELLOW)
-                    if (outcome.signedIn) service.settings.setUseDemoMode(demo.isChecked)
+                    if (outcome.signedIn) {
+                        service.settings.setUseDemoMode(demo.isChecked)
+                        service.settings.setUseDirectOpenRouterMode(false)
+                        direct.isChecked = false
+                    }
                     updateStatus()
                 } else {
                     status.text = error ?: "Supabase Auth failed. Check network/configuration."

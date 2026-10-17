@@ -24,7 +24,7 @@ class AiPlanResult(
     val cloudMemoryStatus: String,
 )
 
-/** Offline-first orchestration around the existing project API and the secure Edge Function boundary. */
+/** Offline-first orchestration around the existing project API and the configured provider mode. */
 class AiGameBuilderService(context: Context) {
     private val appContext = context.applicationContext
     val settings = AiBuilderSettingsStore(appContext)
@@ -47,18 +47,27 @@ class AiGameBuilderService(context: Context) {
         if (project != null && !project.dir.isDirectory) throw AiProviderException("Project '$selectedProjectName' no longer exists. Refresh the project list.")
         val memoryKey = project?.name ?: draftKey
         val demo = settings.useDemoMode()
+        val direct = !demo && settings.useDirectOpenRouterMode()
+        val secureSupabase = !demo && !direct
         val config = settings.config()
-        val modeLabel = if (demo) "LOCAL DEMO — no model calls" else "SECURE AI — Supabase Edge Function / OpenRouter"
-        if (!demo && config == null) throw AiProviderException("Secure AI is selected but Supabase is not configured. Open AI Settings or switch to Local Demo.")
-        if (!demo && !settings.hasSession()) throw AiProviderException("Secure AI needs a signed-in Supabase account. Open AI Settings or switch to Local Demo.")
+        val model = config?.model ?: settings.model()
+        val modeLabel = when {
+            demo -> "LOCAL DEMO — no model calls"
+            direct -> "DIRECT OPENROUTER — device key; no Supabase/backend; device-only memory"
+            else -> "SECURE AI — authenticated Supabase Edge Function / OpenRouter"
+        }
+        if (secureSupabase && config == null) throw AiProviderException("Secure AI needs Supabase URL and publishable/anon key. Use Direct OpenRouter or Local Demo to avoid Supabase.")
+        if (secureSupabase && !settings.hasSession()) throw AiProviderException("Secure AI needs a signed-in Supabase account. Use Direct OpenRouter or Local Demo to avoid Supabase.")
+        if (direct && !settings.hasOpenRouterApiKey()) throw AiProviderException("Direct OpenRouter mode needs an API key saved in AI Settings.")
 
         val remember = settings.rememberOnDevice()
         var cloudStatus = when {
             !remember -> "Memory saving is off; this request is not added to history."
-            demo -> "Device-only memory; cloud sync is off in demo mode."
+            demo -> "Device-only memory; no model or cloud calls."
+            direct -> "Device-only memory; OpenRouter is called directly from this device."
             else -> "Private Supabase memory sync attempted."
         }
-        if (remember && !demo && config != null) {
+        if (remember && secureSupabase && config != null) {
             try { syncMemory(memoryKey, config, cancellation) }
             catch (e: Exception) { cloudStatus = "Cloud memory sync unavailable; local history is still used (${safeError(e.message)})." }
         }
@@ -66,7 +75,7 @@ class AiGameBuilderService(context: Context) {
         if (remember) memory.appendMessage(memoryKey, "user", prompt)
         val snapshot = if (demo) null else project?.let(GameProjectInspector::snapshot)
         var spec: GameSpec
-        var responseModel = if (demo) "local-template-matcher" else config!!.model
+        var responseModel = if (demo) "local-template-matcher" else model
         try {
             if (demo) {
                 spec = DemoGamePlanner.plan(
@@ -76,16 +85,19 @@ class AiGameBuilderService(context: Context) {
                     ProjectManager.list(appContext).map { it.name },
                 )
             } else {
-                val response = SupabaseOpenRouterProvider(config!!, auth).generate(
-                    AiRequest(prompt, config.model, context, snapshot, preferredTemplateId?.takeIf { it != "auto" }),
-                    cancellation,
-                )
-                responseModel = response.model.ifBlank { config.model }
+                val request = AiRequest(prompt, model, context, snapshot, preferredTemplateId?.takeIf { it != "auto" })
+                val response = if (direct) {
+                    val key = settings.openRouterApiKey() ?: throw AiProviderException("Direct OpenRouter key is missing; save it in AI Settings.")
+                    DirectOpenRouterProvider(key).generate(request, cancellation)
+                } else {
+                    SupabaseOpenRouterProvider(config!!, auth).generate(request, cancellation)
+                }
+                responseModel = response.model.ifBlank { model }
                 spec = GameSpecCodec.parse(response.content)
             }
         } catch (e: Exception) {
             if (remember) memory.appendBuildEvent(memoryKey, "Planning request failed", "failed", errors = listOf(safeError(e.message)))
-            try { if (remember && !demo && config != null) syncMemory(memoryKey, config, cancellation) } catch (_: Exception) { }
+            try { if (remember && secureSupabase && config != null) syncMemory(memoryKey, config, cancellation) } catch (_: Exception) { }
             throw e
         }
         if (spec.action == GameAction.CREATE) {
@@ -103,7 +115,7 @@ class AiGameBuilderService(context: Context) {
             memory.appendMessage(memoryKey, "assistant", answer, responseModel)
             if (!validation.valid) memory.appendBuildEvent(memoryKey, "GameSpec validation failed", "invalid", errors = validation.errors.map { it.message })
         }
-        try { if (remember && !demo && config != null) syncMemory(memoryKey, config, cancellation) }
+        try { if (remember && secureSupabase && config != null) syncMemory(memoryKey, config, cancellation) }
         catch (e: Exception) { cloudStatus = "Local history saved; cloud sync unavailable (${safeError(e.message)})." }
         return AiPlanResult(spec, validation, modeLabel, responseModel, cloudStatus)
     }
@@ -139,7 +151,7 @@ class AiGameBuilderService(context: Context) {
             if (plan.spec.action == GameAction.CREATE) {
                 memory.appendDecision(projectName, "Created from '${outcome.report.templateName}': ${plan.spec.mechanics.joinToString(", ")}", "created_game")
             }
-            if (!settings.useDemoMode()) {
+            if (!settings.useDemoMode() && !settings.useDirectOpenRouterMode()) {
                 val config = settings.config()
                 if (config != null) try { syncMemory(projectName, config, cancellation) } catch (_: Exception) { }
             }
@@ -159,7 +171,7 @@ class AiGameBuilderService(context: Context) {
 
     /** Local deletion always succeeds; configured remote deletion is attempted with RLS authorization. */
     fun clearMemory(projectKey: String, cancellation: RequestCancellation): String {
-        val remote = !settings.useDemoMode()
+        val remote = !settings.useDemoMode() && !settings.useDirectOpenRouterMode()
         val config = settings.config()
         memory.clearProject(projectKey) // Local deletion is immediate, even if remote auth/network is unavailable.
         val token = if (remote && config != null) {
@@ -188,7 +200,7 @@ class AiGameBuilderService(context: Context) {
         val messages = events.count { it.kind == "message" }
         val decisions = events.count { it.kind == "decision" }
         val builds = events.count { it.kind == "build" || it.kind == "repair" }
-        return "Project key: $projectKey\nMessages: $messages\nDesign decisions: $decisions\nBuild/repair events: $builds\n\nStored locally in the app's private data. In Secure AI mode these records are synced to your authenticated Supabase account under row-level security. Rollback snapshots stay on this device and are not uploaded."
+        return "Project key: $projectKey\nMessages: $messages\nDesign decisions: $decisions\nBuild/repair events: $builds\n\nStored locally in the app's private no-backup data. Direct OpenRouter and Local Demo keep all memory on this device. Only Secure AI mode syncs conversation/build records to the authenticated Supabase account under row-level security. Rollback snapshots always stay on this device."
     }
 
     private fun syncMemory(projectKey: String, config: SupabasePublicConfig, cancellation: RequestCancellation) {
