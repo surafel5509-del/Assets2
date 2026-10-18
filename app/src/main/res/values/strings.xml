@@ -1,3 +1,29 @@
 <resources>
     <string name="app_name">S Engine</string>
+    <string name="engine_subtitle">Professional 2D/3D Game Engine</string>
+    <string name="new_project">New Project</string>
+    <string name="open_project">Open Project</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="stop">Stop</string>
+    <string name="step">Step Frame</string>
+    <string name="build">Build &amp; Run</string>
+    <string name="prefab">Prefab</string>
+    <string name="ui_canvas">Canvas</string>
+    <string name="ui_image">Image</string>
+    <string name="ui_text">Text</string>
+    <string name="ui_button">Button</string>
+    <string name="post_hdr_bloom">HDR Bloom</string>
+    <string name="character_controller">Character Controller</string>
+    <string name="settings">Settings</string>
+    <string name="console">Console</string>
+    <string name="assets">Assets</string>
+    <string name="hierarchy">Hierarchy</string>
+    <string name="inspector">Inspector</string>
+    <string name="scene">Scene</string>
+    <string name="game_view">Game View</string>
+    <string name="save">Save</string>
+    <string name="export">Export</string>
+    <string name="error_loading">Error loading</string>
+    <string name="prefab_not_found">Prefab not found</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.sengine.project
 
 import com.sengine.engine.core.AssetKind
+import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
 import org.json.JSONObject
@@ -61,6 +62,30 @@ class Project(val dir: File) {
     }
 
     fun deleteScene(n: String) = sceneFile(n).delete()
+
+    // ---------------------------------------------------------------- prefabs
+    val prefabsDir = File(dir, "prefabs")
+
+    fun prefabFile(n: String) = File(prefabsDir, if (n.endsWith(".prefab.json")) n else "$n.prefab.json")
+    fun prefabExists(n: String) = prefabFile(n).exists()
+    fun listPrefabs(): List<String> =
+        (prefabsDir.listFiles() ?: emptyArray())
+            .filter { it.name.endsWith(".prefab.json") }
+            .map { it.name.removeSuffix(".prefab.json") }
+            .sorted()
+
+    fun loadPrefab(n: String): JSONObject {
+        val f = prefabFile(n)
+        if (!f.exists()) return JSONObject()
+        return JSONObject(f.readText())
+    }
+
+    fun savePrefab(n: String, go: GameObject) {
+        prefabsDir.mkdirs()
+        prefabFile(n).writeText(SceneSerializer.objectToJson(go).toString(1))
+    }
+
+    fun deletePrefab(n: String) = prefabFile(n).delete()
 
     fun assetFile(n: String) = File(assetsDir, n)
 

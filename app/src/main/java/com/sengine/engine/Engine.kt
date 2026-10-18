@@ -5,6 +5,7 @@ import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Component
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ParticleEmitter
+import com.sengine.engine.core.PrefabInstance
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
 import com.sengine.engine.physics.PhysicsWorld
@@ -132,6 +133,28 @@ class Engine(val project: Project, initialScene: Scene) {
             go.get<AudioSource>()?.let { if (it.playOnStart) audio.play(it.clip, it.volume, it.loop) }
         }
         scripts.begin()
+        spawnPrefabs()
+    }
+
+    /** Auto-spawn PrefabInstance components (spawnOnStart) at their owner's position. */
+    private fun spawnPrefabs() {
+        for (go in scene.objects.toList()) {
+            if (!go.isActiveInHierarchy()) continue
+            val pi = go.getAny<PrefabInstance>() ?: continue
+            if (!pi.spawnOnStart || pi.prefab.isBlank()) continue
+            val json = project.loadPrefab(pi.prefab)
+            if (json.length() == 0) { log(2, "Prefab not found: ${pi.prefab}"); continue }
+            val copy = scene.create("Prefab:${pi.prefab}", go.parent)
+            SceneSerializer.applyObjectJson(copy, json)
+            copy.setWorldPosition(go.world.tx, go.world.ty)
+            copy.active = true
+            for (d in listOf(copy) + scene.objects.filter { copy.isAncestorOf(it) }) {
+                d.components.forEach { it.resetRuntime() }
+            }
+            scene.updateTransforms()
+            scripts.attach(copy)
+            log(0, "Spawned prefab ${pi.prefab}")
+        }
     }
 
     private fun endScene() {

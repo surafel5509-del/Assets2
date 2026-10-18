@@ -3,18 +3,23 @@ package com.sengine.engine.render
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import com.sengine.engine.Engine
+import com.sengine.engine.core.Button
+import com.sengine.engine.core.Canvas
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Camera3D
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.Collider3D
 import com.sengine.engine.core.GameObject
+import com.sengine.engine.core.Image
 import com.sengine.engine.core.Light
 import com.sengine.engine.core.MeshRenderer
 import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.SpriteRenderer
+import com.sengine.engine.core.Text
 import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.math.Affine
 import com.sengine.engine.math.Mat4
+import com.sengine.engine.render.BloomPass
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
@@ -32,6 +37,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
     private val r3 = Renderer3D()
     private val shaders = ShaderLibrary(engine.project) { engine.log(2, it) }
     private val post = PostProcessor()
+    private val bloom = BloomPass()
     private val textures = TextureCache(engine.project)
     private val gameView3D = View3D()
     private val shakeView = View2D()
@@ -50,6 +56,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         r.init(shaders)
         r3.init(shaders)
         post.init()
+        bloom.init()
         textures.clear()
         lastNs = System.nanoTime()
     }
@@ -80,19 +87,35 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
 
             // post effect selection (play mode only)
             var postProg: PostProgram? = null
+            var doBloom = false
+            var bloomThreshold = 0.85f
+            var bloomIntensity = 1.2f
+            var bloomPasses = 3
             var intensity = 1f
             if (!editing) {
                 var fx = 0; var shader = ""
                 if (use3D) cam3?.get<Camera3D>()?.let { fx = it.postFx; shader = it.postShader; intensity = it.postIntensity }
                 else engine.mainCamera()?.get<Camera2D>()?.let { fx = it.postFx; shader = it.postShader; intensity = it.postIntensity }
-                if (fx > 0) postProg = shaders.post(if (fx == POST_CUSTOM) 0 else fx, if (fx == POST_CUSTOM) shader else "")
+                val hdrBloomIdx = ComponentRegistry.POST_FX.indexOf("HDR Bloom")
+                if (fx == hdrBloomIdx) { doBloom = true; bloomIntensity = intensity }
+                else if (fx > 0) postProg = shaders.post(if (fx == POST_CUSTOM) 0 else fx, if (fx == POST_CUSTOM) shader else "")
             }
-            if (postProg != null) post.begin(width, height)
+            var postActive = postProg != null || doBloom
+            if (postActive) post.begin(width, height)
 
             if (use3D) render3D(editing, cam3) else render2D(editing)
             drawScreenUI(editing, use3D)
 
-            if (post.active && postProg != null) r.drawCalls += post.end(postProg, time, intensity)
+            if (postActive) {
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+                GLES20.glViewport(0, 0, width, height)
+                GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+                if (doBloom) {
+                    r.drawCalls += bloom.apply(post.resolve(), width, height, bloomThreshold, bloomIntensity, bloomPasses)
+                } else if (postProg != null) {
+                    r.drawCalls += post.end(postProg, time, intensity)
+                }
+            }
             engine.drawCalls = r.drawCalls + r3.drawCalls
             engine.renderMs = (System.nanoTime() - t0) / 1e6f
         }
@@ -193,14 +216,72 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
 
     private fun drawScreenUI(editing: Boolean, use3D: Boolean) {
         if (editing && !use3D) return // drawn in world space while editing 2D
-        val items = sortedObjects().filter { isScreenSpace(it) }
+        val items = sortedObjects().filter { isScreenSpace(it) || hasUi(it) }
         if (items.isEmpty()) return
-        uiView.cx = 0f; uiView.cy = 0f; uiView.size = 5f; uiView.widthPx = width; uiView.heightPx = height
+        // Pixel-perfect orthographic projection: origin top-left, Y down, 1 unit = 1 pixel.
+        val pixelOrtho = FloatArray(16)
+        android.opengl.Matrix.orthoM(pixelOrtho, 0, 0f, width.toFloat(), height.toFloat(), 0f, -1f, 1f)
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
-        r.begin(uiView)
-        val ppu = uiView.pixelsPerUnit
-        for (go in items) drawObject2D(go, ppu, null)
+        r.begin(pixelOrtho)
+        val sh = height.toFloat()
+        for (go in items) {
+            val sr = go.get<SpriteRenderer>()
+            if (sr != null && sr.screenSpace) { drawObject2D(go, 1f, null); continue }
+            val tr = go.get<TextRenderer>()
+            if (tr != null && tr.screenSpace) { drawObject2D(go, 1f, null); continue }
+            drawUiElement(go, sh)
+        }
     }
+
+    private fun drawUiElement(go: GameObject, sh: Float) {
+        val img = go.get<Image>()
+        val txt = go.get<Text>()
+        val btn = go.get<Button>()
+        val w = go.world
+        val px = w.tx
+        val py = sh - w.ty // flip Y to top-down
+        var hovered = false
+        if (btn != null) {
+            val img2 = go.get<Image>()
+            val bw = if (img2 != null) img2.width else 120f
+            val bh = if (img2 != null) img2.height else 40f
+            val l = px - (img2?.pivotX ?: 0.5f) * bw
+            val t = py - (1f - (img2?.pivotY ?: 0.5f)) * bh
+            val tx = engine.input.touchX; val ty = engine.input.touchY
+            val screenY = sh - ty
+            hovered = engine.input.touching && tx >= l && tx <= l + bw && screenY >= t - bh && screenY <= t
+            btn.hovered = hovered
+            btn.pressed = hovered && engine.input.touching
+            if (engine.input.tapped && hovered && btn.onClick.isNotEmpty() && btn.target.isNotEmpty()) {
+                engine.scene.find(btn.target)?.let { target ->
+                    engine.scripts.sendMessage(target, btn.onClick, null)
+                }
+            }
+        }
+        if (img != null) {
+            val tex = if (img.texture.isNotBlank()) textures.image(img.texture) else null
+            val c = if (btn != null) {
+                if (btn.pressed) btn.pressedColor else if (btn.hovered) btn.hoverColor else btn.normalColor
+            } else img.color
+            val l = px - img.pivotX * img.width
+            val t = py - (1f - img.pivotY) * img.height
+            tmp2.a = img.width; tmp2.b = 0f; tmp2.c = 0f; tmp2.d = img.height; tmp2.tx = l; tmp2.ty = t - img.height
+            tmp.setMul(Affine().setTRS(l, t - img.height, 0f, img.width, img.height), tmp2)
+            r.quad(tmp, c, if (tex != null) 0 else 0, tex, 100f, img.flipX, img.flipY)
+        }
+        if (txt != null && txt.content.isNotEmpty()) {
+            val tex = textures.text(txt.content, false, txt.align)
+            val hh = txt.fontSize
+            val ww = hh * tex.w / tex.h
+            val ox = when (txt.align) { 0 -> 0f; 1 -> -ww / 2f; 2 -> -ww; else -> 0f }
+            tmp2.a = ww; tmp2.b = 0f; tmp2.c = 0f; tmp2.d = hh; tmp2.tx = px + ox; tmp2.ty = py - hh
+            tmp.setMul(Affine().setTRS(px + ox, py - hh, 0f, ww, hh), tmp2)
+            r.quad(tmp, txt.color, 0, tex, 100f)
+        }
+    }
+
+    private fun hasUi(go: GameObject): Boolean =
+        go.get<Image>() != null || go.get<Text>() != null || go.get<Button>() != null || go.get<Canvas>() != null
 
     // ------------------------------------------------------------------ 3D
 

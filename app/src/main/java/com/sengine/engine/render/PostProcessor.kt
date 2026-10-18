@@ -83,4 +83,12 @@ class PostProcessor {
         GLES20.glEnable(GLES20.GL_BLEND)
         return 1
     }
+
+    /** Unbinds the off-screen target and restores the default framebuffer; returns the rendered color texture id. */
+    fun resolve(): Int {
+        active = false
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0, 0, w, h)
+        return colorTex
+    }
 }

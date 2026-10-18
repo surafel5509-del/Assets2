@@ -253,4 +253,65 @@ class PhysicsWorld {
         }
         return null
     }
+
+    /** 2D ray cast against active Collider2D objects. Returns the first hit object and writes hit data. */
+    fun raycast(scene: Scene, ox: Float, oy: Float, dx: Float, dy: Float, maxDist: Float): RaycastHit2D? {
+        var best: GameObject? = null
+        var bestT = maxDist
+        var bestNx = 0f; var bestNy = 0f
+        for (go in scene.objects.asReversed()) {
+            if (!go.isActiveInHierarchy()) continue
+            val col = go.get<Collider2D>() ?: continue
+            val b = Body(go, null, col)
+            refresh(b)
+            val t = if (b.isCircle) rayCircle(ox, oy, dx, dy, b) else rayBox(ox, oy, dx, dy, b)
+            if (t != null && t >= 0f && t < bestT) {
+                bestT = t; best = go
+                // normal approx: point - center
+                val hx = ox + dx * t; val hy = oy + dy * t
+                if (b.isCircle) { bestNx = (hx - b.cx) / max(b.r, 0.001f); bestNy = (hy - b.cy) / max(b.r, 0.001f) }
+                else {
+                    val dxEdge = abs(hx - b.cx) - b.hw; val dyEdge = abs(hy - b.cy) - b.hh
+                    if (dxEdge > dyEdge) bestNx = if (hx < b.cx) -1f else 1f else { bestNy = if (hy < b.cy) -1f else 1f }
+                }
+            }
+        }
+        return if (best == null) null else RaycastHit2D(best, bestT, bestNx, bestNy)
+    }
+
+    private fun rayCircle(ox: Float, oy: Float, dx: Float, dy: Float, b: Body): Float? {
+        val lx = ox - b.cx; val ly = oy - b.cy
+        val bb = lx * dx + ly * dy
+        val c = lx * lx + ly * ly - b.r * b.r
+        val disc = bb * bb - c
+        if (disc < 0f) return null
+        val t = -bb - sqrt(disc)
+        return if (t < 0f) null else t
+    }
+
+    private fun rayBox(ox: Float, oy: Float, dx: Float, dy: Float, b: Body): Float? =
+        rayAabb(ox, oy, dx, dy, b.cx - b.hw, b.cy - b.hh, b.cx + b.hw, b.cy + b.hh)
+
+    companion object {
+        fun rayAabb(ox: Float, oy: Float, dx: Float, dy: Float,
+                    minX: Float, minY: Float, maxX: Float, maxY: Float): Float? {
+            var tmin = -Float.MAX_VALUE; var tmax = Float.MAX_VALUE
+            if (abs(dx) < 1e-8f) { if (ox < minX || ox > maxX) return null } else {
+                var t1 = (minX - ox) / dx; var t2 = (maxX - ox) / dx
+                if (t1 > t2) { val t = t1; t1 = t2; t2 = t }
+                tmin = max(tmin, t1); tmax = min(tmax, t2)
+                if (tmin > tmax) return null
+            }
+            if (abs(dy) < 1e-8f) { if (oy < minY || oy > maxY) return null } else {
+                var t1 = (minY - oy) / dy; var t2 = (maxY - oy) / dy
+                if (t1 > t2) { val t = t1; t1 = t2; t2 = t }
+                tmin = max(tmin, t1); tmax = min(tmax, t2)
+                if (tmin > tmax) return null
+            }
+            if (tmax < 0f) return null
+            return if (tmin >= 0f) tmin else tmax
+        }
+    }
 }
+
+data class RaycastHit2D(val object: GameObject, val distance: Float, val normalX: Float, val normalY: Float)

@@ -1,7 +1,17 @@
 <resources>
-    <color name="bg">#FF1E1F22</color>
-    <color name="panel">#FF2B2D31</color>
+    <!-- Professional dark engine palette -->
+    <color name="bg">#FF121417</color>
+    <color name="panel">#FF1E2126</color>
+    <color name="panel_elevated">#FF262A30</color>
     <color name="accent">#FF4C8DFF</color>
+    <color name="accent_hover">#FF6FA7FF</color>
     <color name="text">#FFE6E6E6</color>
+    <color name="text_muted">#FF9AA0A8</color>
+    <color name="text_bright">#FFFFFFFF</color>
+    <color name="success">#FF4CAF50</color>
+    <color name="warn">#FFFFB74D</color>
+    <color name="error">#FFF44336</color>
     <color name="ic_bg">#FF151A22</color>
+    <color name="divider">#FF33383E</color>
+    <color name="selection">#FF4C8DFF</color>
 </resources>

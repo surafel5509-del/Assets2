@@ -3,6 +3,7 @@ package com.sengine.engine.script
 import com.sengine.engine.Engine
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Collider2D
+import com.sengine.engine.core.CharacterController
 import com.sengine.engine.core.Component
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ParticleEmitter
@@ -153,6 +154,72 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun burst(n: Double) { go.getAny<ParticleEmitter>()?.let { it.pendingBurst += n.toInt() } }
     fun setEmitting(v: Boolean) { go.getAny<ParticleEmitter>()?.emitting = v }
 
+    // character controller
+    fun getSpeed(): Double = go.getAny<CharacterController>()?.speed ?: 0f
+    fun setSpeed(v: Double) { go.getAny<CharacterController>()?.speed = v.toFloat() }
+    fun getJumpForce(): Double = go.getAny<CharacterController>()?.jumpForce ?: 0f
+    fun setJumpForce(v: Double) { go.getAny<CharacterController>()?.jumpForce = v.toFloat() }
+    fun getGravityScale(): Double = go.getAny<CharacterController>()?.gravityScale ?: 0f
+    fun setGravityScale(v: Double) { go.getAny<CharacterController>()?.gravityScale = v.toFloat() }
+    fun isGroundedC(): Boolean = go.getAny<CharacterController>()?.grounded ?: false
+    fun jumpC() { go.getAny<CharacterController>()?.jump() }
+    fun moveC(inputX: Double, inputY: Double, jump: Boolean, dt: Double): Boolean {
+        val cc = go.getAny<CharacterController>() ?: return false
+        return cc.move(inputX.toFloat(), inputY.toFloat(), jump, dt.toFloat(), engine.scene)
+    }
+
+    // UI
+    fun getTexture(): String = go.getAny<Image>()?.texture ?: go.getAny<SpriteRenderer>()?.texture ?: ""
+    fun setTexture(name: String) { go.getAny<Image>()?.texture = name; go.getAny<SpriteRenderer>()?.texture = name }
+    fun getWidth(): Double = go.getAny<Image>()?.width ?: 0f
+    fun setWidth(v: Double) { go.getAny<Image>()?.width = v.toFloat() }
+    fun getHeight(): Double = go.getAny<Image>()?.height ?: 0f
+    fun setHeight(v: Double) { go.getAny<Image>()?.height = v.toFloat() }
+    fun getPivotX(): Double = go.getAny<Image>()?.pivotX ?: 0.5
+    fun setPivotX(v: Double) { go.getAny<Image>()?.pivotX = v.toFloat() }
+    fun getPivotY(): Double = go.getAny<Image>()?.pivotY ?: 0.5
+    fun setPivotY(v: Double) { go.getAny<Image>()?.pivotY = v.toFloat() }
+    fun getContent(): String = go.getAny<Text>()?.content ?: go.getAny<TextRenderer>()?.text ?: ""
+    fun setContent(v: Any?) { go.getAny<Text>()?.content = Context.toString(v); go.getAny<TextRenderer>()?.text = Context.toString(v) }
+    fun getFontSize(): Double = go.getAny<Text>()?.fontSize ?: 0f
+    fun setFontSize(v: Double) { go.getAny<Text>()?.fontSize = v.toFloat() }
+    fun getOnClick(): String = go.getAny<Button>()?.onClick ?: ""
+    fun setOnClick(v: String) { go.getAny<Button>()?.onClick = v }
+    fun getTarget(): String = go.getAny<Button>()?.target ?: ""
+    fun setTarget(v: String) { go.getAny<Button>()?.target = v }
+
+    // navigation
+    fun getNavSpeed(): Double = go.getAny<NavMeshAgent>()?.speed ?: 0f
+    fun setNavSpeed(v: Double) { go.getAny<NavMeshAgent>()?.speed = v.toFloat() }
+    fun getNavTarget(): String = go.getAny<NavMeshAgent>()?.target ?: ""
+    fun setNavTarget(v: String) { go.getAny<NavMeshAgent>()?.target = v }
+    fun getNavStoppingDistance(): Double = go.getAny<NavMeshAgent>()?.stoppingDistance ?: 0f
+    fun setNavStoppingDistance(v: Double) { go.getAny<NavMeshAgent>()?.stoppingDistance = v.toFloat() }
+    fun isNavHasPath(): Boolean = go.getAny<NavMeshAgent>()?.hasPath ?: false
+    fun getNavRemainingDistance(): Double = go.getAny<NavMeshAgent>()?.remainingDistance ?: 0f
+    fun navMoveTo(x: Double, y: Double, dt: Double): Boolean {
+        go.getAny<NavMeshAgent>()?.moveToward(x.toFloat(), y.toFloat(), dt.toFloat()) ?: true
+    }
+    fun navMoveToTarget(dt: Double): Boolean {
+        val a = go.getAny<NavMeshAgent>() ?: return true
+        return a.moveTowardTarget(engine.scene, dt.toFloat())
+    }
+
+    // tilemap
+    fun getTilemapTexture(): String = go.getAny<Tilemap>()?.texture ?: ""
+    fun setTilemapTexture(v: String) { go.getAny<Tilemap>()?.texture = v }
+    fun getTileSize(): Double = go.getAny<Tilemap>()?.tileSize ?: 1f
+    fun setTileSize(v: Double) { go.getAny<Tilemap>()?.tileSize = v.toFloat() }
+    fun getTilemapColumns(): Double = go.getAny<Tilemap>()?.columns ?: 0
+    fun setTilemapColumns(v: Double) { go.getAny<Tilemap>()?.columns = v.toInt() }
+    fun getTilemapRows(): Double = go.getAny<Tilemap>()?.rows ?: 0
+    fun setTilemapRows(v: Double) { go.getAny<Tilemap>()?.rows = v.toInt() }
+    fun setTile(cx: Double, cy: Double, index: Double) {
+        go.getAny<Tilemap>()?.setTile(cx.toInt(), cy.toInt(), index.toInt())
+    }
+    fun getTile(cx: Double, cy: Double): Double = go.getAny<Tilemap>()?.getTile(cx.toInt(), cy.toInt()) ?: 0
+    fun clearTilemap() { go.getAny<Tilemap>()?.clear() }
+
     // camera
     fun getSize(): Double = (go.getAny<Camera2D>()?.size ?: 0f).toDouble()
     fun setSize(v: Double) { go.getAny<Camera2D>()?.size = v.toFloat() }
@@ -209,6 +276,19 @@ class SScene(private val engine: Engine, private val sys: ScriptSystem) {
         return engine.physics3D.raycast(engine.scene, ox.toFloat(), oy.toFloat(), oz.toFloat(),
             (dx / l).toFloat(), (dy / l).toFloat(), (dz / l).toFloat(), maxDist.toFloat())?.let { sys.toJs(it) }
     }
+    /** 2D raycast against Collider2D objects; returns {object, distance, normalX, normalY} or null. */
+    fun raycast2D(ox: Double, oy: Double, dx: Double, dy: Double, maxDist: Double): Any? {
+        val l = Math.sqrt(dx * dx + dy * dy).coerceAtLeast(1e-9)
+        return com.sengine.engine.core.PhysicsQuery.raycast2D(engine.scene, ox.toFloat(), oy.toFloat(),
+            (dx / l).toFloat(), (dy / l).toFloat(), maxDist.toFloat())?.let { hit ->
+            sys.newObject(mapOf(
+                "object" to sys.toJs(hit.object),
+                "distance" to hit.distance.toDouble(),
+                "normalX" to hit.normalX.toDouble(),
+                "normalY" to hit.normalY.toDouble()
+            ))
+        }
+    }
     fun getCamera3D(): Any? = engine.mainCamera3D()?.let { sys.toJs(it) }
     fun getGravity3D(): Double = engine.scene.gravity3D.toDouble()
     fun setGravity3D(v: Double) { engine.scene.gravity3D = v.toFloat() }
@@ -219,6 +299,21 @@ class SScene(private val engine: Engine, private val sys: ScriptSystem) {
     fun setGravityX(v: Double) { engine.scene.gravityX = v.toFloat() }
     fun getGravityY(): Double = engine.scene.gravityY.toDouble()
     fun setGravityY(v: Double) { engine.scene.gravityY = v.toFloat() }
+    /** Instantiate a prefab asset at (x, y); returns the new object or null. */
+    fun spawnPrefab(name: String, x: Double, y: Double): Any? {
+        val json = engine.project.loadPrefab(name)
+        if (json.length() == 0) return null
+        val go = engine.scene.create(name, null)
+        SceneSerializer.applyObjectJson(go, json)
+        go.setWorldPosition(x.toFloat(), y.toFloat())
+        go.active = true
+        for (d in listOf(go) + engine.scene.objects.filter { go.isAncestorOf(it) }) {
+            d.components.forEach { it.resetRuntime() }
+        }
+        engine.scene.updateTransforms()
+        engine.scripts.attach(go)
+        return sys.toJs(go)
+    }
 }
 
 /** Plain public fields (Rhino exposes them with their exact names, e.g. input.aDown). */

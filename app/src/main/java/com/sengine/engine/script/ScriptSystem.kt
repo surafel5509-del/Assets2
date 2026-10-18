@@ -85,6 +85,14 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         return c.newArray(g, items.toTypedArray())
     }
 
+    fun newObject(values: Map<String, Any?>): Scriptable? {
+        val c = cx ?: return null
+        val g = global ?: return null
+        val obj = c.newObject(g)
+        for ((k, v) in values) ScriptableObject.putProperty(obj, k, Context.javaToJS(v, g))
+        return obj
+    }
+
     /** Create script instances for a (newly spawned) object and its children. */
     fun attach(go: GameObject) {
         val c = cx ?: return
