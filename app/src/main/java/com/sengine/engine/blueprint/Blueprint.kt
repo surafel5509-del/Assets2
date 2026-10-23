@@ -173,6 +173,17 @@ class Blueprint(
         return node
     }
 
+    /** Convenience method: add a node by name with position. */
+    fun add(name: String, x: Float = 0f, y: Float = 0f): BlueprintNode {
+        return createNode(name, NodeCategory.Event, x, y)
+    }
+
+    /** Convenience overload: connect with just from/to (uses "out" pin). */
+    fun connect(fromNode: Int, pinName: String, toNode: Int) {
+        connect(fromNode, pinName, toNode, "in")
+    }
+
+
     fun connect(fromNode: Int, fromPin: String, toNode: Int, toPin: String) {
         connections.add(BlueprintConnection(fromNode, fromPin, toNode, toPin))
     }
