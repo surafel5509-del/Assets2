@@ -26,7 +26,7 @@ class SceneManager(private val project: Project) {
     /** Load a scene additively (doesn't unload current). */
     fun loadAdditive(sceneName: String): Scene? {
         if (!project.sceneExists(sceneName)) return null
-        val scene = Scene()
+        val scene = Scene(sceneName)
         loadedScenes.add(scene)
         if (activeScene == null) activeScene = scene
         return scene
@@ -52,7 +52,7 @@ class SceneManager(private val project: Project) {
         val persistent = activeScene?.objects?.filter { it.name in persistentObjects }
 
         // Switch scene
-        val newScene = Scene()
+        val newScene = Scene(sceneName)
         loadedScenes.clear()
         loadedScenes.add(newScene)
         activeScene = newScene
