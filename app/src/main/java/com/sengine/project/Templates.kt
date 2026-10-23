@@ -19,7 +19,25 @@ import com.sengine.engine.core.TextRenderer
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, HillClimbTemplate.template) }
+    val all: List<Template> by lazy {
+        listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, HillClimbTemplate.template,
+            Template(
+                com.sengine.project.templates.PlatformerAdventureTemplate.NAME,
+                com.sengine.project.templates.PlatformerAdventureTemplate.DESC,
+                { com.sengine.project.templates.PlatformerAdventureTemplate.create(it) }
+            ),
+            Template(
+                com.sengine.project.templates.Runner3DTemplate.NAME,
+                com.sengine.project.templates.Runner3DTemplate.DESC,
+                { com.sengine.project.templates.Runner3DTemplate.create(it) }
+            ),
+            Template(
+                com.sengine.project.templates.RpgTemplate.NAME,
+                com.sengine.project.templates.RpgTemplate.DESC,
+                { com.sengine.project.templates.RpgTemplate.create(it) }
+            )
+        )
+    }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution

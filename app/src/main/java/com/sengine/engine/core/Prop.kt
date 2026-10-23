@@ -6,12 +6,19 @@ enum class AssetKind(val extensions: List<String>) {
     SOUND(listOf("wav", "ogg", "mp3", "m4a")),
     SHADER(listOf("glsl")),
     ANIMATION(listOf("anim")),
-    MODEL(listOf("obj"));
+    MODEL(listOf("obj")),
+    SKELETON(listOf("skel")),
+    SKELETON_ANIM(listOf("skelanim")),
+    MATERIAL(listOf("mat")),
+    ATLAS(listOf("atlas")),
+    TIMELINE(listOf("timeline")),
+    CONTROLLER(listOf("controller")),
+    SPRITE_DATA(listOf("sprite"));
 
     companion object {
         fun of(fileName: String): AssetKind? {
             val ext = fileName.substringAfterLast('.', "").lowercase()
-            return values().firstOrNull { ext in it.extensions }
+            return entries.firstOrNull { ext in it.extensions }
         }
     }
 }
