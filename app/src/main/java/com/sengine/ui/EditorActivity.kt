@@ -291,7 +291,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         assetButtons = hbox()
         assetButtons.addView(button("+ Script") { newScriptDialog { refreshAssets(); openScript(it) } }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("🛒 Store") { startActivity(Intent(this, AssetStoreActivity::class.java).putExtra("project", project.name)) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
-        assetButtons.addView(button("+ Blueprint") { newAssetDialog("New Blueprint", "NewBlueprint", "bp", { com.sengine.engine.blueprint.Blueprint.defaultGraph()().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("+ Blueprint") { newAssetDialog("New Blueprint", "NewBlueprint", "bp", { com.sengine.engine.blueprint.Blueprint.defaultGraph().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Shader") { newAssetDialog("New Shader", "NewShader", "glsl", { Templates.NEW_SHADER }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Animation") { newAssetDialog("New Animation", "NewAnimation", "anim", { com.sengine.engine.anim.AnimationClip().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Model") { importKind = AssetKind.MODEL; importLauncher.launch(arrayOf("*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))

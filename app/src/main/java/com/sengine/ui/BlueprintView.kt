@@ -13,14 +13,14 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import com.sengine.engine.blueprint.Blueprint
-import com.sengine.engine.blueprint.BpNode
+import com.sengine.engine.blueprint.BlueprintNode
 import kotlin.math.hypot
 
 /** Node-graph canvas for blueprints: pan/zoom, drag nodes, drag wires from output pins to nodes. */
 @SuppressLint("ViewConstructor")
 class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
-    var onEditParam: (BpNode, String) -> Unit = { _, _ -> }
-    var onNodeMenu: (BpNode) -> Unit = {}
+    var onEditParam: (BlueprintNode, String) -> Unit = { _, _ -> }
+    var onNodeMenu: (BlueprintNode) -> Unit = {}
     var onChanged: () -> Unit = {}
 
     private val d = resources.displayMetrics.density
@@ -33,9 +33,9 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
     var offY = 20f * d
     var scale = 1f
 
-    var selected: BpNode? = null
-    private var dragNode: BpNode? = null
-    private var wireFrom: BpNode? = null
+    var selected: BlueprintNode? = null
+    private var dragNode: BlueprintNode? = null
+    private var wireFrom: BlueprintNode? = null
     private var wirePin = ""
     private var wireX = 0f
     private var wireY = 0f
@@ -75,19 +75,19 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
 
     fun centerWorld(): Pair<Float, Float> = wx(width / 2f) - nodeW / 2 to wy(height / 3f)
 
-    fun nodeHeight(n: BpNode): Float {
+    fun nodeHeight(n: BlueprintNode): Float {
         val def = n.def ?: return headerH
         return headerH + (def.outs.size.coerceAtLeast(if (def.hasIn) 1 else 0)) * rowH + def.params.size * rowH + 8f * d
     }
 
-    private fun inPin(n: BpNode) = floatArrayOf(n.x * d, n.y * d + headerH / 2)
-    private fun outPin(n: BpNode, i: Int) = floatArrayOf(n.x * d + nodeW, n.y * d + headerH + rowH * i + rowH / 2)
+    private fun inPin(n: BlueprintNode) = floatArrayOf(n.x * d, n.y * d + headerH / 2)
+    private fun outPin(n: BlueprintNode, i: Int) = floatArrayOf(n.x * d + nodeW, n.y * d + headerH + rowH * i + rowH / 2)
 
-    private fun nodeAt(x: Float, y: Float): BpNode? = bp.nodes.lastOrNull {
+    private fun nodeAt(x: Float, y: Float): BlueprintNode? = bp.nodes.lastOrNull {
         x >= it.x * d && x <= it.x * d + nodeW && y >= it.y * d && y <= it.y * d + nodeHeight(it)
     }
 
-    private fun outPinAt(x: Float, y: Float): Pair<BpNode, String>? {
+    private fun outPinAt(x: Float, y: Float): Pair<BlueprintNode, String>? {
         for (n in bp.nodes.asReversed()) {
             val def = n.def ?: continue
             def.outs.forEachIndexed { i, pin ->
@@ -102,7 +102,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         val x = wx(sx); val y = wy(sy)
         outPinAt(x, y)?.let { (n, pin) ->
             // tap on a connected output pin disconnects it
-            if (bp.links.removeAll { it.from == n.id && it.pin == pin }) { onChanged(); invalidate(); return }
+            if (bp.connections.removeAll { it.fromNode == n.id && it.fromPin == pin }) { onChanged(); invalidate(); return }
         }
         val n = nodeAt(x, y)
         selected = n
@@ -188,7 +188,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
 
         // links
         stroke.strokeWidth = 3f * d
-        for (l in bp.links) {
+        for (l in bp.connections) {
             val a = bp.node(l.from) ?: continue
             val b = bp.node(l.to) ?: continue
             val i = a.def?.outs?.indexOf(l.pin) ?: -1
@@ -223,7 +223,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         c.drawPath(path, stroke)
     }
 
-    private fun drawNode(c: Canvas, n: BpNode) {
+    private fun drawNode(c: Canvas, n: BlueprintNode) {
         val def = n.def
         val x = n.x * d; val y = n.y * d
         val h = nodeHeight(n)
@@ -253,7 +253,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         // outputs
         def.outs.forEachIndexed { i, pin ->
             val p = outPin(n, i)
-            val connected = bp.links.any { it.from == n.id && it.pin == pin }
+            val connected = bp.connections.any { it.fromNode == n.id && it.fromPin == pin }
             fill.color = if (connected) 0xFFFFFFFF.toInt() else 0xFF8A8F98.toInt()
             c.drawCircle(p[0], p[1], pinR, fill)
             if (!connected) { fill.color = 0xFF2B2E34.toInt(); c.drawCircle(p[0], p[1], pinR * 0.5f, fill) }
@@ -263,7 +263,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         }
         // params
         val top = y + headerH + def.outs.size.coerceAtLeast(if (def.hasIn) 1 else 0) * rowH
-        def.params.forEachIndexed { i, pd: Blueprint.ParamDef ->
+        def.params.forEachIndexed { i, pd ->
             val ry = top + i * rowH
             fill.color = 0xFF1E2024.toInt()
             rect.set(x + 8 * d, ry + 2 * d, x + nodeW - 8 * d, ry + rowH - 2 * d); c.drawRoundRect(rect, 4 * d, 4 * d, fill)

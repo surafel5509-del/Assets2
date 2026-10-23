@@ -178,6 +178,7 @@ object ProEditorTheme {
         return FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
                 setColor(bgDark)
+                shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(ctx, 6).toFloat()
                 setStroke(1, borderDark)
             }
