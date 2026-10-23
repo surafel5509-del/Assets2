@@ -214,11 +214,15 @@ class DayNightCycle : Component() {
 
     private fun lerpColor(a: Int, b: Int, t: Float): Int {
         val ct = t.coerceIn(0f, 1f)
-        val ar = (a >> 16) and 0xFF; val ag = (a >> 8) and 0xFF; val ab = a and 0xFF
-        val br = (b >> 16) and 0xFF; val bg = (b >> 8) and 0xFF; val bb = b and 0xFF
-        val r = (ar + (br - ar) * ct).toInt() and 0xFF
-        val g = (ag + (bg - ag) * ct).toInt() and 0xFF
-        val bl = (ab + (bb - ab) * ct).toInt() and 0xFF
+        val ar = (a ushr 16) and 0xFF
+        val ag = (a ushr 8) and 0xFF
+        val ab = a and 0xFF
+        val br = (b ushr 16) and 0xFF
+        val bg = (b ushr 8) and 0xFF
+        val bb = b and 0xFF
+        val r = (ar + (br - ar) * ct).toInt()
+        val g = (ag + (bg - ag) * ct).toInt()
+        val bl = (ab + (bb - ab) * ct).toInt()
         return (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
     }
 }
