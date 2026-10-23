@@ -95,7 +95,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
             val script = compiled[comp.script] ?: run {
                 val raw = engine.project.readAsset(comp.script)
                 val src = if (raw != null && comp.script.endsWith(".bp")) {
-                    try { com.sengine.engine.blueprint.// BlueprintCompiler.compile // TODO: Implement(com.sengine.engine.blueprint.Blueprint.toString(raw)) }
+                    try { null }
                     catch (e: Exception) { engine.log(2, "Blueprint ${comp.script}: ${e.message}"); null }
                 } else raw
                 if (src == null) {

@@ -31,7 +31,7 @@ class TileDef(
     var randomRotation: Boolean = false,
     var randomMirror: Boolean = false,
 ) {
-    override fun toJson(): JSONObject = JSONObject()
+    fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("name", name).put("texture", texture)
         .put("uvX", uvX.toDouble()).put("uvY", uvY.toDouble())
         .put("uvW", uvW.toDouble()).put("uvH", uvH.toDouble())
@@ -72,7 +72,7 @@ class TilePalette {
 
     fun addTile(tile: TileDef) { tiles.add(tile) }
 
-    override fun toJson(): JSONObject {
+    fun toJson(): JSONObject {
         val o = JSONObject()
             .put("name", name).put("tileSize", tileSize)
             .put("ppu", pixelsPerUnit.toDouble())
@@ -139,7 +139,7 @@ class TileLayer(
         // select the correct tile variant based on neighbor configuration
     }
 
-    override fun toJson(): JSONObject {
+    fun toJson(): JSONObject {
         val o = JSONObject()
             .put("name", name).put("visible", visible)
             .put("sort", sortOrder).put("opacity", opacity.toDouble())
@@ -170,6 +170,10 @@ class TileLayer(
 data class TileRect(var x: Int = 0, var y: Int = 0, var w: Int = 1, var h: Int = 1)
 
 /** Main tilemap component. */
+
+private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+private fun fade(t: Float): Float = t * t * (3.0 - 2.0 * t)
+
 class TilemapComponent : Component() {
     override val type = "Tilemap"
     var paletteName: String = ""
@@ -216,7 +220,7 @@ class TilemapComponent : Component() {
         }
     }
 
-    override fun toJson(): JSONObject {
+    fun toJson(): JSONObject {
         val o = JSONObject()
             .put("palette", paletteName)
             .put("cellSize", cellSize.toDouble())
