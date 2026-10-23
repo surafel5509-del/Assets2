@@ -271,9 +271,9 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
             c.drawText(pd.name, x + 13 * d, ry + rowH * 0.68f, text)
             val nameW = text.measureText(pd.name) + 8 * d
             text.color = if (pd.str) 0xFFA5D6A7.toInt() else 0xFFFFE082.toInt()
-            var v = n.properties.getOrDefault(pd.name)
+            var v = n.properties.getOrDefault(pd.name, "").toString()
             val maxW = nodeW - 26 * d - nameW
-            while (v.isNotEmpty() && text.measureText(v) > maxW) v = v.dropLast(2) + "…".takeIf { v.length > 2 }.orEmpty()
+            while (v.isNotEmpty() && text.measureText(v) > maxW) v = v.dropLast(2) + if (v.length > 2) "…" else ""
             c.drawText(v, x + 13 * d + nameW, ry + rowH * 0.68f, text)
         }
     }
