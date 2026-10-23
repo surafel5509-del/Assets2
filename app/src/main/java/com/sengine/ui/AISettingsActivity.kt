@@ -164,7 +164,7 @@ class AISettingsActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    AISettings.temperature = progress / 10f
+                    AISettings.setTemperature(progress / 10f)
                     temperatureValue.text = "%.1f".format(progress / 10f)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -203,7 +203,7 @@ class AISettingsActivity : AppCompatActivity() {
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     val tokens = (progress + 1) * 100
-                    AISettings.maxTokens = tokens
+                    AISettings.setMaxTokens(tokens)
                     maxTokensValue.text = tokens.toString()
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -269,21 +269,21 @@ class AISettingsActivity : AppCompatActivity() {
     }
     
     private fun loadSettings() {
-        openaiKeyInput.setText(AISettings.openaiKey)
-        geminiKeyInput.setText(AISettings.geminiKey)
-        openrouterKeyInput.setText(AISettings.openrouterKey)
-        groqKeyInput.setText(AISettings.groqKey)
+        openaiKeyInput.setText(AISettings.getOpenaiKey())
+        geminiKeyInput.setText(AISettings.getGeminiKey())
+        openrouterKeyInput.setText(AISettings.getOpenrouterKey())
+        groqKeyInput.setText(AISettings.getGroqKey())
         
         // Set model spinners
-        setSpinnerSelection(openaiModelSpinner, AISettings.openaiModel)
-        setSpinnerSelection(geminiModelSpinner, AISettings.geminiModel)
-        setSpinnerSelection(openrouterModelSpinner, AISettings.openrouterModel)
-        setSpinnerSelection(groqModelSpinner, AISettings.groqModel)
+        setSpinnerSelection(openaiModelSpinner, AISettings.getOpenAIModel())
+        setSpinnerSelection(geminiModelSpinner, AISettings.getGeminiModel())
+        setSpinnerSelection(openrouterModelSpinner, AISettings.getOpenRouterModel())
+        setSpinnerSelection(groqModelSpinner, AISettings.getGroqModel())
         
-        temperatureSeekBar.progress = (AISettings.temperature * 10).toInt()
-        temperatureValue.text = "%.1f".format(AISettings.temperature)
-        maxTokensSeekBar.progress = (AISettings.maxTokens / 100) - 1
-        maxTokensValue.text = AISettings.maxTokens.toString()
+        temperatureSeekBar.progress = (AISettings.getTemperature() * 10).toInt()
+        temperatureValue.text = "%.1f".format(AISettings.getTemperature())
+        maxTokensSeekBar.progress = (AISettings.getMaxTokens() / 100) - 1
+        maxTokensValue.text = AISettings.getMaxTokens().toString()
     }
     
     private fun setSpinnerSelection(spinner: Spinner, value: String) {
@@ -297,15 +297,14 @@ class AISettingsActivity : AppCompatActivity() {
     }
     
     private fun saveSettings() {
-        AISettings.openaiKey = openaiKeyInput.text.toString().trim()
-        AISettings.geminiKey = geminiKeyInput.text.toString().trim()
-        AISettings.openrouterKey = openrouterKeyInput.text.toString().trim()
-        AISettings.groqKey = groqKeyInput.text.toString().trim()
-        
-        AISettings.openaiModel = openaiModelSpinner.selectedItem.toString()
-        AISettings.geminiModel = geminiModelSpinner.selectedItem.toString()
-        AISettings.openrouterModel = openrouterModelSpinner.selectedItem.toString()
-        AISettings.groqModel = groqModelSpinner.selectedItem.toString()
+        AISettings.setOpenaiKey(openaiKeyInput.text.toString().trim())
+        AISettings.setGeminiKey(geminiKeyInput.text.toString().trim())
+        AISettings.setOpenrouterKey(openrouterKeyInput.text.toString().trim())
+        AISettings.setGroqKey(groqKeyInput.text.toString().trim())
+        AISettings.setOpenAIModel(openaiModelSpinner.selectedItem.toString())
+        AISettings.setGeminiModel(geminiModelSpinner.selectedItem.toString())
+        AISettings.setOpenRouterModel(openrouterModelSpinner.selectedItem.toString())
+        AISettings.setGroqModel(groqModelSpinner.selectedItem.toString())
         
         AISettings.save()
         
