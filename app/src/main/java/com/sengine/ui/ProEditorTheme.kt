@@ -179,8 +179,7 @@ object ProEditorTheme {
         drawable.shape = GradientDrawable.RECTANGLE
         drawable.setColor(bgDark)
         drawable.cornerRadius = dp(ctx, 6).toFloat()
-        drawable.setStroke(1, borderDark)
-        return FrameLayout(ctx).apply {
+                return FrameLayout(ctx).apply {
             background = drawable
             setPadding(dp(ctx, padMedium))
             addView(content)

@@ -248,7 +248,7 @@ class AIGameBuilderActivity : AppCompatActivity() {
             visibility = View.GONE
             setOnClickListener {
                 currentResult?.let {
-                    val clipboard = getSystemService(android.content.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI Result", it))
                     Toast.makeText(this@AIGameBuilderActivity, "Copied!", Toast.LENGTH_SHORT).show()
                 }

@@ -64,7 +64,7 @@ object Runner3DTemplate {
         val player = scene.create("Player")
         player.tag = "Player"
         player.add(MeshRenderer().also {
-            it.shape = 1 // Capsule
+            it.mesh = 1 // Capsule
             it.color = 0xFF4488FF.toInt()
         })
         player.scaleX = 0.8f; player.scaleY = 1.5f; player.scaleZ = 0.8f
@@ -86,7 +86,7 @@ object Runner3DTemplate {
         ground.scaleX = 12f; ground.scaleY = 0.5f; ground.scaleZ = 200f
         ground.z = 80f
         ground.add(MeshRenderer().also {
-            it.shape = 0; it.color = 0xFF3A5F3A.toInt()
+            it.mesh = 0; it.color = 0xFF3A5F3A.toInt()
         })
         ground.add(Rigidbody3D().also { it.bodyType = 2 })
         ground.add(Collider3D().also { it.shape = 0; it.width = 1f; it.height = 1f; it.depth = 1f })
@@ -97,7 +97,7 @@ object Runner3DTemplate {
             lane.x = i.toFloat() * 3f; lane.y = 0.3f; lane.z = 50f
             lane.scaleX = 0.1f; lane.scaleY = 0.05f; lane.scaleZ = 100f
             lane.add(MeshRenderer().also {
-                it.shape = 0; it.color = 0x40FFFFFF.toInt()
+                it.mesh = 0; it.color = 0x40FFFFFF.toInt()
             })
         }
 
@@ -107,7 +107,7 @@ object Runner3DTemplate {
             wall.x = side.toFloat() * 7f; wall.y = 3f; wall.z = 50f
             wall.scaleX = 0.5f; wall.scaleY = 6f; wall.scaleZ = 100f
             wall.add(MeshRenderer().also {
-                it.shape = 0; it.color = 0xFF2C3E50.toInt()
+                it.mesh = 0; it.color = 0xFF2C3E50.toInt()
             })
         }
 
@@ -132,7 +132,7 @@ object Runner3DTemplate {
                 2 -> { obs.scaleX = 5f; obs.scaleY = 2f; obs.scaleZ = 0.5f }
             }
             obs.add(MeshRenderer().also {
-                it.shape = 0; it.color = 0xFFE74C3C.toInt()
+                it.mesh = 0; it.color = 0xFFE74C3C.toInt()
             })
             obs.add(Collider3D().also {
                 it.shape = 0; it.width = 1f; it.height = 1f; it.depth = 1f; it.isTrigger = true
@@ -158,7 +158,7 @@ object Runner3DTemplate {
             coin.x = p[0]; coin.y = p[1]; coin.z = p[2]
             coin.scaleX = 0.5f; coin.scaleY = 0.5f; coin.scaleZ = 0.5f
             coin.add(MeshRenderer().also {
-                it.shape = 1; it.color = 0xFFFFD700.toInt()
+                it.mesh = 1; it.color = 0xFFFFD700.toInt()
             })
             coin.add(Collider3D().also {
                 it.shape = 1; it.radius = 0.5f; it.isTrigger = true
@@ -181,7 +181,7 @@ object Runner3DTemplate {
             pu.scaleX = 0.7f; pu.scaleY = 0.7f; pu.scaleZ = 0.7f
             val puType = d[3].toInt()
             pu.add(MeshRenderer().also {
-                it.shape = 2 // Sphere
+                it.mesh = 2 // Sphere
                 it.color = when (puType) {
                     0 -> 0xFF00BFFF.toInt() // Shield - blue
                     1 -> 0xFFFF69B4.toInt() // Magnet - pink
@@ -203,7 +203,7 @@ object Runner3DTemplate {
             it.emitting = true; it.rate = 30f
             it.startColor = 0x804488FF.toInt(); it.endColor = 0x004488FF.toInt()
             it.startSize = 0.3f; it.endSize = 0f; it.lifetime = 0.5f
-            it.speed = 0.5f; it.gravityY = 0f
+            it.speed = 0.5f; it.gravity = 0f
         })
         trail.add(ScriptComponent().also {
             it.script = "TrailFollow.js"
@@ -219,7 +219,7 @@ object Runner3DTemplate {
                 tree.z = i.toFloat() * 10f + 5f
                 tree.scaleX = 1.5f; tree.scaleY = 4f; tree.scaleZ = 1.5f
                 tree.add(MeshRenderer().also {
-                    it.shape = 1; it.color = 0xFF2E7D32.toInt()
+                    it.mesh = 1; it.color = 0xFF2E7D32.toInt()
                 })
             }
         }
