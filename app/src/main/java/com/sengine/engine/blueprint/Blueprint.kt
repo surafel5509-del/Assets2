@@ -150,10 +150,6 @@ class BlueprintConnection(
         .put("toNode", toNodeId).put("toPin", toPinName)
 
     companion object {
-        fun parse(json: String): Blueprint {
-            val obj = JSONObject(json)
-            return fromJson(obj)
-        }
         fun fromJson(o: JSONObject): BlueprintConnection = BlueprintConnection(
             o.optInt("fromNode", 0), o.optString("fromPin", ""),
             o.optInt("toNode", 0), o.optString("toPin", "")
@@ -163,6 +159,10 @@ class BlueprintConnection(
 
 
 class Blueprint(
+        fun parse(json: String): Blueprint {
+            val obj = JSONObject(json)
+            return fromJson(obj)
+        }
     var name: String = "",
     var description: String = "",
     val nodes: MutableList<BlueprintNode> = mutableListOf(),
