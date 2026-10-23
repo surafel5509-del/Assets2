@@ -175,13 +175,13 @@ object ProEditorTheme {
 
     /** Create a styled card (rounded background with subtle border). */
     fun card(ctx: Context, content: View): FrameLayout {
+        val drawable = GradientDrawable()
+        drawable.shape = GradientDrawable.RECTANGLE
+        drawable.setColor(bgDark)
+        drawable.cornerRadius = dp(ctx, 6).toFloat()
+        drawable.setStroke(1, borderDark)
         return FrameLayout(ctx).apply {
-            background = GradientDrawable().apply {
-                setColor(bgDark)
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(ctx, 6).toFloat()
-                (this as GradientDrawable).setStroke(1, borderDark)
-            }
+            background = drawable
             setPadding(dp(ctx, padMedium))
             addView(content)
         }
