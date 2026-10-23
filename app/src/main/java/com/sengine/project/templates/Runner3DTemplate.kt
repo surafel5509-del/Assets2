@@ -73,7 +73,7 @@ object Runner3DTemplate {
             it.mass = 1f; it.gravityScale = 2.5f; it.freezeRotation = true
         })
         player.add(Collider3D().also {
-            it.shape = 1; it.radius = 0.5f; it.sizeY = 1.8f
+            it.shape = 1; it.radius = 0.5f; it.height = 1.8f
         })
         player.add(ScriptComponent().also {
             it.script = "RunnerController.js"
@@ -89,7 +89,7 @@ object Runner3DTemplate {
             it.mesh = 0; it.color = 0xFF3A5F3A.toInt()
         })
         ground.add(Rigidbody3D().also { it.bodyType = 2 })
-        ground.add(Collider3D().also { it.shape = 0; it.sizeX = 1f; it.sizeY = 1f; it.sizeZ = 1f })
+        ground.add(Collider3D().also { it.shape = 0; it.width = 1f; it.height = 1f; it.sizeZ = 1f })
 
         // ── Lane Markers ──
         for (i in -1..1) {
@@ -135,7 +135,7 @@ object Runner3DTemplate {
                 it.mesh = 0; it.color = 0xFFE74C3C.toInt()
             })
             obs.add(Collider3D().also {
-                it.shape = 0; it.sizeX = 1f; it.sizeY = 1f; it.sizeZ = 1f; it.isTrigger = true
+                it.shape = 0; it.width = 1f; it.height = 1f; it.sizeZ = 1f; it.isTrigger = true
             })
             obs.add(ScriptComponent().also {
                 it.script = "Obstacle.js"
@@ -234,7 +234,7 @@ object Runner3DTemplate {
         scoreText.parent = hudCanvas
         scoreText.add(RectTransform().also {
             it.anchorMinX = 0.5f; it.anchorMinY = 1f; it.anchorMaxX = 0.5f; it.anchorMaxY = 1f
-            it.anchoredY = -30f; it.sizeX = 400f; it.sizeY = 60f
+            it.anchoredY = -30f; it.width = 400f; it.height = 60f
         })
         scoreText.add(UIText().also { it.text = "0"; it.fontSize = 48; it.color = 0xFFFFFFFF.toInt(); it.bold = true })
 
@@ -245,7 +245,7 @@ object Runner3DTemplate {
         distText.add(RectTransform().also {
             it.anchorMinX = 1f; it.anchorMinY = 1f; it.anchorMaxX = 1f; it.anchorMaxY = 1f
             it.pivotX = 1f; it.pivotY = 1f
-            it.anchoredX = -20f; it.anchoredY = -20f; it.sizeX = 300f; it.sizeY = 40f
+            it.anchoredX = -20f; it.anchoredY = -20f; it.width = 300f; it.height = 40f
         })
         distText.add(UIText().also { it.text = "0m"; it.fontSize = 32; it.color = 0xFFCCCCCC.toInt() })
 
@@ -256,7 +256,7 @@ object Runner3DTemplate {
         coinHud.add(RectTransform().also {
             it.anchorMinX = 0f; it.anchorMinY = 1f; it.anchorMaxX = 0f; it.anchorMaxY = 1f
             it.pivotX = 0f; it.pivotY = 1f
-            it.anchoredX = 20f; it.anchoredY = -20f; it.sizeX = 200f; it.sizeY = 40f
+            it.anchoredX = 20f; it.anchoredY = -20f; it.width = 200f; it.height = 40f
         })
         coinHud.add(UIText().also { it.text = "× 0"; it.fontSize = 36; it.color = 0xFFFFD700.toInt(); it.bold = true })
 
