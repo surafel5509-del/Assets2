@@ -102,7 +102,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         val x = wx(sx); val y = wy(sy)
         outPinAt(x, y)?.let { (n, pin) ->
             // tap on a connected output pin disconnects it
-            if (bp.connections.removeAll { it.fromNode == n.id && it.fromPin == pin }) { onChanged(); invalidate(); return }
+            if (bp.connections.removeAll { it.fromNodeId == n.id && it.fromPinName == pin }) { onChanged(); invalidate(); return }
         }
         val n = nodeAt(x, y)
         selected = n
@@ -253,7 +253,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         // outputs
         def.outs.forEachIndexed { i, pin ->
             val p = outPin(n, i)
-            val connected = bp.connections.any { it.fromNode == n.id && it.fromPin == pin }
+            val connected = bp.connections.any { it.fromNodeId == n.id && it.fromPinName == pin }
             fill.color = if (connected) 0xFFFFFFFF.toInt() else 0xFF8A8F98.toInt()
             c.drawCircle(p[0], p[1], pinR, fill)
             if (!connected) { fill.color = 0xFF2B2E34.toInt(); c.drawCircle(p[0], p[1], pinR * 0.5f, fill) }
@@ -263,7 +263,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         }
         // params
         val top = y + headerH + def.outs.size.coerceAtLeast(if (def.hasIn) 1 else 0) * rowH
-        def.params.forEachIndexed { i, pd ->
+        def.params.forEachIndexed { i: Int, pd: Any ->
             val ry = top + i * rowH
             fill.color = 0xFF1E2024.toInt()
             rect.set(x + 8 * d, ry + 2 * d, x + nodeW - 8 * d, ry + rowH - 2 * d); c.drawRoundRect(rect, 4 * d, 4 * d, fill)
@@ -271,7 +271,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
             c.drawText(pd.name, x + 13 * d, ry + rowH * 0.68f, text)
             val nameW = text.measureText(pd.name) + 8 * d
             text.color = if (pd.str) 0xFFA5D6A7.toInt() else 0xFFFFE082.toInt()
-            var v = n.param(pd.name)
+            var v = n.properties.getOrDefault(pd.name)
             val maxW = nodeW - 26 * d - nameW
             while (v.isNotEmpty() && text.measureText(v) > maxW) v = v.dropLast(2) + "…".takeIf { v.length > 2 }.orEmpty()
             c.drawText(v, x + 13 * d + nameW, ry + rowH * 0.68f, text)

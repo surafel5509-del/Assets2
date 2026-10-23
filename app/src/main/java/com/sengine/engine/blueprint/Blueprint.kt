@@ -133,6 +133,15 @@ class BlueprintConnection(
 }
 
 /** A complete blueprint (visual script). */
+
+    companion object {
+        fun defaultGraph(): Blueprint {
+            val bp = Blueprint(name = "NewBlueprint")
+            val startNode = bp.createNode("On Start", NodeCategory.Event, 100f, 100f)
+            return bp
+        }
+    }
+
 class Blueprint(
     var name: String = "",
     var description: String = "",
@@ -370,6 +379,7 @@ class Blueprint(
             Triple("Or", NodeCategory.Logic, emptyList()),
             Triple("Not", NodeCategory.Logic, emptyList()),
             Triple("Compare", NodeCategory.Logic, emptyList()),
+        )
 
         /** Create a default starter blueprint graph */
         fun defaultGraph(): Blueprint {
@@ -378,7 +388,6 @@ class Blueprint(
             startNode.outputs.add(Pin("Out", PinType.Flow))
             return bp
         }
-        )
     }
 }
 
