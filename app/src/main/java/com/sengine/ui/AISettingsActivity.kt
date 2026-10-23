@@ -269,9 +269,9 @@ class AISettingsActivity : AppCompatActivity() {
     }
     
     private fun loadSettings() {
-        openaiKeyInput.setText(AISettings.getOpenaiKey())
+        openaiKeyInput.setText(AISettings.getOpenAIKey())
         geminiKeyInput.setText(AISettings.getGeminiKey())
-        openrouterKeyInput.setText(AISettings.getOpenrouterKey())
+        openrouterKeyInput.setText(AISettings.getOpenRouterKey())
         groqKeyInput.setText(AISettings.getGroqKey())
         
         // Set model spinners
@@ -297,9 +297,9 @@ class AISettingsActivity : AppCompatActivity() {
     }
     
     private fun saveSettings() {
-        AISettings.setOpenaiKey(openaiKeyInput.text.toString().trim())
+        AISettings.setOpenAIKey(openaiKeyInput.text.toString().trim())
         AISettings.setGeminiKey(geminiKeyInput.text.toString().trim())
-        AISettings.setOpenrouterKey(openrouterKeyInput.text.toString().trim())
+        AISettings.setOpenRouterKey(openrouterKeyInput.text.toString().trim())
         AISettings.setGroqKey(groqKeyInput.text.toString().trim())
         AISettings.setOpenAIModel(openaiModelSpinner.selectedItem.toString())
         AISettings.setGeminiModel(geminiModelSpinner.selectedItem.toString())
