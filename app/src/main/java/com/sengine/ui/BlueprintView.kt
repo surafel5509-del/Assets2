@@ -263,7 +263,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
         }
         // params
         val top = y + headerH + def.outs.size.coerceAtLeast(if (def.hasIn) 1 else 0) * rowH
-        def.params.forEachIndexed { i, pd ->
+        def.params.forEachIndexed { i, pd: Blueprint.ParamDef ->
             val ry = top + i * rowH
             fill.color = 0xFF1E2024.toInt()
             rect.set(x + 8 * d, ry + 2 * d, x + nodeW - 8 * d, ry + rowH - 2 * d); c.drawRoundRect(rect, 4 * d, 4 * d, fill)

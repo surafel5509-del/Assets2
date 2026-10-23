@@ -9,7 +9,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.sengine.engine.textures.MaterialData
 import com.sengine.engine.textures.TextureImportSettings
-import com.sengine.engine.textures.TextureImportSettings
 import com.sengine.engine.textures.TextureAtlas
 import com.sengine.engine.editor.SpriteEditorData
 import com.sengine.project.Project
@@ -213,7 +212,7 @@ class MaterialEditorActivity : AppCompatActivity() {
         container.addView(section("Import Settings"))
         container.addView(choiceRow("Filter Mode", listOf("Point", "Bilinear", "Trilinear"), importProfile.filterMode))
         container.addView(choiceRow("Wrap Mode", listOf("Repeat", "Clamp", "Mirror"), importProfile.wrapMode))
-        container.addView(intRow("Max Size", importProfile.maxSize))
+        container.addView(intRow("Max Size", importProfile.maxTextureSize))
         container.addView(choiceRow("Compression", listOf("None", "Normal", "High"), importProfile.compression))
         container.addView(boolRow("Generate MipMaps", importProfile.generateMipMaps))
         container.addView(boolRow("Alpha Is Transparency", importProfile.alphaIsTransparency))
