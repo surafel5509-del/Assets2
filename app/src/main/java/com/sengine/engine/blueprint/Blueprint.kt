@@ -451,10 +451,15 @@ class BlueprintComponent : Component() {
 
 /** Stub implementation of BlueprintNodes for testing */
 object BlueprintNodes {
-    data class NodeDef(val name: String, val category: String = "Default")
+    data class NodeDef(
+        val type: String,
+        val category: String = "Default",
+        val hasIn: Boolean = true,
+        val outs: List<String> = listOf("out")
+    )
     val all: List<NodeDef> = listOf(
-        NodeDef("On Start", "Event"),
-        NodeDef("On Update", "Event"),
+        NodeDef("On Start", "Event", hasIn = false),
+        NodeDef("On Update", "Event", hasIn = false),
         NodeDef("Set Variable", "Flow"),
         NodeDef("Get Variable", "Flow"),
         NodeDef("Print", "Debug")
