@@ -67,8 +67,8 @@ object ScriptDebug {
     fun clear() { lines.clear(); spheres.clear() }
 
     fun update(dt: Float) {
-        lines.removeAll { it.duration > 0 && (it.elapsed += dt) >= it.duration }
-        spheres.removeAll { it.duration > 0 && (it.elapsed += dt) >= it.duration }
+        lines.removeAll { it.duration > 0 && run { it.elapsed += dt; it.elapsed >= it.duration } }
+        spheres.removeAll { it.duration > 0 && run { it.elapsed += dt; it.elapsed >= it.duration } }
     }
 }
 

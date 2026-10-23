@@ -83,12 +83,12 @@ object Noise {
     }
 
     /** Generate a heightmap using noise. */
-    fun generateHeightmap(width: Int, height: Int, scale: Float = 0.0f5f, octaves: Int = 4, seed: Int = 42): FloatArray {
+    fun generateHeightmap(width: Int, height: Int, scale: Float = 0.05f, octaves: Int = 4, seed: Int = 42): FloatArray {
         setSeed(seed)
         val map = FloatArray(width * height)
         for (y in 0 until height) {
             for (x in 0 until width) {
-                map[y * width + x] = (fbm(x * scale, y * scale, octaves) + 1f) * 0.5f
+                map[y * width + x] = (fbm(x.toFloat() * scale, y.toFloat() * scale, octaves) + 1f) * 0.5f
             }
         }
         return map
@@ -123,10 +123,10 @@ object PoissonDiskSampling {
             var found = false
 
             for (attempt in 0 until maxAttempts) {
-                val angle = rng.nextDouble() * 2 * PI
-                val dist = minDist + rng.nextDouble() * minDist
-                val nx = point.x + cos(angle).toFloat() * dist
+                val angle = (rng.nextDouble() * 2 * PI).toFloat()
+                val dist = (minDist + rng.nextDouble() * minDist).toFloat()
                 val ny = point.y + sin(angle).toFloat() * dist
+                val nx = point.x + cos(angle).toFloat() * dist
 
                 if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
 
