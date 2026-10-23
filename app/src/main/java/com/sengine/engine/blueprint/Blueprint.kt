@@ -159,18 +159,14 @@ class BlueprintConnection(
 
 
 class Blueprint(
-        fun parse(json: String): Blueprint {
-            val obj = JSONObject(json)
-            return fromJson(obj)
-        }
     var name: String = "",
     var description: String = "",
     val nodes: MutableList<BlueprintNode> = mutableListOf(),
     val connections: MutableList<BlueprintConnection> = mutableListOf(),
-    val links: MutableList<BlueprintConnection> get() = connections,
     val variables: MutableList<BlueprintVariable> = mutableListOf(),
     var nextNodeId: Int = 0,
 ) {
+    val links: MutableList<BlueprintConnection> get() = connections
     fun createNode(name: String, category: NodeCategory, x: Float = 0f, y: Float = 0f): BlueprintNode {
         val node = BlueprintNode(nextNodeId++, name, category, x, y)
         nodes.add(node)
