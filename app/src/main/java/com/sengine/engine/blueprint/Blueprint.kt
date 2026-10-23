@@ -167,7 +167,7 @@ class Blueprint(
     var description: String = "",
     val nodes: MutableList<BlueprintNode> = mutableListOf(),
     val connections: MutableList<BlueprintConnection> = mutableListOf(),
-    val links: MutableList<BlueprintConnection> get() = connections
+    val links: MutableList<BlueprintConnection> get() = connections,
     val variables: MutableList<BlueprintVariable> = mutableListOf(),
     var nextNodeId: Int = 0,
 ) {
