@@ -643,7 +643,7 @@ class TimelineEditorActivity : AppCompatActivity() {
     private fun onPlay() { isPlaying = true }
     private fun handlePause() { isPlaying = false }
     private fun handleStop() { isPlaying = false; currentTime = 0f; refreshAll() }
-    private fun onStart() { currentTime = 0f; refreshAll() }
+    private fun handleStart() { currentTime = 0f; refreshAll() }
     private fun onEnd() { currentTime = timeline.duration; refreshAll() }
     private fun onAddTrack() {
         timeline.addTrack("New Track", TrackType.Animation, "Player")

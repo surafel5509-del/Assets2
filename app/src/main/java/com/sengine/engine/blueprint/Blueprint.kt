@@ -149,15 +149,6 @@ class BlueprintConnection(
     }
 }
 
-/** A complete blueprint (visual script). */
-
-    companion object {
-        fun defaultGraph(): Blueprint {
-            val bp = Blueprint(name = "NewBlueprint")
-            val startNode = bp.createNode("On Start", NodeCategory.Event, 100f, 100f)
-            return bp
-        }
-    }
 
 class Blueprint(
     var name: String = "",
@@ -246,9 +237,9 @@ class Blueprint(
     private fun generateFlow(startNodeId: Int, sb: StringBuilder, indent: Int) {
         val prefix = "    ".repeat(indent)
         // Find connections from this node's "Out" pin
-        val outgoing = connections.filter { it.fromNode == startNodeId && it.fromPin == "Out" }
+        val outgoing = connections.filter { it.fromNodeId == startNodeId && it.fromPinName == "Out" }
         for (conn in outgoing) {
-            val targetNode = nodes.firstOrNull { it.id == conn.toNode } ?: continue
+            val targetNode = nodes.firstOrNull { it.id == conn.toNodeId } ?: continue
             when (targetNode.category) {
                 NodeCategory.Math -> {
                     val op = targetNode.properties["operation"]?.toString() ?: "+"

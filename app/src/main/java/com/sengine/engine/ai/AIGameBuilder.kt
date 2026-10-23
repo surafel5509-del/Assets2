@@ -121,7 +121,7 @@ class AIGameBuilder(private val project: Project) {
                 val sprite = SpriteRenderer()
                 sprite.texture = properties.optString("texture", "")
                 sprite.color = parseColor(properties.optString("color", "#FFFFFFFF"))
-                sprite.order = properties.optInt("sortingOrder", 0)
+                go.order = properties.optInt("sortingOrder", 0)
                 sprite.flipX = properties.optBoolean("flipX", false)
                 sprite.flipY = properties.optBoolean("flipY", false)
                 sprite.pivotX = properties.optDouble("pivotX", 0.5).toFloat()

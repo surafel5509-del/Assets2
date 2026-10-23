@@ -220,7 +220,7 @@ class TilemapComponent : Component() {
         }
     }
 
-    fun toJson(): JSONObject {
+    fun toJsonData(): JSONObject {
         val o = JSONObject()
             .put("palette", paletteName)
             .put("cellSize", cellSize.toDouble())

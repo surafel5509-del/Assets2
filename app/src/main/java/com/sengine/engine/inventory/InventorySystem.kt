@@ -167,9 +167,13 @@ class Inventory(
     /** Get total weight. */
     fun getTotalWeight(items: Map<String, ItemDef>): Float {
         return slots.sumOf { slot ->
-            val def = items[slot.itemId] ?: return@sumOf 0f
-            (slot.count * def.weight).toDouble()
+            val def = items[slot.itemId] ?: return@sumOf 0.0
+            slot.count * def.weight
         }.toFloat()
+
+
+
+
     }
 
     fun toJson(): JSONObject {

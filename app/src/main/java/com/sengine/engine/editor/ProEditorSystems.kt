@@ -41,7 +41,7 @@ class SpriteEditorData {
         while (y + ch <= textureHeight) {
             var x = gridOffsetX
             while (x + cw <= textureWidth) {
-                val name = "${textureName.substringBeforeLast('.')}$_${idx}"
+                val name = "${textureName.substringBeforeLast('.')}_${idx}"
                 slices.add(SpriteSlice(name, x, y, cw, ch, defaultPivotX, defaultPivotY))
                 x += cw + gridPadding
                 idx++
