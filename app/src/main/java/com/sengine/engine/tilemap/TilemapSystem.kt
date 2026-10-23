@@ -1,5 +1,7 @@
 package com.sengine.engine.tilemap
 
+import kotlin.math.abs
+
 import com.sengine.engine.core.Component
 import com.sengine.engine.core.Prop
 import org.json.JSONArray
@@ -29,7 +31,7 @@ class TileDef(
     var randomRotation: Boolean = false,
     var randomMirror: Boolean = false,
 ) {
-    fun toJson(): JSONObject = JSONObject()
+    override fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("name", name).put("texture", texture)
         .put("uvX", uvX.toDouble()).put("uvY", uvY.toDouble())
         .put("uvW", uvW.toDouble()).put("uvH", uvH.toDouble())
@@ -70,7 +72,7 @@ class TilePalette {
 
     fun addTile(tile: TileDef) { tiles.add(tile) }
 
-    fun toJson(): JSONObject {
+    override fun toJson(): JSONObject {
         val o = JSONObject()
             .put("name", name).put("tileSize", tileSize)
             .put("ppu", pixelsPerUnit.toDouble())
@@ -137,7 +139,7 @@ class TileLayer(
         // select the correct tile variant based on neighbor configuration
     }
 
-    fun toJson(): JSONObject {
+    override fun toJson(): JSONObject {
         val o = JSONObject()
             .put("name", name).put("visible", visible)
             .put("sort", sortOrder).put("opacity", opacity.toDouble())
@@ -214,7 +216,7 @@ class TilemapComponent : Component() {
         }
     }
 
-    fun toJson(): JSONObject {
+    override fun toJson(): JSONObject {
         val o = JSONObject()
             .put("palette", paletteName)
             .put("cellSize", cellSize.toDouble())

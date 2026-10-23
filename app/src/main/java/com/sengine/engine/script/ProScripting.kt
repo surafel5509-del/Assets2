@@ -13,6 +13,22 @@ import kotlin.math.*
  *  These are exposed to JavaScript via the Rhino binding layer. */
 
 /** Coroutine handle for script-side async operations. */
+
+private fun bounceOut(t: Float): Float {
+    return if (t < 1/2.75) {
+        7.5625f * t * t
+    } else if (t < 2/2.75) {
+        val t2 = t - 1.5f/2.75f
+        7.5625f * t2 * t2 + 0.75f
+    } else if (t < 2.5/2.75) {
+        val t2 = t - 2.25f/2.75f
+        7.5625f * t2 * t2 + 0.9375f
+    } else {
+        val t2 = t - 2.625f/2.75f
+        7.5625f * t2 * t2 + 0.984375f
+    }
+}
+
 class CoroutineHandle(var id: Int = 0, var running: Boolean = true, var time: Float = 0f)
 
 /** Debug drawing helpers for development. */
