@@ -174,6 +174,7 @@ object ProEditorTheme {
     }
 
     /** Create a styled card (rounded background with subtle border). */
+    /* CARD FUNCTION TEMPORARILY DISABLED
     fun card(ctx: Context, content: View): FrameLayout {
         val drawable = GradientDrawable()
         drawable.shape = GradientDrawable.RECTANGLE
@@ -184,6 +185,7 @@ object ProEditorTheme {
             setPadding(dp(ctx, padMedium))
             addView(content)
         }
+    END OF CARD FUNCTION */
     }
     /** Style an existing ScrollView as a panel. */
     fun styleScrollView(sv: ScrollView, bgColor: Int = bgMedium) {
