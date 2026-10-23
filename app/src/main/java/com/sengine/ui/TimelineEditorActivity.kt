@@ -173,8 +173,8 @@ class TimelineEditorActivity : AppCompatActivity() {
         }
 
         toolBtn(bar, "▶ Play", ::onPlay)
-        toolBtn(bar, "⏸ Pause", ::onPause)
-        toolBtn(bar, "⏹ Stop", ::onStop)
+        toolBtn(bar, "⏸ Pause", ::handlePause)
+        toolBtn(bar, "⏹ Stop", ::handleStop)
         toolBtn(bar, "⏮", ::onStart)
         toolBtn(bar, "⏭", ::onEnd)
         bar.addView(separator())
@@ -485,8 +485,8 @@ class TimelineEditorActivity : AppCompatActivity() {
 
         for ((name, param) in controller.parameters) {
             paramsSection.addView(TextView(this).apply {
-                val typeLabel = when (param.type) { 0 -> "Bool"; 1 -> "Float"; 2 -> "Int"; 3 -> "Trigger" }
-                val valueLabel = when (param.type) { 0 -> param.boolVal.toString(); 1 -> "%.2f".format(param.floatVal); 2 -> param.intVal.toString(); 3 -> if (param.triggerVal) "✓" else "" }
+                val typeLabel = when (param.type) { 0 -> "Bool"; 1 -> "Float"; 2 -> "Int"; 3 -> "Trigger"; else -> "Unknown" }
+                val valueLabel = when (param.type) { 0 -> param.boolVal.toString(); 1 -> "%.2f".format(param.floatVal); 2 -> param.intVal.toString(); 3 -> if (param.triggerVal) "✓" else ""; else -> "?" }
                 text = "$name [$typeLabel] = $valueLabel"
                 textSize = 11f
                 setTextColor(0xFFAAAAAA.toInt())
@@ -641,8 +641,8 @@ class TimelineEditorActivity : AppCompatActivity() {
     }
 
     private fun onPlay() { isPlaying = true }
-    private fun onPause() { isPlaying = false }
-    private fun onStop() { isPlaying = false; currentTime = 0f; refreshAll() }
+    private fun handlePause() { isPlaying = false }
+    private fun handleStop() { isPlaying = false; currentTime = 0f; refreshAll() }
     private fun onStart() { currentTime = 0f; refreshAll() }
     private fun onEnd() { currentTime = timeline.duration; refreshAll() }
     private fun onAddTrack() {

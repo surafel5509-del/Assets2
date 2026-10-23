@@ -148,8 +148,8 @@ class SkeletonEditorActivity : AppCompatActivity() {
         addToolBtn(bar, "📏 Measure", {})
         addSeparator(bar)
         addToolBtn(bar, "▶ Play", ::onPlay)
-        addToolBtn(bar, "⏸ Pause", ::onPause)
-        addToolBtn(bar, "⏹ Stop", ::onStop)
+        addToolBtn(bar, "⏸ Pause", ::handlePause)
+        addToolBtn(bar, "⏹ Stop", ::handleStop)
         addToolBtn(bar, "⏮ Frame", ::onStepBack)
         addToolBtn(bar, "⏭ Frame", ::onStepForward)
         addSeparator(bar)
@@ -415,8 +415,8 @@ class SkeletonEditorActivity : AppCompatActivity() {
     private fun onDeleteBone() { /* Delete selected bone */ }
     private fun onDuplicateBone() { /* Duplicate selected bone chain */ }
     private fun onPlay() { isPlaying = true }
-    private fun onPause() { isPlaying = false }
-    private fun onStop() { isPlaying = false; currentTime = 0f; refreshAll() }
+    private fun handlePause() { isPlaying = false }
+    private fun handleStop() { isPlaying = false; currentTime = 0f; refreshAll() }
     private fun onStepBack() { currentTime = (currentTime - 1f / currentClip.sampleRate).coerceAtLeast(0f); refreshAll() }
     private fun onStepForward() { currentTime = (currentTime + 1f / currentClip.sampleRate).coerceAtMost(currentClip.duration); refreshAll() }
     private fun onNewClip() { currentClip = SkeletonAnimClip(name = "new_clip", duration = 1f); refreshAll() }

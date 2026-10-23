@@ -370,6 +370,14 @@ class Blueprint(
             Triple("Or", NodeCategory.Logic, emptyList()),
             Triple("Not", NodeCategory.Logic, emptyList()),
             Triple("Compare", NodeCategory.Logic, emptyList()),
+
+        /** Create a default starter blueprint graph */
+        fun defaultGraph(): Blueprint {
+            val bp = Blueprint(name = "New Blueprint")
+            val startNode = bp.createNode("On Start", NodeCategory.Event, 100f, 100f)
+            startNode.outputs.add(Pin("Out", PinType.Flow))
+            return bp
+        }
         )
     }
 }
