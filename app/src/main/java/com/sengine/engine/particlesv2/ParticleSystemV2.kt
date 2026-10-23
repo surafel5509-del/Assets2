@@ -33,12 +33,12 @@ class ColorGradient(
     }
 
     private fun lerpColor(a: Int, b: Int, t: Float): Int {
-        val ar = (a >> 16) and 0xFF; val ag = (a >> 8) and 0xFF; val ab = a and 0xFF; val aa = (a >> 24) and 0xFF
-        val br = (b >> 16) and 0xFF; val bg = (b >> 8) and 0xFF; val bb = b and 0xFF; val ba = (b >> 24) and 0xFF
-        val r = (ar.toFloat() + (br.toFloat() - ar.toFloat()) * t).toInt() and 0xFF
-        val g = (ag.toFloat() + (bg.toFloat() - ag.toFloat()) * t).toInt() and 0xFF
-        val bl = (ab.toFloat() + (bb.toFloat() - ab.toFloat()) * t).toInt() and 0xFF
-        val al = (aa.toFloat() + (ba.toFloat() - aa.toFloat()) * t).toInt() and 0xFF
+        val ar = (a >> 16).and(0xFF); val ag = (a >> 8).and(0xFF); val ab = a.and(0xFF); val aa = (a >> 24).and(0xFF)
+        val br = (b >> 16).and(0xFF); val bg = (b >> 8).and(0xFF); val bb = b.and(0xFF); val ba = (b >> 24).and(0xFF)
+        val r = (ar.toFloat() + (br.toFloat() - ar.toFloat()) * t).toInt().and(0xFF)
+        val g = (ag.toFloat() + (bg.toFloat() - ag.toFloat()) * t).toInt().and(0xFF)
+        val bl = (ab.toFloat() + (bb.toFloat() - ab.toFloat()) * t).toInt().and(0xFF)
+        val al = (aa.toFloat() + (ba.toFloat() - aa.toFloat()) * t).toInt().and(0xFF)
         return al shl 24 or (r shl 16) or (g shl 8) or bl
     }
 }
