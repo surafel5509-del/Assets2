@@ -186,7 +186,6 @@ object ProEditorTheme {
             addView(content)
         }
     END OF CARD FUNCTION */
-    }
     /** Style an existing ScrollView as a panel. */
     fun styleScrollView(sv: ScrollView, bgColor: Int = bgMedium) {
         sv.setBackgroundColor(bgColor)
