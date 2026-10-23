@@ -83,6 +83,10 @@ class BlueprintNode(
     }
 
     companion object {
+        fun parse(json: String): Blueprint {
+            val obj = JSONObject(json)
+            return fromJson(obj)
+        }
         fun fromJson(o: JSONObject): BlueprintNode {
             val n = BlueprintNode(
                 o.optInt("id", 0), o.optString("name", ""),
@@ -117,6 +121,10 @@ class Pin(
         .put("default", defaultValue?.toString() ?: "")
 
     companion object {
+        fun parse(json: String): Blueprint {
+            val obj = JSONObject(json)
+            return fromJson(obj)
+        }
         fun fromJson(o: JSONObject): Pin = Pin(
             o.optString("name", ""),
             PinType.entries.getOrElse(o.optInt("type", 0)) { PinType.Flow },
@@ -142,6 +150,10 @@ class BlueprintConnection(
         .put("toNode", toNodeId).put("toPin", toPinName)
 
     companion object {
+        fun parse(json: String): Blueprint {
+            val obj = JSONObject(json)
+            return fromJson(obj)
+        }
         fun fromJson(o: JSONObject): BlueprintConnection = BlueprintConnection(
             o.optInt("fromNode", 0), o.optString("fromPin", ""),
             o.optInt("toNode", 0), o.optString("toPin", "")
@@ -155,6 +167,7 @@ class Blueprint(
     var description: String = "",
     val nodes: MutableList<BlueprintNode> = mutableListOf(),
     val connections: MutableList<BlueprintConnection> = mutableListOf(),
+    val links: MutableList<BlueprintConnection> get() = connections
     val variables: MutableList<BlueprintVariable> = mutableListOf(),
     var nextNodeId: Int = 0,
 ) {
@@ -309,6 +322,10 @@ class Blueprint(
     }
 
     companion object {
+        fun parse(json: String): Blueprint {
+            val obj = JSONObject(json)
+            return fromJson(obj)
+        }
         fun fromJson(o: JSONObject): Blueprint {
             val bp = Blueprint(
                 o.optString("name", ""), o.optString("description", ""),
@@ -423,6 +440,10 @@ class BlueprintVariable(
         .put("global", isGlobal)
 
     companion object {
+        fun parse(json: String): Blueprint {
+            val obj = JSONObject(json)
+            return fromJson(obj)
+        }
         fun fromJson(o: JSONObject): BlueprintVariable = BlueprintVariable(
             o.optString("name", ""),
             PinType.entries.getOrElse(o.optInt("type", 1)) { PinType.Float },
@@ -442,4 +463,23 @@ class BlueprintComponent : Component() {
         Prop.Asset("Blueprint", com.sengine.engine.core.AssetKind.CONTROLLER, { blueprintAsset }, { blueprintAsset = it }),
         Prop.B("Auto Generate", { autoGenerateScript }, { autoGenerateScript = it }),
     )
+}
+
+/** Stub implementation of BlueprintNodes for testing */
+object BlueprintNodes {
+    data class NodeDef(val name: String, val category: String = "Default")
+    val all: List<NodeDef> = listOf(
+        NodeDef("On Start", "Event"),
+        NodeDef("On Update", "Event"),
+        NodeDef("Set Variable", "Flow"),
+        NodeDef("Get Variable", "Flow"),
+        NodeDef("Print", "Debug")
+    )
+}
+
+/** Stub implementation of BlueprintCompiler for testing */
+object BlueprintCompiler {
+    fun compile(blueprint: Blueprint): String {
+        return "// Compiled blueprint: ${blueprint.name}\n// Nodes: ${blueprint.nodes.size}"
+    }
 }
