@@ -179,7 +179,7 @@ object ProEditorTheme {
             background = GradientDrawable().apply {
                 setColor(bgDark)
                 cornerRadius = dp(ctx, 6).toFloat()
-                setStroke(dp(ctx, 1).toInt(), borderDark)
+                setStroke(width = dp(ctx, 1), color = borderDark)
             }
             setPadding(dp(ctx, padMedium))
             addView(content)

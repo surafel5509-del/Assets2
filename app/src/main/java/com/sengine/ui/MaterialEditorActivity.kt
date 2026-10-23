@@ -307,7 +307,7 @@ class MaterialEditorActivity : AppCompatActivity() {
         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), dp(3), dp(8), dp(3))
         addView(TextView(context).apply { text = label; textSize = 11f; setTextColor(0xFF888899.toInt()); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.35f) })
         addView(SeekBar(context).apply {
-            this.progress = ((value - min) / (max - min) * 100).toInt().coerceIn(0, 100); max = 100
+            this.progress = ((value - min) / (max - min) * 100).toInt().coerceIn(0, 100); this.max = 100
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.45f)
         })
         addView(TextView(context).apply { text = "%.2f".format(value); textSize = 10f; setTextColor(0xFFAAAAAA.toInt()); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.2f); gravity = Gravity.END })
