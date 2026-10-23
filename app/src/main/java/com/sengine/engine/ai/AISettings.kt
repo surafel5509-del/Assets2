@@ -11,26 +11,26 @@ object AISettings {
     private var settingsFile: File? = null
     
     // API Keys (encrypted in production)
-    var openaiKey: String = ""
-    var geminiKey: String = ""
-    var openrouterKey: String = ""
-    var groqKey: String = ""
-    var anthropicKey: String = ""
+    private var openaiKey: String = ""
+    private var geminiKey: String = ""
+    private var openrouterKey: String = ""
+    private var groqKey: String = ""
+    private var anthropicKey: String = ""
     
     // Model Selection
-    var openaiModel: String = "gpt-4-turbo-preview"
-    var geminiModel: String = "gemini-pro"
-    var openrouterModel: String = "openai/gpt-4-turbo-preview"
-    var groqModel: String = "llama2-70b-4096"
-    var anthropicModel: String = "claude-3-opus-20240229"
+    private var openaiModel: String = "gpt-4-turbo-preview"
+    private var geminiModel: String = "gemini-pro"
+    private var openrouterModel: String = "openai/gpt-4-turbo-preview"
+    private var groqModel: String = "llama2-70b-4096"
+    private var anthropicModel: String = "claude-3-opus-20240229"
     
     // Active Provider
     var activeProvider: String = "openai" // openai, gemini, openrouter, groq, anthropic
     
     // Generation Settings
-    var temperature: Float = 0.7f
-    var maxTokens: Int = 2000
-    var topP: Float = 0.9f
+    private var temperature: Float = 0.7f
+    private var maxTokens: Int = 2000
+    private var topP: Float = 0.9f
     
     // Auto-save settings
     var autoSave: Boolean = true
