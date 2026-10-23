@@ -9,7 +9,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.sengine.engine.textures.MaterialData
 import com.sengine.engine.textures.TextureImportSettings
-import com.sengine.engine.textures.TextureImportProfile
+import com.sengine.engine.textures.TextureImportSettings
 import com.sengine.engine.textures.TextureAtlas
 import com.sengine.engine.editor.SpriteEditorData
 import com.sengine.project.Project
@@ -29,7 +29,7 @@ import com.sengine.project.Project
 class MaterialEditorActivity : AppCompatActivity() {
 
     private var material = MaterialData()
-    private var importProfile = TextureImportProfile()
+    private var importProfile = TextureImportSettings()
     private var spriteEditor = SpriteEditorData()
     private var atlas = TextureAtlas()
 
@@ -39,7 +39,7 @@ class MaterialEditorActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         material.name = "DefaultMaterial"
-        importProfile.name = "DefaultImport"
+        // importProfile.name = "DefaultImport" // Not needed for TextureImportSettings
         buildUI()
     }
 
