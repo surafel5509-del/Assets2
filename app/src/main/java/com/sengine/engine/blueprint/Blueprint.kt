@@ -30,6 +30,21 @@ enum class NodeCategory {
 }
 
 /** A visual scripting node with input/output pins. */
+
+/** Parameter definition for a node. */
+data class ParamDef(val name: String, val str: Boolean = false, val type: Int = 0)
+
+/** Node definition with metadata. */
+data class NodeDef(
+    val name: String,
+    val category: Int = 0,
+    val hasIn: Boolean = true,
+    val outs: List<String> = listOf("Out"),
+    val ins: List<String> = listOf("In"),
+    val params: List<ParamDef> = emptyList(),
+    val type: Int = 0
+)
+
 class BlueprintNode(
     var id: Int = 0,
     var name: String = "",
@@ -41,9 +56,11 @@ class BlueprintNode(
     var properties: MutableMap<String, Any> = mutableMapOf(),
     var comment: String = "",
     var collapsed: Boolean = false,
+    var def: NodeDef? = null,
 ) {
     fun inputPin(name: String): Pin? = inputs.firstOrNull { it.name == name }
     fun outputPin(name: String): Pin? = outputs.firstOrNull { it.name == name }
+    fun param(name: String): String = properties[name]?.toString() ?: ""
 
     fun toJson(): JSONObject {
         val o = JSONObject()

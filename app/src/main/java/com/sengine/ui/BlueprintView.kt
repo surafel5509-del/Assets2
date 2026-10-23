@@ -13,7 +13,9 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import com.sengine.engine.blueprint.Blueprint
-import com.sengine.engine.blueprint.BlueprintNode
+import com.sengine.engine.blueprint.ParamDef
+import com.sengine.engine.blueprint.Blueprint
+import com.sengine.engine.blueprint.ParamDefNode
 import kotlin.math.hypot
 
 /** Node-graph canvas for blueprints: pan/zoom, drag nodes, drag wires from output pins to nodes. */
@@ -251,7 +253,7 @@ class BlueprintView(ctx: Context, var bp: Blueprint) : View(ctx) {
             fill.color = catColor(def.category); c.drawCircle(p[0], p[1], pinR * 0.45f, fill)
         }
         // outputs
-        def.outs.forEachIndexed { i, pin ->
+        def.outs.forEachIndexed { i: Int, pin: String ->
             val p = outPin(n, i)
             val connected = bp.connections.any { it.fromNodeId == n.id && it.fromPinName == pin }
             fill.color = if (connected) 0xFFFFFFFF.toInt() else 0xFF8A8F98.toInt()
