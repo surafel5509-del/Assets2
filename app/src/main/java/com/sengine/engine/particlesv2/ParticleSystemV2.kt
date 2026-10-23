@@ -39,7 +39,7 @@ class ColorGradient(
         val g = (ag.toFloat() + (bg.toFloat() - ag.toFloat()) * t).toInt() and 0xFF
         val bl = (ab.toFloat() + (bb.toFloat() - ab.toFloat()) * t).toInt() and 0xFF
         val al = (aa.toFloat() + (ba.toFloat() - aa.toFloat()) * t).toInt() and 0xFF
-        return (al << 24) or (r << 16) or (g << 8) or bl
+        return al shl 24 or (r shl 16) or (g shl 8) or bl
     }
 }
 
