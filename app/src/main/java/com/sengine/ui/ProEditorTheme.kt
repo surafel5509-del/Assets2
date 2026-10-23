@@ -179,13 +179,12 @@ object ProEditorTheme {
             background = GradientDrawable().apply {
                 setColor(bgDark)
                 cornerRadius = dp(ctx, 6).toFloat()
-                setStroke(dp(ctx, 1), borderDark)
+                setStroke(dp(ctx, 1).toInt(), borderDark)
             }
             setPadding(dp(ctx, padMedium))
             addView(content)
         }
     }
-
     /** Style an existing ScrollView as a panel. */
     fun styleScrollView(sv: ScrollView, bgColor: Int = bgMedium) {
         sv.setBackgroundColor(bgColor)
