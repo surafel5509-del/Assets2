@@ -83,10 +83,6 @@ class BlueprintNode(
     }
 
     companion object {
-        fun parse(json: String): Blueprint {
-            val obj = JSONObject(json)
-            return fromJson(obj)
-        }
         fun fromJson(o: JSONObject): BlueprintNode {
             val n = BlueprintNode(
                 o.optInt("id", 0), o.optString("name", ""),
@@ -121,10 +117,6 @@ class Pin(
         .put("default", defaultValue?.toString() ?: "")
 
     companion object {
-        fun parse(json: String): Blueprint {
-            val obj = JSONObject(json)
-            return fromJson(obj)
-        }
         fun fromJson(o: JSONObject): Pin = Pin(
             o.optString("name", ""),
             PinType.entries.getOrElse(o.optInt("type", 0)) { PinType.Flow },
@@ -436,10 +428,6 @@ class BlueprintVariable(
         .put("global", isGlobal)
 
     companion object {
-        fun parse(json: String): Blueprint {
-            val obj = JSONObject(json)
-            return fromJson(obj)
-        }
         fun fromJson(o: JSONObject): BlueprintVariable = BlueprintVariable(
             o.optString("name", ""),
             PinType.entries.getOrElse(o.optInt("type", 1)) { PinType.Float },
