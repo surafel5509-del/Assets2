@@ -21,7 +21,7 @@ object Noise {
 
     init {
         val p = IntArray(256) { it }
-        val rng = java.util.Random(42)
+        val rng = kotlin.random.Random(42)
         for (i in 255 downTo 1) {
             val j = rng.nextInt(i + 1)
             val temp = p[i]; p[i] = p[j]; p[j] = temp
@@ -31,7 +31,7 @@ object Noise {
 
     fun setSeed(seed: Int) {
         val p = IntArray(256) { it }
-        val rng = java.util.Random(seed.toLong())
+        val rng = kotlin.random.Random(seed.toLong())
         for (i in 255 downTo 1) {
             val j = rng.nextInt(i + 1)
             val temp = p[i]; p[i] = p[j]; p[j] = temp
@@ -83,7 +83,7 @@ object Noise {
     }
 
     /** Generate a heightmap using noise. */
-    fun generateHeightmap(width: Int, height: Int, scale: Float = 0.05f, octaves: Int = 4, seed: Int = 42): FloatArray {
+    fun generateHeightmap(width: Int, height: Int, scale: Float = 0.0f5f, octaves: Int = 4, seed: Int = 42): FloatArray {
         setSeed(seed)
         val map = FloatArray(width * height)
         for (y in 0 until height) {
@@ -101,7 +101,7 @@ object PoissonDiskSampling {
 
     /** Generate Poisson disk distributed points. */
     fun sample(width: Float, height: Float, minDist: Float, maxAttempts: Int = 30, seed: Long = 42): List<Point2D> {
-        val rng = java.util.Random(seed)
+        val rng = kotlin.random.Random(seed)
         val cellSize = minDist / sqrt(2f)
         val gridW = (width / cellSize).toInt() + 1
         val gridH = (height / cellSize).toInt() + 1
@@ -183,7 +183,7 @@ object BspDungeonGenerator {
 
     /** Generate a BSP dungeon. */
     fun generate(width: Int, height: Int, minRoomSize: Int = 4, maxDepth: Int = 5, seed: Long = 42): Pair<FloatArray, List<Room>> {
-        val rng = java.util.Random(seed)
+        val rng = kotlin.random.Random(seed)
         val tiles = FloatArray(width * height) // 0=wall, 1=floor
 
         // Build BSP tree
@@ -213,7 +213,7 @@ object BspDungeonGenerator {
         return tiles to rooms
     }
 
-    private fun splitNode(node: BspNode, depth: Int, maxDepth: Int, minSize: Int, rng: java.util.Random) {
+    private fun splitNode(node: BspNode, depth: Int, maxDepth: Int, minSize: Int, rng: kotlin.random.Random) {
         if (depth >= maxDepth || node.w < minSize * 2 + 2 || node.h < minSize * 2 + 2) return
 
         val horizontal = if (node.w > node.h) false else if (node.h > node.w) true else rng.nextBoolean()
@@ -232,7 +232,7 @@ object BspDungeonGenerator {
         splitNode(node.right!!, depth + 1, maxDepth, minSize, rng)
     }
 
-    private fun createRooms(node: BspNode, rooms: MutableList<Room>, rng: java.util.Random, minSize: Int) {
+    private fun createRooms(node: BspNode, rooms: MutableList<Room>, rng: kotlin.random.Random, minSize: Int) {
         if (node.left == null && node.right == null) {
             val w = (minSize until node.w - 1).random(rng)
             val h = (minSize until node.h - 1).random(rng)

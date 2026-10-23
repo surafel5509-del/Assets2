@@ -293,7 +293,7 @@ object AIBehaviors {
         val newDir = lastDirection + (Math.random() * 2 - 1) * wanderJitter * dt
         val targetX = currentX + cos(newDir) * wanderRadius
         val targetY = currentY + sin(newDir) * wanderRadius
-        return Triple(targetX, targetY, newDir.toFloat())
+        return Triple(targetX.toFloat(), targetY.toFloat(), newDir.toFloat())
     }
 
     /** Pursue behavior — predict target position. */

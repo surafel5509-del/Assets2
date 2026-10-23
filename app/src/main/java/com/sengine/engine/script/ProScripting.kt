@@ -15,7 +15,7 @@ import kotlin.math.*
 /** Coroutine handle for script-side async operations. */
 
 private fun bounceOut(t: Float): Float {
-    return if (t < 1/2.75) {
+    return if (t < 1f/2.75f) {
         7.5625f * t * t
     } else if (t < 2/2.75) {
         val t2 = t - 1.5f/2.75f

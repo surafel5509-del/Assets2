@@ -172,7 +172,7 @@ data class TileRect(var x: Int = 0, var y: Int = 0, var w: Int = 1, var h: Int =
 /** Main tilemap component. */
 
 private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
-private fun fade(t: Float): Float = t * t * (3.0 - 2.0 * t)
+private fun fade(t: Float): Float = t * t * (3f - 2f * t)
 
 class TilemapComponent : Component() {
     override val type = "Tilemap"
