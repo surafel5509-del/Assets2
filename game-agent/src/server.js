@@ -62,7 +62,8 @@ function configFromEnv(env) {
     apiBase: (env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").trim().replace(/\/+$/, ""),
     reasoningEnabled: env.OPENROUTER_REASONING_ENABLED !== "false",
     maxTokens: Math.min(65536, Math.max(4096, Number(env.OPENAI_MAX_TOKENS || 24576))),
-    // Accept either a raw OpenRouter key or a pasted "Bearer <key>" value; never send an empty credential.\n    apiKey: String(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY || "").trim().replace(/^Bearer\\s+/i, "").trim(),
+    // Accept either a raw OpenRouter key or a pasted "Bearer <key>" value; never send an empty credential.
+    apiKey: String(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY || "").trim().replace(/^Bearer\s+/i, "").trim(),
     siteUrl: env.OPENROUTER_SITE_URL || "https://game-agent-production.up.railway.app",
     appName: env.OPENROUTER_APP_NAME || "S Engine Game Agent",
     apiToken: env.AGENT_API_TOKEN,
