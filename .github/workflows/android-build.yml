@@ -1,0 +1,37 @@
+name: Android build and unit tests
+
+on:
+  push:
+    branches:
+      - "arena/94ba1396-assets2"
+  pull_request:
+    branches:
+      - "arena/94ba1396-assets2"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run unit tests and assemble APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew testDebugUnitTest assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: s-engine-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
