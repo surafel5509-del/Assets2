@@ -9,6 +9,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -52,6 +53,8 @@ class BuildActivity : AppCompatActivity() {
     private var lastApk: File? = null
     private var building = false
     private val handler = Handler(Looper.getMainLooper())
+    private val deviceKeyId = View.generateViewId()
+    private val fileKeyId = View.generateViewId()
 
     private val settingsFile get() = File(project.dir, ".build_settings.json")
 
@@ -62,7 +65,7 @@ class BuildActivity : AppCompatActivity() {
             contentResolver.openInputStream(uri)!!.use { i -> f.outputStream().use { i.copyTo(it) } }
             keystoreFile = f
             keystoreBtn.text = "Keystore: ${f.name} ✓"
-            keyGroup.check(2)
+            keyGroup.check(fileKeyId)
         } catch (e: Exception) { toast("Can't read keystore: ${e.message}") }
     }
 
@@ -110,9 +113,9 @@ class BuildActivity : AppCompatActivity() {
 
         section("SIGNING")
         keyGroup = RadioGroup(this)
-        keyGroup.addView(RadioButton(this).apply { id = 1; text = "Device key (automatic, stored in Android KeyStore)"; setTextColor(C.TEXT) })
-        keyGroup.addView(RadioButton(this).apply { id = 2; text = "My keystore file (.p12 / .pfx / .bks)"; setTextColor(C.TEXT) })
-        keyGroup.check(1)
+        keyGroup.addView(RadioButton(this).apply { id = deviceKeyId; text = "Device key (automatic, stored in Android KeyStore)"; setTextColor(C.TEXT) })
+        keyGroup.addView(RadioButton(this).apply { id = fileKeyId; text = "My keystore file (.p12 / .pfx / .bks)"; setTextColor(C.TEXT) })
+        keyGroup.check(deviceKeyId)
         body.addView(keyGroup)
         keystoreBtn = button("Choose keystore…") { pickKeystore.launch(arrayOf("*/*")) }.apply { textSize = 12f }
         body.addView(keystoreBtn, lp(WRAP, WRAP).margins(dp(30), dp(4), 0, dp(4)))
@@ -162,7 +165,7 @@ class BuildActivity : AppCompatActivity() {
             verNameField.text.toString().trim().ifBlank { "1.0" }, verCodeField.text.toString().toIntOrNull() ?: 1)
         if (cfg.appName.isBlank()) { toast("Enter an app name"); return }
         if (!ApkBuilder.validPackage(cfg.packageName)) { toast("Invalid package name (e.g. com.mystudio.mygame)"); return }
-        val useFile = keyGroup.checkedRadioButtonId == 2
+        val useFile = keyGroup.checkedRadioButtonId == fileKeyId
         val ks = keystoreFile
         if (useFile && ks == null) { toast("Choose a keystore file first"); return }
         saveSettings()
