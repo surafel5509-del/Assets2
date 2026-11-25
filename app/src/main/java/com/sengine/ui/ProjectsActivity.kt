@@ -1,5 +1,6 @@
 package com.sengine.ui
 
+import android.app.ProgressDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.sengine.ai.AiGameClient
 import com.sengine.engine.core.AssetKind
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
@@ -60,7 +62,7 @@ class ProjectsActivity : AppCompatActivity() {
         titleBox.addView(label("S Engine", 28f, C.TEXT, true))
         titleBox.addView(label("2D & 3D game engine & editor for Android  •  Ultimate v2.0", 13f, C.DIM))
         header.addView(titleBox, lp(0, WRAP, 1f))
-        header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
+        header.addView(button("AI Game", C.ACCENT, 0xFFFFFFFF.toInt()) { aiGameDialog() },\n            lp(WRAP, WRAP).margins(0, 0, dp(8), 0))\n        header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             lp(WRAP, WRAP).margins(0, 0, dp(8), 0))
         header.addView(button("+ New Project", C.ACCENT, 0xFFFFFFFF.toInt()) { newProjectDialog() })
         root.addView(header, lp(MATCH, WRAP))
@@ -176,6 +178,55 @@ class ProjectsActivity : AppCompatActivity() {
 
     private fun play(p: Project) {
         startActivity(Intent(this, PlayerActivity::class.java).putExtra("project", p.name))
+    }
+
+    private fun aiGameDialog() {
+        val prompt = EditText(this).apply {
+            hint = "Describe the game you want. Include genre, controls, objective and visual style."
+            minLines = 4
+            maxLines = 8
+            gravity = Gravity.TOP
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Create a game with AI")
+            .setMessage("The Game Agent plans, generates and QA-checks a playable game, then imports it as a new S Engine project.")
+            .setView(ScrollView(this).apply {
+                setPadding(dp(20), 0, dp(20), 0)
+                addView(prompt)
+            })
+            .setPositiveButton("Generate") { _, _ ->
+                val request = prompt.text.toString().trim()
+                if (request.length < 8) {
+                    toast("Please describe the game in at least 8 characters")
+                    return@setPositiveButton
+                }
+                val progress = ProgressDialog(this).apply {
+                    setMessage("AI is planning, building and checking your game…")
+                    setCancelable(false)
+                    show()
+                }
+                Thread {
+                    try {
+                        val generated = AiGameClient.generate(this, request)
+                        runOnUiThread {
+                            progress.dismiss()
+                            refresh()
+                            toast("Created ${generated.name}")
+                            open(generated)
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread {
+                            progress.dismiss()
+                            toast("AI generation failed: ${e.message ?: "Unknown error"}")
+                        }
+                    }
+                }.start()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun newProjectDialog() {
