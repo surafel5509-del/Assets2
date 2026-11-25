@@ -228,7 +228,7 @@ async function generate(prompt, options = {}) {
     id: randomUUID(),
     spec,
     project: toSengineProject(spec),
-    agent: { planner: model, qa: model, repairs, qa: qaSummary },
+    agent: { plannerModel: model, qaModel: model, repairs, qaSummary },
     model
   };
 }
