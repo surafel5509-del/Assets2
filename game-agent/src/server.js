@@ -59,10 +59,10 @@ function configFromEnv(env) {
   return {
     port: Number(env.PORT || 3000),
     model: env.OPENAI_MODEL || "z-ai/glm-5.3-flash",
-    apiBase: (env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, ""),
+    apiBase: (env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").trim().replace(/\/+$/, ""),
     reasoningEnabled: env.OPENROUTER_REASONING_ENABLED !== "false",
     maxTokens: Math.min(65536, Math.max(4096, Number(env.OPENAI_MAX_TOKENS || 24576))),
-    apiKey: env.OPENROUTER_API_KEY || env.OPENAI_API_KEY,
+    // Accept either a raw OpenRouter key or a pasted "Bearer <key>" value; never send an empty credential.\n    apiKey: String(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY || "").trim().replace(/^Bearer\\s+/i, "").trim(),
     siteUrl: env.OPENROUTER_SITE_URL || "https://game-agent-production.up.railway.app",
     appName: env.OPENROUTER_APP_NAME || "S Engine Game Agent",
     apiToken: env.AGENT_API_TOKEN,
@@ -252,7 +252,18 @@ async function callOpenAiCompatible(messages, context) {
       });
     }
     if (providerStatus === 401 || providerStatus === 403) {
-      throw Object.assign(new Error(`OpenRouter rejected the API key or model access (${providerStatus}). Check the key and model permissions in OpenRouter.`), {
+      // Read a bounded provider diagnostic so missing Bearer auth is distinguishable
+      // from an invalid key. Never return the raw provider body to the Android client.
+      let providerMessage = "";
+      try {
+        const body = await response.clone().json();
+        providerMessage = String(body?.error?.message || body?.message || "").slice(0, 300);
+      } catch { /* ignore non-JSON provider errors */ }
+      const cookieAuth = /no user or org id found in auth cookie|no cookie auth credentials found/i.test(providerMessage);
+      const message = cookieAuth
+        ? "OpenRouter received this request without valid API-key authentication. Check that Railway has a non-empty OPENROUTER_API_KEY (raw sk-or-v1-... key, without quotes), and that OPENAI_BASE_URL is https://openrouter.ai/api/v1. The Game Agent sends Authorization: Bearer automatically."
+        : `OpenRouter rejected the API key or model access (${providerStatus}). Check the API key is active and has access to the selected model.`;
+      throw Object.assign(new Error(message), {
         status: providerStatus,
         retryable: false,
         providerStatus,
