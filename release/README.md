@@ -1,6 +1,6 @@
 # S Engine 3.0.0 — final APK deliverables
 
-This directory contains the installable Android APKs produced by the **Build S Engine 3.0.0 APK** workflow (manual `workflow_dispatch` publish job) from the Professional Studio Edition source tree.
+This directory contains the installable Android APKs produced by the **Build S Engine 3.0.0 APK** workflow (manual `workflow_dispatch` or `[publish-apk]` publish job) from the Professional Studio Edition source tree.
 
 | File | Purpose |
 |---|---|
