@@ -16,7 +16,7 @@ object AiGameClient {
         val connection = (URL(API_BASE + "/api/games/generate").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15000
-            readTimeout = 180000
+            readTimeout = 600000
             doOutput = true
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             context.getSharedPreferences("sengine_ai", Context.MODE_PRIVATE)
@@ -62,7 +62,7 @@ object AiGameClient {
                 val asset = assets.getJSONObject(i)
                 val assetName = asset.optString("name")
                 require(assetName.isNotBlank() && !assetName.contains("..") &&
-                    !assetName.contains("/") && !assetName.contains("\\\\")) {
+                    !assetName.contains("/") && !assetName.contains("\\")) {
                     "Unsafe generated asset path: " + assetName
                 }
                 project.writeAsset(assetName, asset.getString("content"))
