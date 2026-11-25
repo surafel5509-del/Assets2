@@ -46,7 +46,7 @@ Example request:
 { "prompt": "Create a polished 2D endless runner with a menu, score, obstacles, restart and game-over screen." }
 ```
 
-The HTTP layer enforces a 1 MB body limit, 4,000-character prompt limit, safe model identifiers, constant-time bearer-token comparison when `AGENT_API_TOKEN` is configured, per-call and overall generation timeouts, request-cancellation propagation, retryable provider transport failures, secret-free logs, and structured error responses.
+The OpenRouter adapter sets an explicit output-token budget, uses low reasoning effort to reserve tokens for the final structured response, and retries without constrained JSON mode if the provider returns an empty reasoning-only response. The parser never treats private reasoning as a GameSpec. The HTTP layer enforces a 1 MB body limit, 4,000-character prompt limit, safe model identifiers, constant-time bearer-token comparison when `AGENT_API_TOKEN` is configured, per-call and overall generation timeouts, request-cancellation propagation, retryable provider transport failures, secret-free logs, and structured error responses.
 
 ## GameSpec and engine contract
 
