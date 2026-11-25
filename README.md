@@ -189,7 +189,7 @@ Requirements: JDK 17 and Android SDK API 34. Android Studio Hedgehog or newer wo
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Every push to `arena/94ba1396-assets2` and every manual **Build S Engine 3.0.0 APK** workflow run uploads `SEngine-3.0.0-debug-apk` and `SEngine-3.0.0-release-apk` artifacts. The manual **Publish final v3.0.0 APKs** workflow also places the verified installable files in [`release/`](release/README.md); only those two final APKs are exceptions to the repository's `*.apk` ignore rule. Release builds are signed with the debug key so they install immediately; replace the signing config before publishing to a store.
+Every push to `arena/94ba1396-assets2` and every manual **Build S Engine 3.0.0 APK** workflow run uploads `SEngine-3.0.0-debug-apk` and `SEngine-3.0.0-release-apk` artifacts. A manual **workflow_dispatch** run of the same workflow also places the verified installable files in [`release/`](release/README.md); only those two final APKs are exceptions to the repository's `*.apk` ignore rule. Release builds are signed with the debug key so they install immediately; replace the signing config before publishing to a store.
 
 Enable “Install unknown apps” for your browser / file manager, then open the APK.
 

@@ -144,7 +144,7 @@ SKIP com.sengine.ApkExportTest.exportStandaloneGameApk (export env not set)
 
 Coverage includes all previous engine tests plus `EngineV3Test` (12) and `BigGamesTest` (4). The optional APK export test requires `SENGINE_SOURCE_APK`, `SENGINE_KEYSTORE` and `SENGINE_EXPORT_OUT`; CI APK assembly is the release path.
 
-CI: `.github/workflows/build-apk.yml` on the active branch builds `SEngine-3.0.0-debug-apk` and `SEngine-3.0.0-release-apk` with `./gradlew assembleDebug assembleRelease --stacktrace`.
+CI: `.github/workflows/build-apk.yml` on the active branch builds `SEngine-3.0.0-debug-apk` and `SEngine-3.0.0-release-apk` with `./gradlew assembleDebug assembleRelease --stacktrace`. A manual `workflow_dispatch` run additionally publishes the verified APKs to `release/`.
 
 ---
 
