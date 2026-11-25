@@ -300,3 +300,37 @@ test("generation rejects invalid prompts and models before any provider call", a
     assert.equal(provider.calls.length, 0);
   });
 });
+
+
+test("real OpenRouter adapter retries empty reasoning-only output without JSON mode", async t => {
+  const payloads = [];
+  const outputs = [
+    { choices: [{ finish_reason: "length", message: { role: "assistant", content: "", reasoning: "private reasoning must not be returned" } }], usage: { completion_tokens: 24576 } },
+    { choices: [{ finish_reason: "stop", message: { role: "assistant", content: JSON.stringify({ title: "Runner", coreLoop: "run, jump, score" }) } }] },
+    { choices: [{ finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(VALID_SPEC) } }] },
+    { choices: [{ finish_reason: "stop", message: { role: "assistant", content: JSON.stringify({ pass: true, issues: [], summary: "Provider adapter QA passed" }) } }] },
+  ];
+  const fetchImpl = async (_url, init) => {
+    payloads.push(JSON.parse(init.body));
+    const body = outputs.shift();
+    return new Response(JSON.stringify(body), { status:  200, headers: { "content-type": "application/json" } });
+  };
+  await withServer(t, {
+    env: { OPENROUTER_API_KEY: "provider-secret-not-real", OPENAI_MAX_TOKENS: "24576" },
+    fetchImpl,
+    modelAttempts: 3,
+  }, async base => {
+    const response = await request(base, "/api/games/generate", {
+      method: "POST",
+      body: { prompt: "Create a polished 2D endless runner with score and restart." },
+    });
+    assert.equal(response.status, 200, JSON.stringify(response.data));
+    assert.deepEqual(validateGameSpec(response.data.spec), []);
+    assert.equal(payloads.length, 4);
+    assert.deepEqual(payloads[0].response_format, { type: "json_object" });
+    assert.equal(payloads[0].max_tokens, 24576);
+    assert.deepEqual(payloads[0].reasoning, { effort: "low" });
+    assert.equal(payloads[1].response_format, undefined);
+    assert.equal(response.text.includes("private reasoning must not be returned"), false);
+  });
+});
