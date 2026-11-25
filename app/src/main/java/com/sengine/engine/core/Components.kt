@@ -16,13 +16,16 @@ object ComponentRegistry {
         "Light" to { Light() },
         "Rigidbody3D" to { Rigidbody3D() },
         "Collider3D" to { Collider3D() },
+        "Terrain" to { Terrain() },
+        "Steering" to { Steering() },
     )
 
     val categories: LinkedHashMap<String, List<String>> = linkedMapOf(
         "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "Camera"),
-        "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light"),
+        "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light", "Terrain"),
         "Physics 2D" to listOf("Rigidbody2D", "Collider2D"),
         "Physics 3D" to listOf("Rigidbody3D", "Collider3D"),
+        "AI" to listOf("Steering"),
         "Scripting & Audio" to listOf("Script", "AudioSource"),
     )
 
@@ -117,6 +120,10 @@ class Rigidbody2D : Component() {
     var friction = 0.4f
     var startVx = 0f
     var startVy = 0f
+    /** 0 = unlimited; otherwise the integration clamps |v| to this speed. */
+    var maxSpeed = 0f
+    /** Continuous collision detection: swept ray stops fast bodies from tunneling through thin walls. */
+    var ccd = false
 
     // runtime
     var vx = 0f
@@ -132,6 +139,8 @@ class Rigidbody2D : Component() {
         Prop.F("Friction", { friction }, { friction = it.coerceIn(0f, 1f) }, 0.05f),
         Prop.F("Velocity X", { startVx }, { startVx = it }),
         Prop.F("Velocity Y", { startVy }, { startVy = it }),
+        Prop.F("Max Speed", { maxSpeed }, { maxSpeed = it.coerceAtLeast(0f) }),
+        Prop.B("Continuous Collision", { ccd }, { ccd = it }),
     )
 
     override fun resetRuntime() {
@@ -148,6 +157,10 @@ class Collider2D : Component() {
     var offsetX = 0f
     var offsetY = 0f
     var isTrigger = false
+    /** Collision layer (bit index 0..15). */
+    var layer = 0
+    /** Bitmask of layers this collider can touch (default: everything). */
+    var mask = 0xFFFF
 
     override fun props() = listOf(
         Prop.Choice("Shape", listOf("Box", "Circle"), { shape }, { shape = it }),
@@ -157,6 +170,8 @@ class Collider2D : Component() {
         Prop.F("Offset X", { offsetX }, { offsetX = it }),
         Prop.F("Offset Y", { offsetY }, { offsetY = it }),
         Prop.B("Is Trigger", { isTrigger }, { isTrigger = it }),
+        Prop.I("Layer", { layer }, { layer = it.coerceIn(0, 15) }),
+        Prop.I("Mask", { mask }, { mask = it and 0xFFFF }),
     )
 }
 
@@ -359,6 +374,14 @@ class Rigidbody3D : Component() {
     var vy = 0f
     var vz = 0f
     var grounded = false
+    /** 0 = unlimited; otherwise the integration clamps |v| to this speed. */
+    var maxSpeed = 0f
+    /** Continuous collision detection against fast-moving bodies. */
+    var ccd = false
+    /** Surface normal of the ground currently touching this body (0,1,0 when airborne). */
+    var groundNx = 0f
+    var groundNy = 1f
+    var groundNz = 0f
 
     override fun props() = listOf(
         Prop.Choice("Body Type", listOf("Dynamic", "Kinematic", "Static"), { bodyType }, { bodyType = it }),
@@ -370,9 +393,14 @@ class Rigidbody3D : Component() {
         Prop.F("Velocity X", { startVx }, { startVx = it }),
         Prop.F("Velocity Y", { startVy }, { startVy = it }),
         Prop.F("Velocity Z", { startVz }, { startVz = it }),
+        Prop.F("Max Speed", { maxSpeed }, { maxSpeed = it.coerceAtLeast(0f) }),
+        Prop.B("Continuous Collision", { ccd }, { ccd = it }),
     )
 
-    override fun resetRuntime() { vx = startVx; vy = startVy; vz = startVz; grounded = false }
+    override fun resetRuntime() {
+        vx = startVx; vy = startVy; vz = startVz; grounded = false
+        groundNx = 0f; groundNy = 1f; groundNz = 0f
+    }
 }
 
 class Collider3D : Component() {
@@ -386,6 +414,10 @@ class Collider3D : Component() {
     var centerY = 0f
     var centerZ = 0f
     var isTrigger = false
+    /** Collision layer (bit index 0..15). */
+    var layer = 0
+    /** Bitmask of layers this collider can touch (default: everything). */
+    var mask = 0xFFFF
 
     override fun props() = listOf(
         Prop.Choice("Shape", listOf("Box", "Sphere"), { shape }, { shape = it }),
@@ -397,5 +429,152 @@ class Collider3D : Component() {
         Prop.F("Center Y", { centerY }, { centerY = it }),
         Prop.F("Center Z", { centerZ }, { centerZ = it }),
         Prop.B("Is Trigger", { isTrigger }, { isTrigger = it }),
+        Prop.I("Layer", { layer }, { layer = it.coerceIn(0, 15) }),
+        Prop.I("Mask", { mask }, { mask = it and 0xFFFF }),
     )
+}
+
+/**
+ * Procedural heightmap terrain. Generates a deterministic FBM noise mesh and
+ * doubles as the height source for 3D physics (ground support, slope walking
+ * and ray casts). Assumes translation + scale only (no rotation).
+ */
+class Terrain : Component() {
+    override val type = "Terrain"
+    var size = 120f
+    var resolution = 64
+    var amplitude = 7f
+    var frequency = 0.045f
+    var octaves = 4
+    var seed = 1337
+    var collide = true
+    var color = 0xFF7FA650.toInt()
+    var texture = ""
+    var tiling = 24f
+    var specular = 0.12f
+    var emission = 0f
+
+    override fun props() = listOf(
+        Prop.F("Size", { size }, { size = it.coerceIn(4f, 4000f) }, 1f),
+        Prop.I("Resolution", { resolution }, { resolution = it.coerceIn(4, 256) }),
+        Prop.F("Amplitude", { amplitude }, { amplitude = it.coerceIn(0f, 400f) }, 0.5f),
+        Prop.F("Frequency", { frequency }, { frequency = it.coerceIn(0.0005f, 2f) }, 0.005f),
+        Prop.I("Octaves", { octaves }, { octaves = it.coerceIn(1, 6) }),
+        Prop.I("Seed", { seed }, { seed = it }),
+        Prop.B("Collide", { collide }, { collide = it }),
+        Prop.Color("Color", { color }, { color = it }),
+        Prop.Asset("Texture", AssetKind.TEXTURE, { texture }, { texture = it }),
+        Prop.F("Tiling", { tiling }, { tiling = it.coerceAtLeast(0.01f) }),
+        Prop.F("Specular", { specular }, { specular = it.coerceIn(0f, 2f) }, 0.05f),
+        Prop.F("Emission", { emission }, { emission = it.coerceIn(0f, 4f) }, 0.05f),
+    )
+
+    /** Height in local space at local (lx, lz). Deterministic from the props. */
+    fun heightLocal(lx: Float, lz: Float): Float {
+        if (amplitude == 0f) return 0f
+        var sum = 0f
+        var norm = 0f
+        var amp = 1f
+        var freq = frequency
+        val oct = octaves.coerceIn(1, 6)
+        for (i in 0 until oct) {
+            sum += amp * valueNoise(lx * freq + seed * 0.37f, lz * freq - seed * 0.61f, seed + i * 101)
+            norm += amp
+            amp *= 0.5f
+            freq *= 2f
+        }
+        return (sum / norm - 0.5f) * 2f * amplitude
+    }
+
+    /** World-space height at (wx, wz), or null when outside the terrain bounds. */
+    fun heightAtWorld(wx: Float, wz: Float): Float? {
+        if (!enabled) return null
+        val w = gameObject.computeWorld3()
+        val sx = com.sengine.engine.math.Mat4.scaleOf(w, 0)
+        val sy = com.sengine.engine.math.Mat4.scaleOf(w, 1)
+        val sz = com.sengine.engine.math.Mat4.scaleOf(w, 2)
+        val lx = (wx - w[12]) / (if (Math.abs(sx) < 1e-6f) 1f else sx)
+        val lz = (wz - w[14]) / (if (Math.abs(sz) < 1e-6f) 1f else sz)
+        val half = size * 0.5f
+        if (lx < -half || lx > half || lz < -half || lz > half) return null
+        return w[13] + heightLocal(lx, lz) * sy
+    }
+
+    /** World-space bounds of the terrain footprint (for physics broad phase). */
+    fun containsWorld(wx: Float, wz: Float): Boolean {
+        val w = gameObject.computeWorld3()
+        val sx = Math.abs(com.sengine.engine.math.Mat4.scaleOf(w, 0))
+        val sz = Math.abs(com.sengine.engine.math.Mat4.scaleOf(w, 2))
+        val half = size * 0.5f
+        return Math.abs(wx - w[12]) <= half * (if (sx < 1e-6f) 1f else sx) &&
+               Math.abs(wz - w[14]) <= half * (if (sz < 1e-6f) 1f else sz)
+    }
+
+    private fun valueNoise(x: Float, z: Float, salt: Int): Float {
+        val x0 = Math.floor(x.toDouble()).toInt()
+        val z0 = Math.floor(z.toDouble()).toInt()
+        val fx = x - x0
+        val fz = z - z0
+        val sx = fx * fx * (3f - 2f * fx)
+        val sz = fz * fz * (3f - 2f * fz)
+        val a = hash(x0, z0, salt)
+        val b = hash(x0 + 1, z0, salt)
+        val c = hash(x0, z0 + 1, salt)
+        val d = hash(x0 + 1, z0 + 1, salt)
+        val top = a + (b - a) * sx
+        val bot = c + (d - c) * sx
+        return top + (bot - top) * sz
+    }
+
+    private fun hash(ix: Int, iz: Int, salt: Int): Float {
+        var h = ix * 374761393 + iz * 668265263 + salt * 1274126177
+        h = (h xor (h ushr 13)) * 1274126177
+        h = h xor (h ushr 16)
+        return (h and 0xFFFFFF) / 16777215f
+    }
+}
+
+/**
+ * Steering behaviours (seek / flee / pursue / wander / patrol) that drive the
+ * object's rigidbody each frame. Works in 2D (XY) and 3D (XZ).
+ */
+class Steering : Component() {
+    override val type = "Steering"
+    var mode = 0 // 0 Seek, 1 Flee, 2 Pursue, 3 Wander, 4 Patrol
+    var target = ""
+    var speed = 4f
+    var acceleration = 16f
+    var slowingRadius = 1.5f
+    var wanderStrength = 1f
+    var wanderTurn = 140f
+    var patrolDistance = 4f
+    var faceMovement = true
+
+    // runtime
+    var arrived = false
+    var wanderAngle = 0f
+    var startX = 0f
+    var startZ = 0f
+    var patrolDir = 1
+    var initialized = false
+
+    override fun props() = listOf(
+        Prop.Choice("Mode", MODES, { mode }, { mode = it }),
+        Prop.S("Target", { target }, { target = it }),
+        Prop.F("Speed", { speed }, { speed = it.coerceAtLeast(0f) }),
+        Prop.F("Acceleration", { acceleration }, { acceleration = it.coerceAtLeast(0f) }),
+        Prop.F("Slowing Radius", { slowingRadius }, { slowingRadius = it.coerceAtLeast(0f) }),
+        Prop.F("Wander Strength", { wanderStrength }, { wanderStrength = it.coerceAtLeast(0f) }),
+        Prop.F("Wander Turn", { wanderTurn }, { wanderTurn = it.coerceAtLeast(0f) }),
+        Prop.F("Patrol Distance", { patrolDistance }, { patrolDistance = it.coerceAtLeast(0f) }),
+        Prop.B("Face Movement", { faceMovement }, { faceMovement = it }),
+    )
+
+    override fun resetRuntime() {
+        arrived = false; wanderAngle = 0f; patrolDir = 1; initialized = false
+    }
+
+    companion object {
+        val MODES = listOf("Seek", "Flee", "Pursue", "Wander", "Patrol")
+    }
 }

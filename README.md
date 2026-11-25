@@ -1,6 +1,14 @@
-# S Engine
+# S Engine — Ultimate Edition
 
-**S Engine** is a 2D game engine **and** full visual editor that runs entirely on an Android phone or tablet – think "a small Unity in your pocket". Create a project, build scenes with a hierarchy / inspector / gizmos, write JavaScript behaviours in the built-in code editor, press **Play** to test immediately, then run your game full-screen.
+**S Engine** is a 2D **and 3D** game engine **and** full visual editor that runs entirely on an Android phone or tablet – think "a small Unity in your pocket". Create a project, build scenes with a hierarchy / inspector / gizmos, write JavaScript behaviours in the built-in code editor, press **Play** to test immediately, then run your game full-screen.
+
+**v2.1.0** added the professional upgrade: heightmap terrain with collision, AI steering (seek / flee / pursue / wander / patrol), object pooling, 2D + 3D raycasts, terrain height queries, distance fog controls, frustum culling, state-batched opaque rendering, a sun-lit sky, and three full game templates — **Flappy Bird**, **Chase** and **3D Open World**.
+
+**v2.2.0** upgrades the runtime itself:
+
+* **Professional script system** — full lifecycle (`start`, `update`, `onFixedUpdate`, `onLateUpdate`, `onEnable` / `onDisable`, `onCollision`, `onTrigger`, `onTap`, `onDestroy`, `onStop`), a **tween engine** (`tween(obj, "x", 10, 0.5, "backOut")` with7 easing curves), **CommonJS modules** (`require("Utils.js")`), a math toolkit (`damp`, `smoothstep`, `mapRange`, `wrap`, `lerpAngle`, `rotateToward`, `dist`, `randomPick`, …), timers (`after` / `every` / `wait` / `cancelTimers`), `time.scale` (pause / slow-motion), `time.delta`, `scene.broadcast`, `input.up/down/left/right` + `input.key(code)`, and `assert()`.
+* **Most powerful physics engine yet** — **collision layers & masks** (16 layers per collider), **continuous collision detection** (fast bullets never tunnel), **max speed clamps**, **kinematic platform carrying** (riders move with moving platforms), **ground normals** for slope-aware gameplay, **overlap queries** (`overlapCircle` / `overlapSphere`), **sorted multi-hit raycasts** (`raycastAll` in 2D & 3D), plus instant `addImpulse` from scripts.
+* **3D audio engine** — positional `audio.play3d(name, x, y, z)` / `play3dLoop` with **distance attenuation + live stereo panning** against the camera listener, `move3d` / `stop3d` handles, falloff profiles (`setFalloff`), SFX/music **bus volumes**, and a **music channel** (`playMusic` / `pauseMusic` / `resumeMusic` / `setMusicVolume`) — all backed by a pure, unit-tested `Audio3DMath` core.
 
 > Written from scratch in Kotlin. OpenGL ES 2.0 renderer, custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
 
@@ -17,6 +25,15 @@
 | **Undo / Redo** | Snapshot-based history for every edit |
 | **Play mode** | Play / Pause / Step frame inside the editor; scene is restored when you stop (like Unity) |
 | **Rendering** | Squares, circles, triangles, textured sprites (PNG/JPG/WebP) with flip, text, particles, sorting order, camera background |
+| **3D rendering** | Perspective camera (follow / look-at / shake / post-FX), primitive + OBJ meshes, per-vertex lighting (sun + 4 point lights), sky with sun disc, distance fog, Toon / Pulse / custom shaders |
+| **Terrain** | Procedural heightmap (FBM value noise), texture tiling, baked mesh cache, **collides with rigidbodies**, `scene.terrainHeight(x, z)` queries |
+| **AI steering** | `Steering` component: Seek, Flee, Pursue (lead prediction), Wander, Patrol — acceleration-limited movement with optional face-the-movement |
+| **Object pooling** | `scene.pool("Enemy", 16)` → `scene.obtain(...)` / `scene.release(obj)` — pre-warmed, reused instances, runtime state reset |
+| **Raycasts** | `scene.raycast2D(...)` and `scene.raycast(...)` (3D, incl. terrain) against all colliders |
+| **Culling & batching** | Per-frame frustum culling (Gribb–Hartmann planes) + opaque draws grouped by shader/texture to cut GL state changes |
+| **Script system** | Full lifecycle incl. fixed/late/update-enable hooks, tween engine, `require()` modules, math/timer toolkit, time scale, broadcast messaging |
+| **Physics 2D/3D** | Layers & masks, CCD, max-speed clamps, platform carrying, ground normals, overlap queries, sorted `raycastAll`, impulses |
+| **3D audio** | Positional play/loop with live pan + attenuation, listener follows the camera, falloff ranges, SFX/music buses, MediaPlayer music channel |
 | **Physics 2D** | Dynamic / Kinematic / Static rigidbodies, box & circle colliders, gravity, bounciness, friction, drag, triggers, collision & trigger callbacks, `grounded` detection |
 | **Scripting** | JavaScript (ES6 subset via Rhino) with `start`, `update(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging |
 | **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference |
@@ -27,13 +44,20 @@
 | **Player** | Full-screen runtime ("Build & Run") with landscape / portrait setting |
 
 ### Built-in components
-`SpriteRenderer`, `TextRenderer`, `Camera` (size, background, follow target with smoothing), `Rigidbody2D`, `Collider2D`, `Script`, `ParticleEmitter`, `AudioSource`.
+**2D:** `SpriteRenderer`, `TextRenderer`, `Camera` (size, background, follow target with smoothing), `Rigidbody2D`, `Collider2D`, `Script`, `ParticleEmitter`, `AudioSource`.
+**3D:** `MeshRenderer` (primitives / OBJ, shaders, emission), `Camera3D` (follow / look-at / FOV / post-FX), `Light` (directional sun + point lights), `Rigidbody3D`, `Collider3D` (box / sphere), `Terrain`, `Steering`, `Animator`.
 
 ### Templates
 * **Empty 2D** – camera + square
 * **Platformer Demo** – run, jump, moving platform, coins with particle bursts, score UI
 * **Space Shooter** – spawning enemies, bullets, explosions, score, game over
 * **Physics Sandbox** – tap to drop bouncy balls and crates onto a pyramid
+* **3D Demo** – lights, physics, OBJ models, shaders, character controller
+* **Animated Platformer** – skeletal-style clip animations, parallax, moving hazards
+* **Blueprint Demo** – visual node graphs compiled to JavaScript
+* **Flappy Bird** – one-button classic: scrolling pipe gaps, scoring, game over / retry
+* **Chase** – top-down survival: steering hunters, arena obstacles, respawning pickups
+* **3D Open World** – heightmap hills with collision, forests, roaming hero, collectible crystals
 
 ---
 

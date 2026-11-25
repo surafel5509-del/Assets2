@@ -64,6 +64,31 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         val rb = rb3 ?: return addForce(fx, fy)
         rb.vx += (fx / rb.mass).toFloat(); rb.vy += (fy / rb.mass).toFloat(); rb.vz += (fz / rb.mass).toFloat()
     }
+    /** Instant velocity change (kg*m/s divided by mass) — punches, bullets, knocks. */
+    fun addImpulse(fx: Double, fy: Double) {
+        rb3?.let { it.vx += (fx / it.mass).toFloat(); it.vy += (fy / it.mass).toFloat(); return }
+        val rb = go.getAny<Rigidbody2D>() ?: return
+        rb.vx += (fx / rb.mass).toFloat(); rb.vy += (fy / rb.mass).toFloat()
+    }
+    fun addImpulse(fx: Double, fy: Double, fz: Double) {
+        val rb = rb3 ?: return addImpulse(fx, fy)
+        rb.vx += (fx / rb.mass).toFloat(); rb.vy += (fy / rb.mass).toFloat(); rb.vz += (fz / rb.mass).toFloat()
+    }
+    /** Normal of the surface under this 3D body ([x,y,z], up when airborne). */
+    fun getGroundNormal(): Any? {
+        val rb = rb3 ?: return sys.newArray(listOf(0.0, 1.0, 0.0))
+        return sys.newArray(listOf(rb.groundNx.toDouble(), rb.groundNy.toDouble(), rb.groundNz.toDouble()))
+    }
+    /** Sets the collision layer (0..15) of this object's collider. */
+    fun setLayer(layer: Int) {
+        go.getAny<Collider2D>()?.layer = layer
+        go.getAny<com.sengine.engine.core.Collider3D>()?.layer = layer
+    }
+    /** Sets the collision mask bits of this object's collider. */
+    fun setMask(mask: Int) {
+        go.getAny<Collider2D>()?.mask = mask and 0xFFFF
+        go.getAny<com.sengine.engine.core.Collider3D>()?.mask = mask and 0xFFFF
+    }
     fun setVelocity(vx: Double, vy: Double) {
         rb3?.let { it.vx = vx.toFloat(); it.vy = vy.toFloat(); return }
         val rb = go.getAny<Rigidbody2D>() ?: return
@@ -132,13 +157,23 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun getText(): String = go.getAny<TextRenderer>()?.text ?: ""
     fun setText(v: Any?) { go.getAny<TextRenderer>()?.text = Context.toString(v) }
     fun getColor(): String {
-        val c = go.getAny<SpriteRenderer>()?.color ?: go.getAny<TextRenderer>()?.color ?: -1
+        val c = go.getAny<SpriteRenderer>()?.color ?: go.getAny<TextRenderer>()?.color
+            ?: go.getAny<com.sengine.engine.core.Light>()?.color ?: -1
         return String.format("#%08X", c)
     }
     fun setColor(hex: String) {
         val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
         go.getAny<SpriteRenderer>()?.color = c
         go.getAny<TextRenderer>()?.color = c
+        go.getAny<com.sengine.engine.core.Light>()?.color = c
+    }
+    /** Light intensity (0..4 typical). */
+    fun setIntensity(v: Double) { go.getAny<com.sengine.engine.core.Light>()?.intensity = v.toFloat() }
+    /** Camera3D sky gradient colors, e.g. self.setSky("#FF2A6FD4", "#FFBFD8F0"). */
+    fun setSky(top: Any?, horizon: Any?) {
+        val cam = go.getAny<com.sengine.engine.core.Camera3D>() ?: return
+        try { cam.skyTop = Component.parseColor(Context.toString(top)) } catch (_: Exception) {}
+        try { cam.skyHorizon = Component.parseColor(Context.toString(horizon)) } catch (_: Exception) {}
     }
     fun getVisible(): Boolean = go.getAny<SpriteRenderer>()?.enabled ?: false
     fun setVisible(v: Boolean) {
@@ -161,6 +196,8 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun getParent(): Any? = go.parent?.let { sys.toJs(it) }
     fun child(name: String): Any? = engine.scene.childrenOf(go).firstOrNull { it.name == name }?.let { sys.toJs(it) }
     fun destroy() { go.destroyed = true }
+    /** Raw engine object — advanced use (pooling, engine helpers). */
+    fun unwrap(): GameObject = go
     fun hasComponent(type: String): Boolean = go.components.any { it.type.equals(type, true) }
     fun setComponentEnabled(type: String, v: Boolean) {
         go.components.filter { it.type.equals(type, true) }.forEach { it.enabled = v }
@@ -203,6 +240,71 @@ class SScene(private val engine: Engine, private val sys: ScriptSystem) {
     }
     fun spawn(name: String, x: Double, y: Double, z: Double): Any? = spawnGo(name, x.toFloat(), y.toFloat(), z.toFloat())?.let { sys.toJs(it) }
     fun shake(amount: Double) = engine.shake(amount.toFloat())
+    /** Calls `fn(arg)` on every object's scripts (event-bus style messaging). */
+    fun broadcast(fn: String, arg: Any?): Any? {
+        var result: Any? = null
+        for (go in engine.scene.objects) result = sys.sendMessage(go, fn, arg) ?: result
+        return result
+    }
+    fun broadcast(fn: String): Any? = broadcast(fn, null)
+
+    // ---- object pooling: pool("Enemy", 16) once, then obtain()/release()
+    fun pool(name: String, size: Double) = engine.poolDefine(name, size.toInt())
+    fun obtain(name: String, x: Double, y: Double): Any? =
+        engine.poolObtain(name, x.toFloat(), y.toFloat(), null)?.let { sys.toJs(it) }
+    fun obtain(name: String, x: Double, y: Double, z: Double): Any? =
+        engine.poolObtain(name, x.toFloat(), y.toFloat(), z.toFloat())?.let { sys.toJs(it) }
+    fun release(o: Any?): Boolean {
+        val go = (o as? SObject)?.unwrap() ?: return false
+        return engine.poolRelease(go)
+    }
+
+    // ---- queries
+    /** Sorted multi-hit 2D ray cast: every collider along the ray, nearest first. */
+    fun raycastAll2D(ox: Double, oy: Double, dx: Double, dy: Double, maxDist: Double): Any? =
+        sys.newArray(engine.physics.raycastAll(engine.scene, ox.toFloat(), oy.toFloat(), dx.toFloat(), dy.toFloat(), maxDist.toFloat())
+            .map { sys.toJs(it.second) })
+    /** Sorted multi-hit 3D ray cast (colliders + terrain), nearest first. */
+    fun raycastAll(ox: Double, oy: Double, oz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? =
+        sys.newArray(engine.physics3D.raycastAll(engine.scene, ox.toFloat(), oy.toFloat(), oz.toFloat(),
+            dx.toFloat(), dy.toFloat(), dz.toFloat(), maxDist.toFloat()).map { sys.toJs(it.second) })
+    /** All colliders overlapping a world-space circle (optional tag filter). */
+    fun overlapCircle(x: Double, y: Double, r: Double): Any? =
+        sys.newArray(engine.physics.overlapCircle(engine.scene, x.toFloat(), y.toFloat(), r.toFloat()).map { sys.toJs(it) })
+    fun overlapCircle(x: Double, y: Double, r: Double, tag: String): Any? =
+        sys.newArray(engine.physics.overlapCircle(engine.scene, x.toFloat(), y.toFloat(), r.toFloat(), tag).map { sys.toJs(it) })
+    /** All colliders overlapping a world-space sphere (optional tag filter). */
+    fun overlapSphere(x: Double, y: Double, z: Double, r: Double): Any? =
+        sys.newArray(engine.physics3D.overlapSphere(engine.scene, x.toFloat(), y.toFloat(), z.toFloat(), r.toFloat()).map { sys.toJs(it) })
+    fun overlapSphere(x: Double, y: Double, z: Double, r: Double, tag: String): Any? =
+        sys.newArray(engine.physics3D.overlapSphere(engine.scene, x.toFloat(), y.toFloat(), z.toFloat(), r.toFloat(), tag).map { sys.toJs(it) })
+
+    /** 2D ray cast against colliders; returns the first object hit or null. */
+    fun raycast2D(ox: Double, oy: Double, dx: Double, dy: Double, maxDist: Double): Any? {
+        val l = Math.sqrt(dx * dx + dy * dy).coerceAtLeast(1e-9)
+        return engine.physics.raycast(engine.scene, ox.toFloat(), oy.toFloat(),
+            (dx / l).toFloat(), (dy / l).toFloat(), maxDist.toFloat())?.let { sys.toJs(it) }
+    }
+    /** World height of the first Terrain at (x, z); 0 when there is none. */
+    fun terrainHeight(x: Double, z: Double): Double {
+        for (go in engine.scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val t = go.get<com.sengine.engine.core.Terrain>() ?: continue
+            if (!t.enabled) continue
+            val h = t.heightAtWorld(x.toFloat(), z.toFloat()) ?: continue
+            return h.toDouble()
+        }
+        return 0.0
+    }
+    /** Enables distance fog (start, end in world units). */
+    fun setFog(start: Double, end: Double) {
+        engine.scene.fog = true
+        engine.scene.fogStart = start.toFloat()
+        engine.scene.fogEnd = end.toFloat()
+    }
+    fun setFogColor(hex: String) {
+        try { engine.scene.fogColor = Component.parseColor(hex) } catch (_: Exception) {}
+    }
     /** 3D raycast against Collider3D objects; returns the first object hit or null. */
     fun raycast(ox: Double, oy: Double, oz: Double, dx: Double, dy: Double, dz: Double, maxDist: Double): Any? {
         val l = Math.sqrt(dx * dx + dy * dy + dz * dz).coerceAtLeast(1e-9)
@@ -229,6 +331,13 @@ class SInput(private val engine: Engine) {
     @JvmField var b = false
     @JvmField var aDown = false
     @JvmField var bDown = false
+    /** True while the given key code (android.view.KeyEvent.KEYCODE_*) is held. */
+    fun key(code: Double): Boolean = engine.input.keys.contains(code.toInt())
+    /** True while W (or D-pad up) is held — convenience for movement. */
+    @JvmField var up = false
+    @JvmField var down = false
+    @JvmField var left = false
+    @JvmField var right = false
     @JvmField var touching = false
     @JvmField var tapped = false
     @JvmField var touchX = 0.0
@@ -238,6 +347,8 @@ class SInput(private val engine: Engine) {
         val i = engine.input
         axisX = i.axisX.toDouble(); axisY = i.axisY.toDouble()
         a = i.a; b = i.b; aDown = i.aDown; bDown = i.bDown
+        up = i.axisY > 0.5f; down = i.axisY < -0.5f
+        left = i.axisX < -0.5f; right = i.axisX > 0.5f
         touching = i.touching; tapped = i.tapped
         touchX = i.touchX.toDouble(); touchY = i.touchY.toDouble()
     }
@@ -247,6 +358,11 @@ class STime(private val engine: Engine) {
     fun getTime(): Double = engine.time
     fun getFrame(): Double = engine.frame.toDouble()
     fun getFps(): Double = engine.fps.toDouble()
+    /** Seconds since the previous frame (the dt passed to update). */
+    fun getDelta(): Double = engine.lastDt.toDouble()
+    /** Global time scale (0 = paused, 0.5 = slow motion, 2 = fast forward). */
+    fun getScale(): Double = engine.timeScale.toDouble()
+    fun setScale(v: Double) { engine.timeScale = v.toFloat().coerceIn(0f, 4f) }
 }
 
 class SAudio(private val engine: Engine) {
@@ -254,6 +370,34 @@ class SAudio(private val engine: Engine) {
     fun play(name: String, volume: Double) = engine.audio.play(name, volume.toFloat())
     fun beep() = engine.audio.beep()
     fun stopAll() = engine.audio.stopAll()
+
+    // ---- 3D positional audio
+    /** Plays a sound at a world position; returns a handle for stop3d/move3d. */
+    fun play3d(name: String, x: Double, y: Double, z: Double): Any? =
+        engine.audio.play3d(name, x.toFloat(), y.toFloat(), z.toFloat()).toDouble()
+    fun play3d(name: String, x: Double, y: Double, z: Double, volume: Double): Any? =
+        engine.audio.play3d(name, x.toFloat(), y.toFloat(), z.toFloat(), volume.toFloat()).toDouble()
+    fun play3dLoop(name: String, x: Double, y: Double, z: Double): Any? =
+        engine.audio.play3d(name, x.toFloat(), y.toFloat(), z.toFloat(), 1f, true).toDouble()
+    fun stop3d(handle: Double) = engine.audio.stop3d(handle.toInt())
+    fun move3d(handle: Double, x: Double, y: Double, z: Double) =
+        engine.audio.move3d(handle.toInt(), x.toFloat(), y.toFloat(), z.toFloat())
+    /** Manual listener override (normally the engine follows the camera). */
+    fun setListener(x: Double, y: Double, z: Double) =
+        engine.audio.setListener(x.toFloat(), y.toFloat(), z.toFloat(), 1f, 0f, 0f)
+    fun setFalloff(minDist: Double, maxDist: Double) {
+        engine.audio.minDist3 = minDist.toFloat()
+        engine.audio.maxDist3 = maxDist.toFloat()
+    }
+
+    // ---- music + buses
+    fun playMusic(name: String) = engine.audio.playMusic(name)
+    fun playMusic(name: String, loop: Boolean) = engine.audio.playMusic(name, loop)
+    fun pauseMusic() = engine.audio.pauseMusic()
+    fun resumeMusic() = engine.audio.resumeMusic()
+    fun stopMusic() = engine.audio.stopMusic()
+    fun setMusicVolume(v: Double) { engine.audio.musicVolume = v.toFloat() }
+    fun setSfxVolume(v: Double) { engine.audio.sfxVolume = v.toFloat() }
 }
 
 class SConsole(private val engine: Engine) {

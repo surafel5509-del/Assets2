@@ -37,6 +37,10 @@ class PhysicsWorld {
             get() = if (rb == null || rb.bodyType != 0) 0f else 1f / rb.mass
     }
 
+    /** Layer filter: both colliders must accept the other's layer bit. */
+    private fun layersMatch(a: Collider2D, b: Collider2D): Boolean =
+        (a.mask and (1 shl b.layer)) != 0 && (b.mask and (1 shl a.layer)) != 0
+
     private var prevContacts = HashSet<Long>()
     private var prevTriggers = HashSet<Long>()
 
@@ -57,6 +61,8 @@ class PhysicsWorld {
     }
 
     private fun fixedStep(scene: Scene, dt: Float) {
+        // kinematic bodies record their per-step delta so riders can be carried
+        val carry = HashMap<Long, FloatArray>()
         // integrate
         for (go in scene.objects) {
             if (!go.isActiveInHierarchy()) continue
@@ -70,9 +76,19 @@ class PhysicsWorld {
                         val k = max(0f, 1f - rb.drag * dt)
                         rb.vx *= k; rb.vy *= k
                     }
-                    moveWorld(go, rb.vx * dt, rb.vy * dt)
+                    clampSpeed(rb)
+                    var dx = rb.vx * dt
+                    var dy = rb.vy * dt
+                    if (rb.ccd) ccdAdjust(scene, go, rb, dt)?.let { dx = it[0]; dy = it[1] }
+                    moveWorld(go, dx, dy)
                 }
-                1 -> moveWorld(go, rb.vx * dt, rb.vy * dt)
+                1 -> {
+                    val w = go.computeWorld()
+                    val px = w.tx; val py = w.ty
+                    moveWorld(go, rb.vx * dt, rb.vy * dt)
+                    val w2 = go.computeWorld()
+                    carry[go.id] = floatArrayOf(w2.tx - px, w2.ty - py)
+                }
                 else -> {}
             }
         }
@@ -89,10 +105,12 @@ class PhysicsWorld {
 
         val contacts = HashSet<Long>()
         val triggers = HashSet<Long>()
+        val carried = HashSet<Long>()
         for (i in 0 until bodies.size) {
             for (j in i + 1 until bodies.size) {
                 val a = bodies[i]
                 val b = bodies[j]
+                if (!layersMatch(a.col, b.col)) continue
                 if (a.invMass == 0f && b.invMass == 0f && !a.col.isTrigger && !b.col.isTrigger) continue
                 val m = collide(a, b) ?: continue
                 val key = pairKey(a.go.id, b.go.id)
@@ -103,6 +121,20 @@ class PhysicsWorld {
                 }
                 contacts.add(key)
                 resolve(a, b, m)
+                // ride kinematic movers (platforms): apply their step delta to resting dynamics
+                val kin = if (a.rb?.bodyType == 1) a else if (b.rb?.bodyType == 1) b else null
+                val dyn = if (kin === a) b else a
+                val delta = kin?.let { carry[it.go.id] }
+                if (delta != null && dyn.rb?.bodyType == 0 && m.ny >= -0.55f && dyn.go.id !in carried) {
+                    // only when the dynamic body rests on top of (or is pushed by) the mover
+                    // normal points a->b: rider above mover => ny>0.55 when mover is a, ny<-0.55 when mover is b
+                    val onTop = if (kin === a) m.ny > 0.55f else m.ny < -0.55f
+                    val sidePush = abs(m.nx) > 0.55f
+                    if (onTop || sidePush) {
+                        moveWorld(dyn.go, delta[0], delta[1])
+                        carried.add(dyn.go.id)
+                    }
+                }
                 if (key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
             }
         }
@@ -113,6 +145,56 @@ class PhysicsWorld {
         }
         prevContacts = contacts
         prevTriggers = triggers
+    }
+
+    private fun clampSpeed(rb: Rigidbody2D) {
+        if (rb.maxSpeed <= 0f) return
+        val s = sqrt(rb.vx * rb.vx + rb.vy * rb.vy)
+        if (s > rb.maxSpeed) {
+            val k = rb.maxSpeed / s
+            rb.vx *= k; rb.vy *= k
+        }
+    }
+
+    /**
+     * Swept collision for fast bodies: if the straight-line move would cross a solid
+     * collider, stop just before the impact instead of tunneling through it.
+     */
+    private fun ccdAdjust(scene: Scene, go: GameObject, rb: Rigidbody2D, dt: Float): FloatArray? {
+        val dx = rb.vx * dt
+        val dy = rb.vy * dt
+        val len = sqrt(dx * dx + dy * dy)
+        if (len < 0.01f) return null
+        val ux = dx / len
+        val uy = dy / len
+        val w = go.computeWorld()
+        val col = go.get<Collider2D>() ?: return null
+        val hw = col.width * w.scaleX * 0.5f
+        val hh = col.height * w.scaleY * 0.5f
+        val r = if (col.shape == 1) col.radius * max(w.scaleX, w.scaleY) else max(hw, hh)
+        val ox = w.tx
+        val oy = w.ty
+        var best = len
+        var hit = false
+        for (other in scene.objects) {
+            if (other === go || !other.isActiveInHierarchy()) continue
+            val oc = other.get<Collider2D>() ?: continue
+            if (oc.isTrigger || !layersMatch(col, oc)) continue
+            val orb = other.get<Rigidbody2D>()
+            if (orb != null && orb.bodyType == 0) continue // only vs kinematic/static solids
+            val ob = Body(other, orb, oc)
+            refresh(ob)
+            val t = if (ob.isCircle) rayCircle(ox, oy, ux, uy, ob) else rayBox(ox, oy, ux, uy, ob)
+            if (t != null && t >= 0f && t < best) { best = t; hit = true }
+        }
+        val stop = if (hit) max(best - r, 0f) else len
+        if (stop < len - 1e-4f) {
+            // kill velocity into the surface so the body rests instead of vibrating
+            rb.vx = if (abs(ux) > 0.5f) 0f else rb.vx
+            rb.vy = if (abs(uy) > 0.5f) 0f else rb.vy
+            return floatArrayOf(ux * stop, uy * stop)
+        }
+        return null
     }
 
     private fun pairKey(a: Long, b: Long): Long {
@@ -252,5 +334,89 @@ class PhysicsWorld {
             if (hit) return go
         }
         return null
+    }
+
+    /** Ray vs 2D colliders (boxes and circles); returns the first object hit within [maxDist]. */
+    fun raycast(scene: Scene, ox: Float, oy: Float, dx: Float, dy: Float, maxDist: Float): GameObject? =
+        raycastAll(scene, ox, oy, dx, dy, maxDist).firstOrNull()?.second
+
+    /** All collider hits along the ray, sorted by distance (nearest first). */
+    fun raycastAll(scene: Scene, ox: Float, oy: Float, dx: Float, dy: Float, maxDist: Float): List<Pair<Float, GameObject>> {
+        val l = sqrt(dx * dx + dy * dy).coerceAtLeast(1e-9f)
+        val ux = dx / l
+        val uy = dy / l
+        val hits = ArrayList<Pair<Float, GameObject>>()
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val col = go.get<Collider2D>() ?: continue
+            val b = Body(go, null, col)
+            refresh(b)
+            val t = if (b.isCircle) rayCircle(ox, oy, ux, uy, b) else rayBox(ox, oy, ux, uy, b)
+            if (t != null && t >= 0f && t <= maxDist) hits.add(t to go)
+        }
+        return hits.sortedBy { it.first }
+    }
+
+    /** All active colliders overlapping the world-space circle. Optional [tag] filters results. */
+    fun overlapCircle(scene: Scene, x: Float, y: Float, radius: Float, tag: String = ""): List<GameObject> {
+        val out = ArrayList<GameObject>()
+        val r2 = radius * radius
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            if (tag.isNotEmpty() && go.tag != tag) continue
+            val col = go.get<Collider2D>() ?: continue
+            val b = Body(go, null, col)
+            refresh(b)
+            val hit = if (b.isCircle) {
+                val ddx = x - b.cx; val ddy = y - b.cy
+                val rr = radius + b.r
+                ddx * ddx + ddy * ddy <= rr * rr
+            } else {
+                val px = x.coerceIn(b.cx - b.hw, b.cx + b.hw)
+                val py = y.coerceIn(b.cy - b.hh, b.cy + b.hh)
+                val ddx = x - px; val ddy = y - py
+                ddx * ddx + ddy * ddy <= r2
+            }
+            if (hit) out.add(go)
+        }
+        return out
+    }
+
+    private fun rayBox(ox: Float, oy: Float, dx: Float, dy: Float, b: Body): Float? {
+        val hw = abs(b.hw); val hh = abs(b.hh)
+        var tmin = -Float.MAX_VALUE
+        var tmax = Float.MAX_VALUE
+        if (abs(dx) < 1e-8f) {
+            if (ox < b.cx - hw || ox > b.cx + hw) return null
+        } else {
+            var t1 = (b.cx - hw - ox) / dx
+            var t2 = (b.cx + hw - ox) / dx
+            if (t1 > t2) { val s = t1; t1 = t2; t2 = s }
+            if (t1 > tmin) tmin = t1
+            if (t2 < tmax) tmax = t2
+        }
+        if (abs(dy) < 1e-8f) {
+            if (oy < b.cy - hh || oy > b.cy + hh) return null
+        } else {
+            var t1 = (b.cy - hh - oy) / dy
+            var t2 = (b.cy + hh - oy) / dy
+            if (t1 > t2) { val s = t1; t1 = t2; t2 = s }
+            if (t1 > tmin) tmin = t1
+            if (t2 < tmax) tmax = t2
+        }
+        if (tmin > tmax) return null
+        return if (tmin >= 0f) tmin else if (tmax >= 0f) 0f else null
+    }
+
+    private fun rayCircle(ox: Float, oy: Float, dx: Float, dy: Float, b: Body): Float? {
+        val lx = ox - b.cx
+        val ly = oy - b.cy
+        val c = lx * lx + ly * ly - b.r * b.r
+        if (c <= 0f) return 0f // origin inside
+        val bb = lx * dx + ly * dy
+        val disc = bb * bb - c
+        if (disc < 0f) return null
+        val t = -bb - kotlin.math.sqrt(disc)
+        return if (t >= 0f) t else null
     }
 }

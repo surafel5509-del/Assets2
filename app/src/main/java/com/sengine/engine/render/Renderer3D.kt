@@ -13,6 +13,7 @@ class Renderer3D {
     lateinit var shaders: ShaderLibrary
     private var skyProg = 0
     private var skyPos = 0; private var skyInv = 0; private var skyTop = 0; private var skyHorizon = 0; private var skyGround = 0
+    private var skySunDir = 0; private var skySunCol = 0
     private lateinit var fullscreen: FloatBuffer
 
     private val mvp = FloatArray(16)
@@ -42,6 +43,8 @@ class Renderer3D {
         skyTop = GLES20.glGetUniformLocation(skyProg, "uTop")
         skyHorizon = GLES20.glGetUniformLocation(skyProg, "uHorizon")
         skyGround = GLES20.glGetUniformLocation(skyProg, "uGround")
+        skySunDir = GLES20.glGetUniformLocation(skyProg, "uSunDir")
+        skySunCol = GLES20.glGetUniformLocation(skyProg, "uSunCol")
         fullscreen = GL.floatBuffer(8)
         fullscreen.put(floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)).position(0)
     }
@@ -54,6 +57,8 @@ class Renderer3D {
         GLES20.glUniform3f(skyTop, GL.r(top), GL.g(top), GL.b(top))
         GLES20.glUniform3f(skyHorizon, GL.r(horizon), GL.g(horizon), GL.b(horizon))
         GLES20.glUniform3f(skyGround, GL.r(horizon) * 0.45f, GL.g(horizon) * 0.45f, GL.b(horizon) * 0.5f)
+        GLES20.glUniform3fv(skySunDir, 1, dirDir, 0)
+        GLES20.glUniform3fv(skySunCol, 1, dirColor, 0)
         fullscreen.position(0)
         GLES20.glEnableVertexAttribArray(skyPos)
         GLES20.glVertexAttribPointer(skyPos, 2, GLES20.GL_FLOAT, false, 0, fullscreen)
@@ -177,6 +182,8 @@ uniform mat4 uInvVP;
 uniform vec3 uTop;
 uniform vec3 uHorizon;
 uniform vec3 uGround;
+uniform vec3 uSunDir;
+uniform vec3 uSunCol;
 void main() {
   vec4 a = uInvVP * vec4(vNdc, -1.0, 1.0);
   vec4 b = uInvVP * vec4(vNdc, 1.0, 1.0);
@@ -184,6 +191,9 @@ void main() {
   vec3 c;
   if (d.y >= 0.0) c = mix(uHorizon, uTop, pow(d.y, 0.6));
   else c = mix(uHorizon, uGround, clamp(-d.y * 4.0, 0.0, 1.0));
+  // sun disc + glow, aligned with the scene's directional light
+  float s = max(dot(d, normalize(uSunDir)), 0.0);
+  c += uSunCol * (pow(s, 800.0) * 1.5 + pow(s, 24.0) * 0.16);
   gl_FragColor = vec4(c, 1.0);
 }
 """

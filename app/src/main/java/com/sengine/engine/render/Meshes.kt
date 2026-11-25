@@ -243,4 +243,45 @@ object Meshes {
         for (i in 0 until d.size / 8) for (k in 0 until 3) d[i * 8 + k] = (d[i * 8 + k] - (mn[k] + mx[k]) / 2f) / size
         return Mesh(d)
     }
+
+    // ------------------------------------------------------------- terrain
+    private val terrains = HashMap<String, Mesh>()
+
+    /** Grid heightfield mesh generated from a Terrain component (cached by parameters). */
+    fun terrain(t: com.sengine.engine.core.Terrain): Mesh {
+        val res = t.resolution.coerceIn(4, 256)
+        val key = "${t.size}|$res|${t.amplitude}|${t.frequency}|${t.seed}|${t.octaves}"
+        terrains[key]?.let { return it }
+        val b = B()
+        val cell = t.size / res
+        val half = t.size * 0.5f
+        val h = Array(res + 1) { j -> FloatArray(res + 1) { i -> t.heightLocal(-half + i * cell, -half + j * cell) } }
+        fun nrm(i: Int, j: Int): FloatArray {
+            val i0 = if (i > 0) i - 1 else 0
+            val i1 = if (i < res) i + 1 else res
+            val j0 = if (j > 0) j - 1 else 0
+            val j1 = if (j < res) j + 1 else res
+            val dhdx = (h[j][i1] - h[j][i0]) / ((i1 - i0) * cell).coerceAtLeast(1e-6f)
+            val dhdz = (h[j1][i] - h[j0][i]) / ((j1 - j0) * cell).coerceAtLeast(1e-6f)
+            var nx = -dhdx; var ny = 1f; var nz = -dhdz
+            val l = sqrt(nx * nx + ny * ny + nz * nz).coerceAtLeast(1e-8f)
+            return floatArrayOf(nx / l, ny / l, nz / l)
+        }
+        fun vert(i: Int, j: Int): FloatArray {
+            val x = -half + i * cell
+            val z = -half + j * cell
+            val n = nrm(i, j)
+            return floatArrayOf(x, h[j][i], z, n[0], n[1], n[2], i / res.toFloat(), j / res.toFloat())
+        }
+        for (j in 0 until res) {
+            for (i in 0 until res) {
+                val a = vert(i, j); val bb = vert(i, j + 1); val c = vert(i + 1, j); val d = vert(i + 1, j + 1)
+                for (v in arrayOf(a, bb, c)) b.d.addAll(v.toList())
+                for (v in arrayOf(bb, d, c)) b.d.addAll(v.toList())
+            }
+        }
+        val m = Mesh(b.arr())
+        terrains[key] = m
+        return m
+    }
 }

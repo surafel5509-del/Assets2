@@ -12,6 +12,7 @@ import com.sengine.engine.core.Light
 import com.sengine.engine.core.MeshRenderer
 import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.SpriteRenderer
+import com.sengine.engine.core.Terrain
 import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.math.Affine
 import com.sengine.engine.math.Mat4
@@ -44,6 +45,9 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
     private val m4 = FloatArray(16)
     private val m4b = FloatArray(16)
     private val rnd = java.util.Random()
+    // frustum culling (6 planes, play mode only) + terrain draw scratch
+    private val frustum = FloatArray(24)
+    private val terrainMr = MeshRenderer()
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         shaders.init()
@@ -223,24 +227,39 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         }
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        r3.setupLights(scene, v)
         r3.drawSky(v, cam?.skyTop ?: 0xFF3B7BD4.toInt(), cam?.skyHorizon ?: 0xFFBFD8F0.toInt())
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthFunc(GLES20.GL_LEQUAL)
         GLES20.glDepthMask(true)
-        r3.setupLights(scene, v)
 
         val objs = sortedObjects()
+        if (!editing) updateFrustum(v)
         val transparent = ArrayList<Pair<Float, GameObject>>()
+        // opaque meshes + terrain: frustum-culled and grouped by (shader, texture) to cut state changes
+        val opaque = ArrayList<Pair<String, GameObject>>()
         for (go in objs) {
-            val mr = go.get<MeshRenderer>() ?: continue
-            if (GL.a(mr.color) < 0.999f) { transparent.add(v.distanceTo(go.world3[12], go.world3[13], go.world3[14]) to go); continue }
-            drawMesh(go, mr)
+            val mr = go.get<MeshRenderer>()
+            val ter = if (mr == null) go.get<Terrain>() else null
+            if (mr == null && ter == null) continue
+            val color = mr?.color ?: ter!!.color
+            if (GL.a(color) < 0.999f) {
+                transparent.add(v.distanceTo(go.world3[12], go.world3[13], go.world3[14]) to go)
+                continue
+            }
+            if (!editing && !inFrustum(go)) continue
+            val key = (mr?.shader ?: "") + '\u0001' + (mr?.texture ?: ter?.texture ?: "")
+            opaque.add(key to go)
+        }
+        for ((_, go) in opaque.sortedBy { it.first }) {
+            val mr = go.get<MeshRenderer>()
+            if (mr != null) drawMesh(go, mr) else drawTerrain(go, go.get<Terrain>()!!)
         }
         // transparent meshes, sprites, text & particles: back to front, no depth writes
         GLES20.glDepthMask(false)
         for (go in objs) {
-            if (go.get<MeshRenderer>() != null || isScreenSpace(go)) continue
+            if (go.get<MeshRenderer>() != null || go.get<Terrain>() != null || isScreenSpace(go)) continue
             if (go.get<SpriteRenderer>() == null && go.get<TextRenderer>() == null && go.getAny<ParticleEmitter>() == null) continue
             transparent.add(v.distanceTo(go.world3[12], go.world3[13], go.world3[14]) to go)
         }
@@ -264,7 +283,27 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         r3.drawMesh(mesh, go.world3, mr, tex, prog)
     }
 
+    /** Draws a Terrain component with a shared scratch MeshRenderer (no per-object material cost). */
+    private fun drawTerrain(go: GameObject, t: Terrain) {
+        val mesh = Meshes.terrain(t)
+        terrainMr.color = t.color
+        terrainMr.texture = t.texture
+        terrainMr.tiling = t.tiling
+        terrainMr.specular = t.specular
+        terrainMr.shininess = 32f
+        terrainMr.emission = t.emission
+        terrainMr.unlit = false
+        terrainMr.shader = ""
+        terrainMr.shaderParam = 1f
+        val tex = if (t.texture.isNotBlank()) textures.image(t.texture) else null
+        r3.drawMesh(mesh, go.world3, terrainMr, tex, null)
+    }
+
     private fun meshBounds(go: GameObject): Pair<FloatArray, FloatArray> {
+        go.get<Terrain>()?.let { t ->
+            val h = t.amplitude + 1f
+            return floatArrayOf(-t.size / 2f, -h, -t.size / 2f) to floatArrayOf(t.size / 2f, h, t.size / 2f)
+        }
         val mr = go.get<MeshRenderer>()
         if (mr != null) {
             val mesh = if (mr.mesh == MeshRenderer.MESHES.size - 1) {
@@ -273,6 +312,54 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             return mesh.min to mesh.max
         }
         return floatArrayOf(-0.5f, -0.5f, -0.05f) to floatArrayOf(0.5f, 0.5f, 0.05f)
+    }
+
+    // ------------------------------------------------------------ frustum culling
+    /** Extracts the 6 frustum planes from the view-projection matrix (Gribb-Hartmann, GL clip space). */
+    private fun updateFrustum(v: View3D) {
+        val m = v.viewProj
+        fun row(r: Int) = floatArrayOf(m[r], m[4 + r], m[8 + r], m[12 + r])
+        val r0 = row(0); val r1 = row(1); val r2 = row(2); val r3 = row(3)
+        fun set(i: Int, a: FloatArray, s: Float) {
+            var x = r3[0] + s * a[0]
+            var y = r3[1] + s * a[1]
+            var z = r3[2] + s * a[2]
+            var w = r3[3] + s * a[3]
+            val l = kotlin.math.sqrt(x * x + y * y + z * z).coerceAtLeast(1e-8f)
+            x /= l; y /= l; z /= l; w /= l
+            frustum[i * 4] = x; frustum[i * 4 + 1] = y; frustum[i * 4 + 2] = z; frustum[i * 4 + 3] = w
+        }
+        set(0, r0, 1f)   // left
+        set(1, r0, -1f)  // right
+        set(2, r1, 1f)   // bottom
+        set(3, r1, -1f)  // top
+        set(4, r2, 1f)   // near
+        set(5, r2, -1f)  // far
+    }
+
+    /** True when the object's world-space bounds intersect the current frustum. */
+    private fun inFrustum(go: GameObject): Boolean {
+        val w = go.world3
+        val (mn, mx) = meshBounds(go)
+        var minx = Float.MAX_VALUE; var miny = Float.MAX_VALUE; var minz = Float.MAX_VALUE
+        var maxx = -Float.MAX_VALUE; var maxy = -Float.MAX_VALUE; var maxz = -Float.MAX_VALUE
+        for (i in 0 until 8) {
+            val lx = if (i and 1 == 0) mn[0] else mx[0]
+            val ly = if (i and 2 == 0) mn[1] else mx[1]
+            val lz = if (i and 4 == 0) mn[2] else mx[2]
+            val p = Mat4.point(w, lx, ly, lz)
+            if (p[0] < minx) minx = p[0]; if (p[0] > maxx) maxx = p[0]
+            if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1]
+            if (p[2] < minz) minz = p[2]; if (p[2] > maxz) maxz = p[2]
+        }
+        for (p in 0 until 6) {
+            val a = frustum[p * 4]; val b = frustum[p * 4 + 1]; val c = frustum[p * 4 + 2]; val d = frustum[p * 4 + 3]
+            val px = if (a >= 0f) maxx else minx
+            val py = if (b >= 0f) maxy else miny
+            val pz = if (c >= 0f) maxz else minz
+            if (a * px + b * py + c * pz + d < 0f) return false
+        }
+        return true
     }
 
     private fun drawEditorOverlay3D(v: View3D, ed: EditorState) {

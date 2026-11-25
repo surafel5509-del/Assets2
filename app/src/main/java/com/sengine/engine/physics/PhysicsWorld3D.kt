@@ -4,6 +4,7 @@ import com.sengine.engine.core.Collider3D
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.Rigidbody3D
 import com.sengine.engine.core.Scene
+import com.sengine.engine.core.Terrain
 import com.sengine.engine.math.Mat4
 import kotlin.math.abs
 import kotlin.math.max
@@ -30,6 +31,10 @@ class PhysicsWorld3D {
 
     private class M(val nx: Float, val ny: Float, val nz: Float, val depth: Float)
 
+    /** Layer filter: both colliders must accept the other's layer bit. */
+    private fun layersMatch(a: Collider3D, b: Collider3D): Boolean =
+        (a.mask and (1 shl b.layer)) != 0 && (b.mask and (1 shl a.layer)) != 0
+
     fun reset() { accumulator = 0f; prevContacts = HashSet(); prevTriggers = HashSet() }
 
     fun step(scene: Scene, dt: Float) {
@@ -52,12 +57,19 @@ class PhysicsWorld3D {
             if (!go.isActiveInHierarchy()) continue
             val rb = go.get<Rigidbody3D>() ?: continue
             rb.grounded = false
+            rb.groundNx = 0f; rb.groundNy = 1f; rb.groundNz = 0f
             when (rb.bodyType) {
                 0 -> {
                     rb.vx += scene.gravityX * 0f
                     rb.vy += scene.gravity3D * rb.gravityScale * dt
                     if (rb.drag > 0f) { val k = max(0f, 1f - rb.drag * dt); rb.vx *= k; rb.vy *= k; rb.vz *= k }
-                    move(go, rb.vx * dt, rb.vy * dt, rb.vz * dt)
+                    if (rb.maxSpeed > 0f) {
+                        val s = sqrt(rb.vx * rb.vx + rb.vy * rb.vy + rb.vz * rb.vz)
+                        if (s > rb.maxSpeed) { val k = rb.maxSpeed / s; rb.vx *= k; rb.vy *= k; rb.vz *= k }
+                    }
+                    var dx = rb.vx * dt; var dy = rb.vy * dt; var dz = rb.vz * dt
+                    if (rb.ccd) ccdAdjust(scene, go, rb, dt)?.let { dx = it[0]; dy = it[1]; dz = it[2] }
+                    move(go, dx, dy, dz)
                 }
                 1 -> move(go, rb.vx * dt, rb.vy * dt, rb.vz * dt)
                 else -> {}
@@ -73,6 +85,7 @@ class PhysicsWorld3D {
         val triggers = HashSet<Long>()
         for (i in bodies.indices) for (j in i + 1 until bodies.size) {
             val a = bodies[i]; val b = bodies[j]
+            if (!layersMatch(a.col, b.col)) continue
             val trig = a.col.isTrigger || b.col.isTrigger
             if (a.invMass == 0f && b.invMass == 0f && !trig) continue
             val m = collide(a, b) ?: continue
@@ -84,13 +97,48 @@ class PhysicsWorld3D {
             }
             contacts.add(key)
             resolve(a, b, m)
+            // record ground normal for slope-aware gameplay
+            if (m.ny > 0.55f) b.rb?.let { it.groundNx = m.nx; it.groundNy = m.ny; it.groundNz = m.nz }
+            if (m.ny < -0.55f) a.rb?.let { it.groundNx = m.nx; it.groundNy = -m.ny; it.groundNz = m.nz }
             if (key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
         }
         for (k in prevTriggers) if (k !in triggers) {
             val a = scene.findById(k shr 32); val b = scene.findById(k and 0xFFFFFFFFL)
             if (a != null && b != null) listener?.onTriggerExit(a, b)
         }
+        terrainSupport(scene)
         prevContacts = contacts; prevTriggers = triggers
+    }
+
+    /** Ground support against Terrain heightfields: lands, walks and climbs slopes. */
+    private fun terrainSupport(scene: Scene) {
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val rb = go.get<Rigidbody3D>() ?: continue
+            if (rb.bodyType != 0) continue
+            val col = go.get<Collider3D>() ?: continue
+            val b = Body(go, rb, col); refresh(b)
+            for (tg in scene.objects) {
+                if (!tg.isActiveInHierarchy()) continue
+                val ter = tg.get<Terrain>() ?: continue
+                if (!ter.collide || !ter.enabled) continue
+                if (!ter.containsWorld(b.cx, b.cz)) continue
+                val h = ter.heightAtWorld(b.cx, b.cz) ?: continue
+                val bottom = if (b.sphere) b.cy - b.r else b.cy - b.hy
+                if (bottom >= h) continue
+                val push = h - bottom
+                move(go, 0f, push, 0f)
+                b.cy += push
+                if (rb.vy < 0f) {
+                    val e = rb.bounciness
+                    rb.vy = if (e > 0.05f && rb.vy < -3f) -rb.vy * e else 0f
+                }
+                rb.grounded = true
+                val fr = (rb.friction * fixedDt * 6f).coerceAtMost(1f)
+                rb.vx *= 1f - fr
+                rb.vz *= 1f - fr
+            }
+        }
     }
 
     private fun key(a: Long, b: Long): Long = (min(a, b) shl 32) or (max(a, b) and 0xFFFFFFFFL)
@@ -189,18 +237,125 @@ class PhysicsWorld3D {
         rb.vx += x * inv; rb.vy += y * inv; rb.vz += z * inv
     }
 
+    /**
+     * Swept collision for fast bodies: stops the straight-line move just before
+     * impact with a solid collider (boxes/spheres + terrain) instead of tunneling.
+     */
+    private fun ccdAdjust(scene: Scene, go: GameObject, rb: Rigidbody3D, dt: Float): FloatArray? {
+        val dx = rb.vx * dt; val dy = rb.vy * dt; val dz = rb.vz * dt
+        val len = sqrt(dx * dx + dy * dy + dz * dz)
+        if (len < 0.01f) return null
+        val ux = dx / len; val uy = dy / len; val uz = dz / len
+        val col = go.get<Collider3D>() ?: return null
+        val w = go.computeWorld3()
+        val p = Mat4.point(w, col.centerX, col.centerY, col.centerZ)
+        val sx = Mat4.scaleOf(w, 0); val sy = Mat4.scaleOf(w, 1); val sz = Mat4.scaleOf(w, 2)
+        val r = if (col.shape == 1) col.radius * max(sx, max(sy, sz))
+                else max(col.sizeX * sx, max(col.sizeY * sy, col.sizeZ * sz)) * 0.5f
+        var best = len
+        var hit = false
+        for (other in scene.objects) {
+            if (other === go || !other.isActiveInHierarchy()) continue
+            val oc = other.get<Collider3D>() ?: continue
+            if (oc.isTrigger || !layersMatch(col, oc)) continue
+            val orb = other.get<Rigidbody3D>()
+            if (orb != null && orb.bodyType == 0) continue
+            val ob = Body(other, orb, oc); refresh(ob)
+            val t = if (ob.sphere) raySphere(p[0], p[1], p[2], ux, uy, uz, ob)
+                    else rayBox(p[0], p[1], p[2], ux, uy, uz, ob)
+            if (t != null && t >= 0f && t < best) { best = t; hit = true }
+        }
+        for (tg in scene.objects) {
+            if (!tg.isActiveInHierarchy()) continue
+            val ter = tg.get<Terrain>() ?: continue
+            if (!ter.enabled || !ter.collide) continue
+            val t = rayTerrain(ter, p[0], p[1], p[2], ux, uy, uz, best)
+            if (t != null && t >= 0f && t < best) { best = t; hit = true }
+        }
+        val stop = if (hit) max(best - r, 0f) else len
+        if (stop < len - 1e-4f) {
+            if (abs(ux) > 0.5f) rb.vx = 0f
+            if (abs(uy) > 0.5f) rb.vy = 0f
+            if (abs(uz) > 0.5f) rb.vz = 0f
+            return floatArrayOf(ux * stop, uy * stop, uz * stop)
+        }
+        return null
+    }
+
     /** Ray cast against colliders; returns the hit object or null. */
-    fun raycast(scene: Scene, ox: Float, oy: Float, oz: Float, dx: Float, dy: Float, dz: Float, maxDist: Float): GameObject? {
-        var best: GameObject? = null
-        var bestT = maxDist
+    fun raycast(scene: Scene, ox: Float, oy: Float, oz: Float, dx: Float, dy: Float, dz: Float, maxDist: Float): GameObject? =
+        raycastAll(scene, ox, oy, oz, dx, dy, dz, maxDist).firstOrNull()?.second
+
+    /** All collider + terrain hits along the ray, sorted by distance (nearest first). */
+    fun raycastAll(scene: Scene, ox: Float, oy: Float, oz: Float, dx: Float, dy: Float, dz: Float, maxDist: Float): List<Pair<Float, GameObject>> {
+        val l = sqrt(dx * dx + dy * dy + dz * dz).coerceAtLeast(1e-9f)
+        val ux = dx / l; val uy = dy / l; val uz = dz / l
+        val hits = ArrayList<Pair<Float, GameObject>>()
         for (go in scene.objects) {
             if (!go.isActiveInHierarchy()) continue
             val col = go.get<Collider3D>() ?: continue
             val b = Body(go, null, col); refresh(b)
-            val t = if (b.sphere) raySphere(ox, oy, oz, dx, dy, dz, b) else rayBox(ox, oy, oz, dx, dy, dz, b)
-            if (t != null && t >= 0f && t < bestT) { bestT = t; best = go }
+            val t = if (b.sphere) raySphere(ox, oy, oz, ux, uy, uz, b) else rayBox(ox, oy, oz, ux, uy, uz, b)
+            if (t != null && t >= 0f && t <= maxDist) hits.add(t to go)
         }
-        return best
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val ter = go.get<Terrain>() ?: continue
+            if (!ter.enabled || !ter.collide) continue
+            val t = rayTerrain(ter, ox, oy, oz, ux, uy, uz, maxDist)
+            if (t != null && t >= 0f && t <= maxDist) hits.add(t to go)
+        }
+        return hits.sortedBy { it.first }
+    }
+
+    /** All active colliders overlapping the world-space sphere. Optional [tag] filters results. */
+    fun overlapSphere(scene: Scene, x: Float, y: Float, z: Float, radius: Float, tag: String = ""): List<GameObject> {
+        val out = ArrayList<GameObject>()
+        val r2 = radius * radius
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            if (tag.isNotEmpty() && go.tag != tag) continue
+            val col = go.get<Collider3D>() ?: continue
+            val b = Body(go, null, col); refresh(b)
+            val hit = if (b.sphere) {
+                val dx = x - b.cx; val dy = y - b.cy; val dz = z - b.cz
+                val rr = radius + b.r
+                dx * dx + dy * dy + dz * dz <= rr * rr
+            } else {
+                val px = x.coerceIn(b.cx - b.hx, b.cx + b.hx)
+                val py = y.coerceIn(b.cy - b.hy, b.cy + b.hy)
+                val pz = z.coerceIn(b.cz - b.hz, b.cz + b.hz)
+                val dx = x - px; val dy = y - py; val dz = z - pz
+                dx * dx + dy * dy + dz * dz <= r2
+            }
+            if (hit) out.add(go)
+        }
+        return out
+    }
+
+    /** Marches a ray against a Terrain heightfield (with bisection refinement). */
+    private fun rayTerrain(ter: Terrain, ox: Float, oy: Float, oz: Float,
+                           dx: Float, dy: Float, dz: Float, maxT: Float): Float? {
+        val step = (ter.size / ter.resolution.coerceAtLeast(1) * 0.5f).coerceAtLeast(0.05f)
+        var t = 0f
+        var prev = 0f
+        while (t < maxT) {
+            t = minOf(t + step, maxT)
+            val x = ox + dx * t; val y = oy + dy * t; val z = oz + dz * t
+            val h = ter.heightAtWorld(x, z)
+            if (h != null && y <= h) {
+                var lo = prev; var hi = t
+                repeat(8) {
+                    val mid = (lo + hi) * 0.5f
+                    val mh = ter.heightAtWorld(ox + dx * mid, oz + dz * mid)
+                    if (mh != null && oy + dy * mid <= mh) hi = mid else lo = mid
+                }
+                return hi
+            }
+            prev = t
+            if (t >= maxT) break
+        }
+        return null
     }
 
     private fun raySphere(ox: Float, oy: Float, oz: Float, dx: Float, dy: Float, dz: Float, b: Body): Float? {

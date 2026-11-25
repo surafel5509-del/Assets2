@@ -7,6 +7,7 @@ import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
+import com.sengine.engine.core.Steering
 import com.sengine.engine.physics.PhysicsWorld
 import com.sengine.engine.render.View2D
 import com.sengine.engine.script.ScriptSystem
@@ -48,6 +49,10 @@ class Engine(val project: Project, initialScene: Scene) {
 
     var time = 0.0; private set
     var frame = 0L; private set
+    /** Seconds of the most recent frame (after time scale). */
+    var lastDt = 1f / 60f; private set
+    /** Global time scale: 0 pauses, 0.5 slows down, 2 speeds up. */
+    var timeScale = 1f
     @Volatile var fps = 0f; private set
     // profiler (milliseconds, smoothed)
     @Volatile var scriptMs = 0f
@@ -64,6 +69,11 @@ class Engine(val project: Project, initialScene: Scene) {
     private var pendingSceneLoad: String? = null
 
     val logs = ArrayDeque<String>()
+
+    // object pools: templates pre-cloned once, reused via scene.obtain()/release()
+    private val pools = HashMap<String, ArrayList<GameObject>>()
+    private val poolOwner = HashMap<Long, String>()
+    private val poolAttached = HashSet<Long>()
 
     init {
         physics.listener = scripts
@@ -118,6 +128,7 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     private fun beginScene() {
+        clearPools()
         for (go in scene.objects) for (c in go.components) c.resetRuntime()
         physics.reset()
         physics3D.reset()
@@ -168,12 +179,14 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     private fun runFrame(dt0: Float) {
-        val dt = dt0.coerceAtMost(0.1f)
+        val dt = (dt0 * timeScale).coerceAtMost(0.1f)
+        lastDt = dt
         time += dt; frame++
         scene.updateTransforms()
         updateGameView()
         input.beginFrame(gameView)
         val t0 = System.nanoTime()
+        updateSteering(dt)
         scripts.update(dt)
         val t1 = System.nanoTime()
         physics.step(scene, dt)
@@ -185,6 +198,7 @@ class Engine(val project: Project, initialScene: Scene) {
         scene.updateTransforms()
         updateCameraFollow(dt)
         updateCamera3DFollow(dt)
+        updateAudioListener()
         updateGameView()
         updateParticles(dt)
         updateAnimators(dt, true)
@@ -205,6 +219,26 @@ class Engine(val project: Project, initialScene: Scene) {
         }
     }
 
+    /** Positions the 3D-audio listener on the active camera (right vector from its world matrix). */
+    private fun updateAudioListener() {
+        try {
+            val cam3 = mainCamera3D()
+            if (cam3 != null) {
+                val w = cam3.world3
+                val rx = w[0]; val ry = w[1]; val rz = w[2]
+                audio.setListener(w[12], w[13], w[14], rx, ry, rz)
+            } else {
+                val cam2 = mainCamera()
+                if (cam2 != null) {
+                    val w = cam2.computeWorld()
+                    audio.setListener(w.tx, w.ty, 0f, 1f, 0f, 0f)
+                }
+            }
+            audio.update3d()
+        } catch (_: Throwable) {
+        }
+    }
+
     private fun cleanupDestroyed() {
         if (scene.objects.none { it.destroyed }) return
         val dead = scene.objects.filter { it.destroyed || isUnderDestroyed(it) }
@@ -220,6 +254,180 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     fun mainCamera3D(): GameObject? = scene.objects.firstOrNull { it.isActiveInHierarchy() && it.get<com.sengine.engine.core.Camera3D>() != null }
+
+    // ---------------------------------------------------------------- pooling
+    fun clearPools() {
+        pools.clear(); poolOwner.clear(); poolAttached.clear()
+    }
+
+    /** Pre-creates [size] inactive clones of the template named [name]. */
+    fun poolDefine(name: String, size: Int) {
+        val template = scene.find(name) ?: run { log(1, "pool: template '$name' not found"); return }
+        val list = pools.getOrPut(name) { ArrayList() }
+        list.removeAll { it.destroyed }
+        var n = size - list.size
+        while (n-- > 0) {
+            val copy = scene.duplicate(template, null)
+            copy.active = false
+            poolOwner[copy.id] = name
+            list.add(copy)
+        }
+    }
+
+    /** Grabs an object from the pool (grows it when empty) and places it at the given position. */
+    fun poolObtain(name: String, x: Float, y: Float, z: Float?): GameObject? {
+        val template = scene.find(name)
+            ?: run { log(1, "pool: template '$name' not found"); return null }
+        val list = pools.getOrPut(name) { ArrayList() }
+        list.removeAll { it.destroyed }
+        var go = list.firstOrNull { !it.active }
+        var fresh = false
+        if (go == null) {
+            go = scene.duplicate(template, null)
+            poolOwner[go.id] = name
+            list.add(go)
+            fresh = true
+        }
+        val target = go
+        target.active = true
+        if (z != null) target.setWorldPosition3(x, y, z) else target.setWorldPosition(x, y)
+        for (d in listOf(target) + scene.objects.filter { target.isAncestorOf(it) }) {
+            d.components.forEach { it.resetRuntime() }
+        }
+        scene.updateTransforms()
+        if (fresh || target.id !in poolAttached) {
+            poolAttached.add(target.id)
+            scripts.attach(target)
+        }
+        return target
+    }
+
+    /** Returns a pooled object for reuse (deactivates it). */
+    fun poolRelease(go: GameObject): Boolean {
+        if (poolOwner[go.id] == null) return false
+        go.active = false
+        return true
+    }
+
+    // ---------------------------------------------------------------- steering
+    private fun updateSteering(dt: Float) {
+        if (dt <= 0f) return
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            val st = go.getAny<Steering>() ?: continue
+            if (!st.enabled) continue
+            val rb3 = go.getAny<com.sengine.engine.core.Rigidbody3D>()
+            val rb2 = go.getAny<com.sengine.engine.core.Rigidbody2D>()
+            if (rb3 == null && rb2 == null) continue
+            val threeD = rb3 != null
+            if (!st.initialized) {
+                st.initialized = true
+                st.startX = go.x
+                st.startZ = go.z
+                st.wanderAngle = Random.nextFloat() * 360f
+            }
+            // plane coordinates: XZ for 3D, XY for 2D
+            val w3 = if (threeD) go.computeWorld3() else null
+            val w2 = if (threeD) null else go.computeWorld()
+            val px = w3?.get(12) ?: w2!!.tx
+            val pz = w3?.get(14) ?: w2!!.ty
+            val cvx = rb3?.vx ?: rb2?.vx ?: 0f
+            val cvp = if (threeD) rb3!!.vz else rb2?.vy ?: 0f
+            // 2D: only steer vertically when gravity is off (top-down style)
+            val steerY = !threeD && (scene.gravityY == 0f || (rb2?.gravityScale ?: 1f) == 0f)
+
+            var dvx = 0f
+            var dvp = 0f
+            var arrived = false
+            when (st.mode) {
+                0, 2 -> { // seek / pursue
+                    val t = if (st.target.isNotBlank()) scene.find(st.target) else null
+                    if (t != null) {
+                        val tw3 = if (threeD) t.computeWorld3() else null
+                        val tw2 = if (threeD) null else t.computeWorld()
+                        var tx = tw3?.get(12) ?: tw2!!.tx
+                        var tp = tw3?.get(14) ?: tw2!!.ty
+                        if (st.mode == 2) { // pursue: lead the target
+                            val tvx = t.getAny<com.sengine.engine.core.Rigidbody3D>()?.vx
+                                ?: t.getAny<com.sengine.engine.core.Rigidbody2D>()?.vx ?: 0f
+                            val tvp = if (threeD) t.getAny<com.sengine.engine.core.Rigidbody3D>()?.vz ?: 0f
+                                else t.getAny<com.sengine.engine.core.Rigidbody2D>()?.vy ?: 0f
+                            val dx0 = tx - px; val dp0 = tp - pz
+                            val dist0 = kotlin.math.sqrt(dx0 * dx0 + dp0 * dp0)
+                            val lead = if (st.speed > 0.1f) dist0 / st.speed else 0f
+                            tx += tvx * lead; tp += tvp * lead
+                        }
+                        val dx = tx - px; val dp = tp - pz
+                        val dist = kotlin.math.sqrt(dx * dx + dp * dp)
+                        if (st.mode == 0 && dist < 0.4f) {
+                            arrived = true
+                        } else if (dist > 1e-5f) {
+                            var scale = st.speed
+                            if (st.mode == 0 && st.slowingRadius > 0f && dist < st.slowingRadius) {
+                                scale *= dist / st.slowingRadius
+                            }
+                            dvx = dx / dist * scale
+                            dvp = dp / dist * scale
+                        }
+                    }
+                }
+                1 -> { // flee
+                    val t = if (st.target.isNotBlank()) scene.find(st.target) else null
+                    if (t != null) {
+                        val tw3 = if (threeD) t.computeWorld3() else null
+                        val tw2 = if (threeD) null else t.computeWorld()
+                        val tx = tw3?.get(12) ?: tw2!!.tx
+                        val tp = tw3?.get(14) ?: tw2!!.ty
+                        val dx = px - tx; val dp = pz - tp
+                        val dist = kotlin.math.sqrt(dx * dx + dp * dp)
+                        if (dist > 1e-5f) { dvx = dx / dist * st.speed; dvp = dp / dist * st.speed }
+                    }
+                }
+                3 -> { // wander
+                    val turn = st.wanderTurn * st.wanderStrength * dt
+                    st.wanderAngle += (Random.nextFloat() - 0.5f) * 2f * turn
+                    val a = Math.toRadians(st.wanderAngle.toDouble())
+                    dvx = (Math.cos(a) * st.speed).toFloat()
+                    dvp = (Math.sin(a) * st.speed).toFloat()
+                }
+                4 -> { // patrol between start ± distance on X
+                    if (px > st.startX + st.patrolDistance) st.patrolDir = -1
+                    else if (px < st.startX - st.patrolDistance) st.patrolDir = 1
+                    dvx = st.patrolDir * st.speed
+                }
+            }
+            st.arrived = arrived
+
+            // steer: accelerate the current velocity toward the desired one
+            var nvx = cvx
+            var nvp = cvp
+            val ax = st.acceleration * dt
+            val dvxd = dvx - cvx
+            val dvdp = if (steerY || threeD) dvp - cvp else 0f
+            val dl = kotlin.math.sqrt(dvxd * dvxd + dvdp * dvdp)
+            if (dl > ax && dl > 1e-6f) {
+                nvx += dvxd / dl * ax
+                if (steerY || threeD) nvp += dvdp / dl * ax
+            } else {
+                nvx = dvx
+                if (steerY || threeD) nvp = dvp
+            }
+            if (threeD) {
+                rb3!!.vx = nvx; rb3.vz = nvp
+            } else {
+                rb2!!.vx = nvx
+                if (steerY) rb2.vy = nvp
+            }
+
+            if (st.faceMovement && (dvx * dvx + dvp * dvp) > 1e-4f) {
+                if (threeD) {
+                    go.rotY = Math.toDegrees(Math.atan2(-dvx.toDouble(), -dvp.toDouble())).toFloat()
+                } else {
+                    go.rotation = Math.toDegrees(Math.atan2(dvp.toDouble(), dvx.toDouble())).toFloat() - 90f
+                }
+            }
+        }
+    }
 
     private fun updateAnimators(dt: Float, playing: Boolean) {
         for (go in scene.objects) {

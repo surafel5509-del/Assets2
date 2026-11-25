@@ -14,12 +14,14 @@ import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.core.SpriteRenderer
+import com.sengine.engine.core.Steering
+import com.sengine.engine.core.Terrain
 import com.sengine.engine.core.TextRenderer
 
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo) }
+    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, flappyBird, chase, openWorld) }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution
@@ -468,6 +470,222 @@ function onTrigger(other) {
         pl.tag = "Player"
         for (i in 0 until 5) obj(s, "Gem", -6f + i * 3f, 0.5f, 0.5f, 0.5f).sprite(0xFFFFD54F, 2).circleCol(true).script("CollectibleBP.bp").also { it.order = 5 }
         obj(s, "Spinner", -8f, 1f, 1f, 1f).sprite(0xFFEC407A).script("RotatorBP.bp")
+        p.saveScene(s)
+        p.startScene = "Main"
+    }
+    // ---------------------------------------------------------------- flappy bird
+    private val flappyBird = Template("Flappy Bird", "One-button classic: tap to flap through the pipe gaps.") { p ->
+        p.writeAsset("FlapBird.js", """
+var dead = false;
+var started = false;
+var score = 0;
+function start() { dead = false; started = false; score = 0; }
+function update(dt) {
+    if (dead) {
+        if (input.tapped || input.aDown) scene.reload();
+        return;
+    }
+    var flap = input.tapped || input.aDown;
+    if (!started) {
+        self.setVelocity(0, 0);
+        self.y = 2 + Math.sin(time.time * 2.5) * 0.2;
+        if (flap) { started = true; self.vy = 7.6; audio.beep(); }
+        return;
+    }
+    if (flap) { self.vy = 7.6; audio.beep(); }
+    self.rotZ = Math.max(-25, Math.min(55, self.vy * 7));
+}
+function onCollision(other) {
+    if (dead) return;
+    if (other.tag == "Pipe" || other.name == "Ground" || other.name == "Ceiling") {
+        dead = true;
+        scene.shake(0.6);
+        audio.beep();
+        scene.find("ScoreText").text = "GAME OVER - Score: " + score + " - tap to retry";
+    }
+}
+function onTrigger(other) {
+    if (dead || other.tag != "score") return;
+    score = score + 1;
+    audio.beep();
+    scene.find("ScoreText").text = "Score: " + score;
+}
+""".trimIndent())
+        p.writeAsset("Pipes.js", """
+function update(dt) {
+    self.x -= 4.2 * dt;
+    if (self.x < -16) self.x += 50;
+}
+""".trimIndent())
+        val s = Scene("Main")
+        val cam = camera(s, 12f, 0xFF5EC8F5)
+        obj(s, "Ground", 0f, -11.5f, 70f, 2f).sprite(0xFF8BC34A, 0).box().body(type = 2).also { it.tag = "Ground" }
+        obj(s, "Ceiling", 0f, 12.5f, 70f, 2f).sprite(0x00000000L, 0).box().body(type = 2).also { it.tag = "Ceiling" }
+        obj(s, "Bird", -4f, 2f, 1.15f, 1.15f).sprite(0xFFFFD54F, 1).circleCol().body(bounce = 0.1f).script("FlapBird.js")
+        val gap = 2.35f
+        val pairs = listOf(6f to 0f, 16f to 1.8f, 26f to -1.7f, 36f to 1.2f, 46f to -1.1f)
+        for ((gx, gy) in pairs) {
+            val grp = obj(s, "PipePair", gx, 0f).script("Pipes.js")
+            val topH = 11f - (gy + gap)
+            obj(s, "PipeTop", 0f, gy + gap + topH / 2f, 1.7f, topH, parent = grp)
+                .sprite(0xFF66BB6A, 0).box().body(type = 2).also { it.tag = "Pipe" }
+            val botH = (gy - gap) + 10.5f
+            obj(s, "PipeBottom", 0f, -10.5f + botH / 2f, 1.7f, botH, parent = grp)
+                .sprite(0xFF66BB6A, 0).box().body(type = 2).also { it.tag = "Pipe" }
+            obj(s, "ScoreZone", 0f, gy, parent = grp).circleCol(trigger = true).also { it.tag = "score" }
+        }
+        obj(s, "ScoreText", 0f, 10f, parent = cam).text("Score: 0", 1.3f).also { it.order = 100 }
+        p.saveScene(s)
+        p.startScene = "Main"
+    }
+
+    // ---------------------------------------------------------------- chase
+    private val chase = Template("Chase", "Top-down survival: outrun the hunters and grab every pickup.") { p ->
+        p.writeAsset("ChaseHero.js", """
+var hp = 3;
+var score = 0;
+var inv = 0;
+function start() { hp = 3; score = 0; inv = 0; }
+function update(dt) {
+    var label = scene.find("ScoreText");
+    if (hp <= 0) {
+        self.setVelocity(0, 0);
+        label.text = "CAUGHT! Score: " + score + " - tap to retry";
+        if (input.tapped || input.aDown) scene.reload();
+        return;
+    }
+    if (inv > 0) inv -= dt;
+    self.setVelocity(input.axisX * 7, input.axisY * 7);
+    label.text = "HP: " + hp + "   Score: " + score;
+}
+function addScore(n) { score = score + n; }
+function onCollision(other) {
+    if (hp <= 0 || inv > 0) return;
+    if (other.tag == "Hunter") {
+        hp = hp - 1;
+        inv = 1.5;
+        scene.shake(0.5);
+        audio.beep();
+        self.setPosition(-16, -10);
+    }
+}
+""".trimIndent())
+        p.writeAsset("Pickup.js", """
+function onTrigger(other) {
+    if (other.tag != "Hero") return;
+    audio.beep();
+    other.send("addScore", 1);
+    self.setPosition(-18 + random() * 36, -12 + random() * 24);
+}
+""".trimIndent())
+        val s = Scene("Main")
+        val cam = camera(s, 13f, 0xFF14213D, follow = "Hero")
+        obj(s, "WallT", 0f, 14.5f, 64f, 1.5f).sprite(0xFF1B3A2F, 0).box().body(type = 2)
+        obj(s, "WallB", 0f, -14.5f, 64f, 1.5f).sprite(0xFF1B3A2F, 0).box().body(type = 2)
+        obj(s, "WallL", -26f, 0f, 1.5f, 30f).sprite(0xFF1B3A2F, 0).box().body(type = 2)
+        obj(s, "WallR", 26f, 0f, 1.5f, 30f).sprite(0xFF1B3A2F, 0).box().body(type = 2)
+        for ((x, y) in listOf(-6f to 4f, 8f to -5f, 0f to 8f, 14f to 7f, -14f to -4f, 5f to 11f, -10f to -10f)) {
+            obj(s, "Crate", x, y, 2.4f, 2.4f).sprite(0xFF8D6E63, 0).box().body(type = 2)
+        }
+        val hero = obj(s, "Hero", -16f, -10f, 1.3f, 1.3f).sprite(0xFF42A5F5, 1)
+            .circleCol().body(gravity = 0f, friction = 0.2f).script("ChaseHero.js")
+        hero.tag = "Hero"
+        for ((x, y) in listOf(18f to 11f, -19f to 9f, 17f to -12f)) {
+            val h = obj(s, "Hunter", x, y, 1.45f, 1.45f).sprite(0xFFEF5350, 1)
+                .circleCol().body(gravity = 0f, friction = 0.2f)
+            h.tag = "Hunter"
+            h.add(Steering().also { st ->
+                st.target = "Hero"; st.speed = 5.4f; st.acceleration = 16f; st.faceMovement = true
+            })
+        }
+        for ((x, y) in listOf(-20f to -8f, -4f to -12f, 10f to 2f, 20f to 12f, 3f to -6f, -12f to 12f, 16f to -8f, 0f to 0f)) {
+            obj(s, "Pickup", x, y, 1.05f, 1.05f).sprite(0xFFFFD54F, 1)
+                .circleCol(trigger = true).script("Pickup.js")
+        }
+        obj(s, "ScoreText", 0f, 11.5f, parent = cam).text("HP: 3", 1.2f).also { it.order = 100 }
+        p.saveScene(s)
+        p.startScene = "Main"
+    }
+
+    // ---------------------------------------------------------------- 3d open world
+    private val openWorld = Template("3D Open World", "Rolling hills, forests, crystals and a free-roaming third-person hero.") { p ->
+        installAssets(p, "Crystal")
+        p.writeAsset("Hero.js", """
+var score = 0;
+function start() { score = 0; }
+function update(dt) {
+    var sp = 9;
+    self.vx = input.axisX * sp;
+    self.vz = -input.axisY * sp;
+    if (input.aDown && self.grounded) { self.vy = 8.5; audio.beep(); }
+    var label = scene.find("Hud");
+    if (label) label.text = "Crystals: " + score;
+}
+function onTrigger(other) {
+    if (other.tag != "Crystal") return;
+    score = score + 1;
+    audio.beep();
+    other.setActive(false);
+}
+""".trimIndent())
+        p.writeAsset("CrystalSpin.js", """
+var y0 = 0;
+function start() { y0 = self.y; }
+function update(dt) {
+    self.rotY += 70 * dt;
+    self.y = y0 + Math.sin(time.time * 2 + self.x) * 0.3;
+}
+""".trimIndent())
+        val s = Scene("Main")
+        s.fog = true; s.fogStart = 60f; s.fogEnd = 180f
+        val cam = obj3(s, "Main Camera", 0f, 6f, 12f)
+        cam.add(Camera3D().also { it.follow = "Hero"; it.offsetY = 6f; it.offsetZ = 13f; it.fov = 70f })
+        obj3(s, "Sun", 0f, 30f, 0f).also { it.rotX = -55f; it.rotY = 35f }
+            .add(Light().also { it.kind = 0; it.intensity = 1.15f })
+        obj3(s, "Fill", 0f, 10f, 0f)
+            .add(Light().also { it.kind = 1; it.color = 0xFFBFD8FF.toInt(); it.intensity = 0.35f; it.range = 70f })
+        val ter = obj3(s, "Terrain", 0f, 0f, 0f)
+        ter.add(Terrain().also {
+            it.size = 320f; it.resolution = 112; it.amplitude = 26f; it.frequency = 0.011f
+            it.octaves = 5; it.seed = 21; it.collide = true
+            it.color = 0xFF7CA85B.toInt(); it.tiling = 64f; it.specular = 0.15f
+        })
+        val terr = ter.get<Terrain>()!!
+        val hero = obj3(s, "Hero", 0f, (terr.heightAtWorld(0f, 0f) ?: 0f) + 1.8f, 0f, 0.9f, 1.7f, 0.9f)
+            .mesh(6, 0xFFFF7043).col3().body3(friction = 0.1f).script("Hero.js")
+        hero.tag = "Player"
+        val rnd = java.util.Random(21)
+        for (i in 0 until 48) {
+            val x = (rnd.nextFloat() * 2f - 1f) * 130f
+            val z = (rnd.nextFloat() * 2f - 1f) * 130f
+            val y = terr.heightAtWorld(x, z) ?: 0f
+            val h = 2.6f + rnd.nextFloat() * 2.2f
+            obj3(s, "Trunk", x, y + h * 0.4f, z, 0.35f, h * 0.8f, 0.35f)
+                .mesh(3, 0xFF6D4C41).col3()
+            obj3(s, "Canopy", x, y + h * 0.95f, z, h * 0.7f, h * 0.55f, h * 0.7f)
+                .mesh(1, 0xFF43A047)
+        }
+        for (i in 0 until 14) {
+            val x = (rnd.nextFloat() * 2f - 1f) * 120f
+            val z = (rnd.nextFloat() * 2f - 1f) * 120f
+            val y = terr.heightAtWorld(x, z) ?: 0f
+            val sc = 0.9f + rnd.nextFloat() * 1.1f
+            obj3(s, "Rock", x, y + sc * 0.25f, z, sc, sc * 0.8f, sc)
+                .mesh(1, 0xFF9E9E9E).col3(sphere = true).body3(type = 2)
+        }
+        for (i in 0 until 16) {
+            val x = (rnd.nextFloat() * 2f - 1f) * 125f
+            val z = (rnd.nextFloat() * 2f - 1f) * 125f
+            val y = (terr.heightAtWorld(x, z) ?: 0f) + 1.3f
+            val c = obj3(s, "Crystal", x, y, z, 0.85f, 1.1f, 0.85f)
+                .mesh(8, 0xFF7C4DFF, model = "Crystal.obj")
+                .col3(sphere = true, trigger = true).script("CrystalSpin.js")
+            c.tag = "Crystal"
+            c.get<MeshRenderer>()!!.also { mr -> mr.emission = 0.35f }
+        }
+        obj(s, "Hud", 0f, 7.5f).text("Crystals: 0", 0.7f).also {
+            it.get<TextRenderer>()!!.screenSpace = true; it.order = 100
+        }
         p.saveScene(s)
         p.startScene = "Main"
     }
