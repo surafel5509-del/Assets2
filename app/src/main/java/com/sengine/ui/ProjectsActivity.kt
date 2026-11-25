@@ -190,19 +190,31 @@ class ProjectsActivity : AppCompatActivity() {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         }
+        val token = EditText(this).apply {
+            hint = "Agent access token (only if enabled by your server)"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setText(getSharedPreferences("sengine_ai", MODE_PRIVATE).getString("api_token", ""))
+        }
+        val form = vbox().apply {
+            setPadding(dp(20), 0, dp(20), 0)
+            addView(prompt, lp(MATCH, WRAP))
+            addView(label("Optional API access token", 12f, C.DIM).apply {
+                setPadding(0, dp(10), 0, dp(3))
+            })
+            addView(token, lp(MATCH, WRAP))
+        }
         MaterialAlertDialogBuilder(this)
             .setTitle("Create a game with AI")
             .setMessage("The Game Agent plans, generates and QA-checks a playable game, then imports it as a new S Engine project.")
-            .setView(ScrollView(this).apply {
-                setPadding(dp(20), 0, dp(20), 0)
-                addView(prompt)
-            })
+            .setView(ScrollView(this).apply { addView(form) })
             .setPositiveButton("Generate") { _, _ ->
                 val request = prompt.text.toString().trim()
                 if (request.length < 8) {
                     toast("Please describe the game in at least 8 characters")
                     return@setPositiveButton
                 }
+                getSharedPreferences("sengine_ai", MODE_PRIVATE).edit()
+                    .putString("api_token", token.text.toString().trim()).apply()
                 val progress = ProgressDialog(this).apply {
                     setMessage("AI is planning, building and checking your game…")
                     setCancelable(false)
