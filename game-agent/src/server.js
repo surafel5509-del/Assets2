@@ -243,6 +243,12 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  if (process.env.AGENT_API_TOKEN && req.method === "POST" && url.pathname.startsWith("/api/")) {
+    const supplied = req.headers.authorization || "";
+    if (supplied !== `Bearer ${process.env.AGENT_API_TOKEN}`) {
+      return json(res, 401, { error: "Unauthorized: configure the Game Agent token in S Engine settings" });
+    }
+  }
   if (req.method === "GET" && url.pathname === "/health") {
     return json(res, 200, { ok: true, service: "S Engine Game Agent", version: "0.2.0", provider: API_BASE.includes("openrouter.ai") ? "openrouter" : "openai", model: MODEL, apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY) });
   }
