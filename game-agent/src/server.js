@@ -282,7 +282,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, service: "S Engine Game Agent", version: "0.2.0", provider: API_BASE.includes("openrouter.ai") ? "openrouter" : "openai", model: MODEL, apiKeyConfigured: Boolean(API_KEY) });
   }
   if (req.method === "GET" && url.pathname === "/api/agent/status") {
-    return json(res, 200, { ready: Boolean(process.env.OPENAI_API_KEY), provider: API_BASE, model: MODEL, reasoningEnabled: REASONING_ENABLED, qaEnabled: true, maxRepairs: MAX_REPAIRS });
+    return json(res, 200, { ready: Boolean(API_KEY), provider: API_BASE, model: MODEL, reasoningEnabled: REASONING_ENABLED, qaEnabled: true, maxRepairs: MAX_REPAIRS });
   }
   if (req.method === "POST" && url.pathname === "/api/games/validate") {
     try {
