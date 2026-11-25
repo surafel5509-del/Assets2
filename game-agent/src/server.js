@@ -5,6 +5,7 @@ const PORT = Number(process.env.PORT || 3000);
 const MODEL = process.env.OPENAI_MODEL || "z-ai/glm-5.3-flash";
 const API_BASE = (process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "");
 const REASONING_ENABLED = process.env.OPENROUTER_REASONING_ENABLED !== "false";
+const API_KEY = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
 const MAX_BODY = 1_000_000;
 const MAX_REPAIRS = 2;
 const COMPONENTS = new Set([
@@ -107,6 +108,8 @@ function toSengineProject(spec) {
   };
 }
 
+const PLANNER_PROMPT = "You are the Game Director and Planner for S Engine. Turn the user request into an implementable game design. Return JSON with keys title, genre, coreLoop, controls, objective, winCondition, loseCondition, scenes (array of name and purpose), mechanics, requiredObjects (name, role and components), hud, progression, visualStyle, audioNotes, constraints and implementationNotes. Prefer a complete playable 2D game unless 3D is requested. Specify mobile touch controls and screen layout. Do not invent engine capabilities or reveal chain-of-thought.";
+
 const SYSTEM_PROMPT = `You are the autonomous game-generation engineer for S Engine 3.0, an existing Android Kotlin/OpenGL ES game engine.
 Return ONLY one JSON object matching this GameSpec:
 {
@@ -143,7 +146,7 @@ Return ONLY JSON: {"pass":true|false,"issues":["specific actionable issue"],"sum
 Do not reveal hidden chain-of-thought. Report only concise findings.`;
 
 async function modelCall(messages, model) {
-  if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error("OPENAI_API_KEY is not configured on the Game Agent service"), { status: 503 });
+  if (!API_KEY) throw Object.assign(new Error("OPENROUTER_API_KEY is not configured on the Game Agent service"), { status: 503 });
   const body = {
     model: model || MODEL,
     temperature: 0.25,
@@ -154,7 +157,7 @@ async function modelCall(messages, model) {
   const response = await fetch(`${API_BASE}/chat/completions`, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      authorization: `Bearer ${API_KEY}`,
       "content-type": "application/json",
       "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://game-agent-production.up.railway.app",
       "X-Title": process.env.OPENROUTER_APP_NAME || "S Engine Game Agent"
@@ -189,9 +192,19 @@ function assistantHistoryMessage(message) {
 
 async function generate(prompt, options = {}) {
   const model = options.model || MODEL;
+  const plannerHistory = [
+    { role: "system", content: PLANNER_PROMPT },
+    { role: "user", content: prompt }
+  ];
+  const planMessage = await modelCall(plannerHistory, model);
+  const plan = parseModelJson(planMessage.content, "Planner");
+
+  // Replay the planner assistant turn and its reasoning_details unchanged for the builder.
   const history = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Create a complete playable S Engine game from this request. Return GameSpec JSON only.\\n\\nGAME REQUEST:\\n${prompt}` }
+    { role: "user", content: "Build a complete playable S Engine GameSpec for this request: " + prompt },
+    assistantHistoryMessage(planMessage),
+    { role: "user", content: "Use the preceding design plan as the source of truth. Generate the complete GameSpec JSON now. DESIGN PLAN: " + JSON.stringify(plan) }
   ];
   let gameMessage = await modelCall(history, model);
   let spec = parseModelJson(gameMessage.content, "Game generation");
@@ -218,7 +231,7 @@ async function generate(prompt, options = {}) {
       const repairHistory = [
         ...qaHistory,
         assistantHistoryMessage(qaMessage),
-        { role: "user", content: `Repair the GameSpec using this QA feedback. Keep all valid existing work, return the complete corrected GameSpec JSON only.\\nQA issues:\\n${errors.map(x => "- " + x).join("\\n")}` }
+        { role: "user", content: "Repair the GameSpec using this QA feedback. Keep valid work and return the complete corrected GameSpec JSON only. QA issues: " + errors.join("; ") }
       ];
       gameMessage = await modelCall(repairHistory, model);
       spec = parseModelJson(gameMessage.content, "Repair");
@@ -230,7 +243,7 @@ async function generate(prompt, options = {}) {
     const repairHistory = [
       ...history,
       assistantHistoryMessage(gameMessage),
-      { role: "user", content: `Fix these deterministic S Engine validation errors. Return the complete corrected GameSpec JSON only:\\n${errors.map(x => "- " + x).join("\\n")}` }
+      { role: "user", content: "Fix these deterministic S Engine validation errors. Return the complete corrected GameSpec JSON only: " + errors.join("; ") }
     ];
     gameMessage = await modelCall(repairHistory, model);
     spec = parseModelJson(gameMessage.content, "Repair");
@@ -241,9 +254,10 @@ async function generate(prompt, options = {}) {
   if (errors.length) throw Object.assign(new Error("Generated game did not pass QA"), { status: 422, details: errors, qaSummary });
   return {
     id: randomUUID(),
+    plan,
     spec,
     project: toSengineProject(spec),
-    agent: { plannerModel: model, qaModel: model, repairs, qaSummary },
+    agent: { plannerModel: model, builderModel: model, qaModel: model, repairs, qaSummary },
     model
   };
 }
@@ -265,7 +279,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
   if (req.method === "GET" && url.pathname === "/health") {
-    return json(res, 200, { ok: true, service: "S Engine Game Agent", version: "0.2.0", provider: API_BASE.includes("openrouter.ai") ? "openrouter" : "openai", model: MODEL, apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY) });
+    return json(res, 200, { ok: true, service: "S Engine Game Agent", version: "0.2.0", provider: API_BASE.includes("openrouter.ai") ? "openrouter" : "openai", model: MODEL, apiKeyConfigured: Boolean(API_KEY) });
   }
   if (req.method === "GET" && url.pathname === "/api/agent/status") {
     return json(res, 200, { ready: Boolean(process.env.OPENAI_API_KEY), provider: API_BASE, model: MODEL, reasoningEnabled: REASONING_ENABLED, qaEnabled: true, maxRepairs: MAX_REPAIRS });
