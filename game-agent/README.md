@@ -1,40 +1,49 @@
 # S Engine Game Agent
 
-A Railway-ready backend companion for the existing S Engine Android editor/runtime. It does not replace or reimplement the Kotlin/OpenGL engine.
+Autonomous backend companion for the existing S Engine Android editor/runtime. It does not replace the Kotlin/OpenGL engine.
 
-## Run
+## Provider configuration (Railway)
+
+Set these variables on the `Game Agent` service:
+
+- `OPENAI_API_KEY`: required; paste your OpenRouter key into Railway Variables, never into the Android app or source code.
+- `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
+- `OPENAI_MODEL=z-ai/glm-5.3-flash`
+- `OPENROUTER_REASONING_ENABLED=true`
+- Optional: `OPENROUTER_SITE_URL`, `OPENROUTER_APP_NAME`, `CORS_ORIGIN`, `AGENT_API_TOKEN`, `PORT`.
+
+The service uses the OpenAI-compatible OpenRouter Chat Completions endpoint. When a model returns `reasoning_details`, the agent preserves that value unchanged in the assistant message sent in the next turn. It does not expose hidden reasoning to the client.
+
+## Run locally
 
 - Node.js 20+
-- Set `OPENAI_API_KEY` in the deployment environment.
-- Optional: `OPENAI_MODEL` (default `gpt-4.1-mini`), `OPENAI_BASE_URL` (default OpenAI API base), `CORS_ORIGIN`, `PORT`.
-
-```sh
-npm start
-```
+- Set the environment variables above.
+- `npm start`
+- `npm run check`
 
 ## API
 
-- `GET /health` — health check.
+- `GET /health` — service, provider, model and API-key readiness.
+- `GET /api/agent/status` — agent configuration and QA readiness (never returns secrets).
 - `POST /api/games/validate` — validate a GameSpec against S Engine's registered component types and scene/object structure.
-- `POST /api/games/generate` — generate a GameSpec from a natural-language prompt and return both the validated spec and a normalized S Engine project payload.
+- `POST /api/games/generate` — plan and generate a game, validate it, run an independent model QA pass, repair up to two times, and return a normalized S Engine project payload.
 
-Example:
+Example request:
 
 ```json
 { "prompt": "Create a polished 2D endless runner with a menu, score, obstacles, restart and game-over screen." }
 ```
 
-## Engine integration contract
+## Android integration
 
-The adapter is grounded in the current S Engine source:
-- `SceneSerializer.toJson/fromJson` stores scene-level gravity, ambient/fog settings, nextId and objects.
-- Each object stores id/name/tag/active/order, transforms, optional parent id, and components.
-- Component names are restricted to the current `ComponentRegistry.types`.
-- `Project.saveScene` writes `scenes/<name>.scene.json`; assets are stored in the project's `assets/` directory.
-- JavaScript behaviours are Rhino assets attached with the `Script` component.
+The S Engine Projects screen includes an **AI Game** action. It sends the prompt to this service, receives the validated project payload, imports scenes through the engine's real `SceneSerializer.fromJson`, writes generated scripts/assets through `Project.writeAsset`, creates a local project, and opens it in the existing editor.
 
-The response's `project` field is an interchange payload for a future S Engine import endpoint. The Android app does not yet call this backend automatically; a small authenticated HTTP client/import flow in S Engine is the next integration milestone. Do not assume a remote project-import API exists until that Android-side bridge is implemented.
+The Android client uses `AiGameClient.API_BASE`; change that constant if the Railway domain changes. Internet permission is declared in the app manifest.
 
-## Current scope
+## Engine contract and limitations
 
-This first milestone includes the HTTP service, prompt contract, schema normalization, component allowlist, asset reference checks, and validation. It does not yet generate binary art/audio assets, run Android rendering/physics tests, or export APKs. Those require an engine-side import/QA bridge and asset pipeline.
+- Scene JSON follows the current `SceneSerializer` structure and component names from `ComponentRegistry.types`.
+- Project files are stored in the app's existing `scenes/` and `assets/` directories.
+- JavaScript behaviours run in the engine's Rhino runtime.
+- The model must use actual S Engine script APIs; QA checks the generated project shape but cannot execute the Android renderer or prove every script's runtime behaviour.
+- This milestone imports project data and scripts. It does not yet synthesize binary art/audio, run emulator-based gameplay QA, or export APKs automatically. Those need a further asset-generation and device-test pipeline.
