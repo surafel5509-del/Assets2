@@ -172,7 +172,7 @@ async function modelCall(messages, model) {
 function parseModelJson(content, label) {
   try { return JSON.parse(content); }
   catch {
-    const cleaned = content.replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
+    const cleaned = content.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
     try { return JSON.parse(cleaned); }
     catch { throw Object.assign(new Error(`${label} response was not valid JSON`), { status: 502 }); }
   }
