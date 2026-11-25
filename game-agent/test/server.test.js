@@ -335,3 +335,30 @@ test("real OpenRouter adapter retries empty reasoning-only output without JSON m
     assert.equal(response.text.includes("private reasoning must not be returned"), false);
   });
 });
+
+
+test("OpenRouter 402 billing errors are explicit and are not retried", async t => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    return new Response(JSON.stringify({ error: { message: "Insufficient credits" } }), {
+      status: 402,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  await withServer(t, {
+    env: { OPENROUTER_API_KEY: "provider-secret-not-real" },
+    fetchImpl,
+    modelAttempts: 3,
+  }, async base => {
+    const response = await request(base, "/api/games/generate", {
+      method: "POST",
+      body: { prompt: "Create a 2D endless runner with touch controls." },
+    });
+    assert.equal(response.status, 402);
+    assert.match(response.data.error, /OpenRouter returned 402 Payment Required/);
+    assert.match(response.data.error, /Add credits or increase the limit/);
+    assert.equal(calls, 1);
+    assert.equal(response.text.includes("provider-secret-not-real"), false);
+  });
+});
