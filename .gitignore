@@ -10,3 +10,7 @@ build/
 *.apk
 *.aab
 *.keystore
+
+# Final v3.0.0 release deliverables are intentionally available from the repo.
+!release/SEngine-3.0.0-debug.apk
+!release/SEngine-3.0.0-release.apk
