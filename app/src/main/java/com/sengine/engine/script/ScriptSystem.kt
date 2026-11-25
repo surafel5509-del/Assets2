@@ -5,11 +5,79 @@ import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.physics.PhysicsWorld
 import org.mozilla.javascript.Context
+import org.mozilla.javascript.ContextFactory
 import org.mozilla.javascript.Function
 import org.mozilla.javascript.RhinoException
 import org.mozilla.javascript.Script
 import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript.ScriptableObject
+
+/** Thrown by the instruction observer when a script callback runs too long. */
+class ScriptBudgetExceeded(val limit: Int) : Error("Script instruction budget exceeded ($limit instructions)")
+
+/**
+ * Rhino factory that puts a hard instruction cap on every script callback.
+ * A runaway `while(true)` is stopped instead of freezing the game thread;
+ * the offending script is disabled and reported in the console.
+ */
+class ScriptBudgetFactory : ContextFactory() {
+    private class Frame(val limit: Int) { var used = 0 }
+    private val frames = ArrayList<Frame>()
+
+    @Volatile var frameInstructions = 0
+        private set
+    /** Used when a Rhino context is reused without an explicit call frame. */
+    @Volatile var defaultLimit = 250_000
+
+    override fun makeContext(): Context {
+        val c = super.makeContext()
+        c.instructionObserverThreshold = 1000
+        return c
+    }
+
+    override fun observeInstructionCount(cx: Context, instructionCount: Int) {
+        frameInstructions += instructionCount
+        val f = frames.lastOrNull()
+        if (f != null) {
+            f.used += instructionCount
+            if (f.used > f.limit) {
+                f.used = 0
+                throw ScriptBudgetExceeded(f.limit)
+            }
+        } else if (frameInstructions > defaultLimit * 4L) {
+            // Safety net: a reused/external context still cannot freeze the game.
+            frameInstructions = 0
+            throw ScriptBudgetExceeded(defaultLimit)
+        }
+    }
+
+    /**
+     * Enters a context owned by this factory. Rhino associates one Context per
+     * thread; if another factory's context is still attached (e.g. a test used
+     * Context.enter() directly), release it first so the budget cannot be
+     * bypassed.
+     */
+    fun ensureContext(): Context {
+        var guard = 0
+        while (guard++ < 8) {
+            val current = Context.getCurrentContext() ?: break
+            if (current.factory === this) break
+            try { Context.exit() } catch (_: Throwable) { break }
+        }
+        val c = enterContext()
+        if (c.instructionObserverThreshold <= 0) c.instructionObserverThreshold = 1000
+        return c
+    }
+
+    fun enterCall(limit: Int) { frames.add(Frame(limit.coerceAtLeast(1000))) }
+    fun exitCall() { if (frames.isNotEmpty()) frames.removeAt(frames.size - 1) }
+    fun resetFrame() { frameInstructions = 0 }
+}
+
+/** One shared factory for every engine instance on a thread. */
+object ScriptBudget {
+    val factory = ScriptBudgetFactory()
+}
 
 /**
  * JavaScript behaviour runtime backed by Mozilla Rhino (interpreted mode).
@@ -32,12 +100,25 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
     private val compiled = HashMap<String, Script>()
     private val moduleCache = HashMap<String, Any?>()
     private val inputApi = SInput(engine)
+    private val budgetFactory = ScriptBudget.factory
 
+    /** Decoupled event bus shared by scripts and engine systems. */
+    val eventBus = EventBus()
+    /** Smoothed milliseconds spent in each script asset (profiler). */
+    val timings = LinkedHashMap<String, Float>()
+    /** Scope of the script callback currently executing (state-machine dispatch). */
+    var currentScope: Scriptable? = null
+        private set
+    private class Fsm(var state: String, var previous: String, var elapsed: Float)
+    private val fsms = HashMap<Scriptable, Fsm>()
+
+    val frameInstructions: Int get() = budgetFactory.frameInstructions
     val isRunning get() = cx != null
 
     fun begin() {
         end()
-        val c = Context.enter()
+        budgetFactory.defaultLimit = engine.settings.scriptBudget
+        val c = budgetFactory.ensureContext()
         c.optimizationLevel = -1
         c.languageVersion = Context.VERSION_ES6
         // return Java strings / numbers / booleans as native JS values
@@ -53,9 +134,23 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         put(g, "audio", SAudio(engine))
         put(g, "console", SConsole(engine))
         put(g, "__modules", SModules(this))
-        c.evaluateString(g, PRELUDE, "prelude", 1, null)
+        put(g, "__events", SEvents(engine, this))
+        put(g, "__rng", SRandomBridge(engine))
+        put(g, "__state", SState(this))
+        put(g, "camera", SCamera(engine, this))
+        put(g, "physics", SPhysics(engine, this))
+        put(g, "soft", SSoft(engine, this))
+        put(g, "game", SGame(engine, this))
+        put(g, "__studio", SStudio(engine, this))
+        budgetFactory.enterCall(2_000_000)
+        try { c.evaluateString(g, PRELUDE, "prelude", 1, null) }
+        catch (e: Throwable) { engine.log(2, "prelude: ${e.message}") }
+        finally { budgetFactory.exitCall() }
         compiled.clear()
         moduleCache.clear()
+        eventBus.clear()
+        timings.clear()
+        fsms.clear()
         for (go in engine.scene.objects.toList()) attach(go)
         startPending()
     }
@@ -68,10 +163,13 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         cx = null
         global = null
         ownerThread = null
+        currentScope = null
         instances.clear()
         wrappers.clear()
         compiled.clear()
         moduleCache.clear()
+        eventBus.clear()
+        fsms.clear()
     }
 
     private fun put(scope: Scriptable, name: String, obj: Any) {
@@ -104,18 +202,26 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
             val self = Context.javaToJS(wrap(go), g)
             ScriptableObject.putProperty(scope, "self", self)
             ScriptableObject.putProperty(scope, "transform", self)
+            // per-instance durable bag that survives hot reload
+            ScriptableObject.putProperty(scope, "persist", c.newObject(g))
             ScriptableObject.putProperty(scope, "gameObject", self)
             applyParams(scope, comp.params)
             val inst = Instance(go, comp, scope)
+            budgetFactory.enterCall(engine.settings.scriptBudget)
             try {
                 script.exec(c, scope)
                 // Inspector params override top-level defaults like `var speed = 5;`
                 applyParams(scope, comp.params)
                 instances.add(inst)
+            } catch (e: ScriptBudgetExceeded) {
+                engine.log(2, "${comp.script}: ${e.message} — script disabled")
+                inst.failed = true
             } catch (e: RhinoException) {
                 engine.log(2, "${comp.script}:${e.lineNumber()} ${e.details()}")
             } catch (e: Exception) {
                 engine.log(2, "${comp.script}: ${e.message}")
+            } finally {
+                budgetFactory.exitCall()
             }
         }
         for (child in engine.scene.childrenOf(go)) attach(child)
@@ -180,6 +286,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         ScriptableObject.putProperty(module, "exports", exports)
         ScriptableObject.putProperty(scope, "module", module)
         ScriptableObject.putProperty(scope, "exports", exports)
+        budgetFactory.enterCall(engine.settings.scriptBudget)
         return try {
             c.compileString(src, name, 1, null).exec(c, scope)
             val result = ScriptableObject.getProperty(module, "exports")
@@ -191,6 +298,8 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         } catch (e: Exception) {
             engine.log(2, "require $name: ${e.message}")
             null
+        } finally {
+            budgetFactory.exitCall()
         }
     }
 
@@ -207,6 +316,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
 
     fun update(dt: Float) {
         if (cx == null) return
+        budgetFactory.resetFrame()
         inputApi.sync()
         startPending()
         val dtArg = dt.toDouble()
@@ -249,26 +359,129 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         val g = global ?: return
         val tick = g.get("__tick", g)
         if (tick is Function) {
-            try { tick.call(cx, g, g, emptyArray()) } catch (e: RhinoException) {
-                engine.log(2, "timer: line ${e.lineNumber()} ${e.details()}")
-            } catch (e: Exception) { engine.log(2, "timer: ${e.message}") }
+            budgetFactory.enterCall(engine.settings.scriptBudget)
+            try { tick.call(cx, g, g, emptyArray()) }
+            catch (e: ScriptBudgetExceeded) { engine.log(2, "timers/coroutines: ${e.message}") }
+            catch (e: RhinoException) { engine.log(2, "timer: line ${e.lineNumber()} ${e.details()}") }
+            catch (e: Throwable) { engine.log(2, "timer: ${e.message}") }
+            finally { budgetFactory.exitCall() }
         }
     }
 
     private fun call(inst: Instance, fname: String, vararg args: Any?): Any? {
         val f = inst.scope.get(fname, inst.scope)
         if (f !is Function) return null
+        val t0 = System.nanoTime()
+        val prevScope = currentScope
+        currentScope = inst.scope
+        budgetFactory.enterCall(engine.settings.scriptBudget)
         return try {
             f.call(cx, inst.scope, inst.scope, arrayOf(*args))
+        } catch (e: ScriptBudgetExceeded) {
+            engine.log(2, "${inst.comp.script} in $fname(): ${e.message} — script disabled")
+            inst.failed = true
+            null
         } catch (e: RhinoException) {
             engine.log(2, "${inst.comp.script}:${e.lineNumber()} in $fname(): ${e.details()}")
             inst.failed = true
             null
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             engine.log(2, "${inst.comp.script} in $fname(): ${e.message}")
             inst.failed = true
             null
+        } finally {
+            budgetFactory.exitCall()
+            currentScope = prevScope
+            val ms = (System.nanoTime() - t0) / 1e6f
+            val key = inst.comp.script
+            timings[key] = (timings[key] ?: 0f) * 0.9f + ms * 0.1f
         }
+    }
+
+    /** Invokes an arbitrary JS function (event handlers, coroutine predicates). */
+    fun invokeFunction(fn: Any?, vararg args: Any?): Any? {
+        if (fn !is Function) return null
+        val c = cx ?: return null
+        val g = global ?: return null
+        budgetFactory.enterCall(engine.settings.scriptBudget)
+        return try {
+            fn.call(c, g, currentScope ?: g, arrayOf(*args))
+        } catch (e: ScriptBudgetExceeded) {
+            engine.log(2, "event handler: ${e.message}"); null
+        } catch (e: RhinoException) {
+            engine.log(2, "event handler: line ${e.lineNumber()} ${e.details()}"); null
+        } catch (e: Throwable) {
+            engine.log(2, "event handler: ${e.message}"); null
+        } finally { budgetFactory.exitCall() }
+    }
+
+    /** Engine-side event emission (also wakes coroutines waiting for the event). */
+    fun emitEvent(name: String, arg: Any? = null): Int {
+        val g = global
+        if (g != null) {
+            val sig = g.get("__fiber_signal", g)
+            if (sig is Function) invokeFunction(sig, name, arg)
+        }
+        return eventBus.emit(name, arg)
+    }
+
+    // ---------------------------------------------------------------- state machines
+    fun fsmState(): String = currentScope?.let { fsms[it]?.state } ?: ""
+    fun fsmPrevious(): String = currentScope?.let { fsms[it]?.previous } ?: ""
+    fun fsmElapsed(): Double = (currentScope?.let { fsms[it]?.elapsed } ?: 0f).toDouble()
+    fun fsmIs(name: String): Boolean = fsmState() == name
+    fun fsmSet(name: String) {
+        val scope = currentScope ?: return
+        val fsm = fsms.getOrPut(scope) { Fsm("", "", 0f) }
+        if (fsm.state == name) return
+        val old = scope.get(fsm.state + "_exit", scope)
+        if (old is Function) invokeFunction(old)
+        fsm.previous = fsm.state
+        fsm.state = name
+        fsm.elapsed = 0f
+        val enter = scope.get(name + "_enter", scope)
+        if (enter is Function) invokeFunction(enter)
+    }
+    fun fsmUpdate(dt: Double) {
+        val scope = currentScope ?: return
+        val fsm = fsms.getOrPut(scope) { Fsm("", "", 0f) }
+        fsm.elapsed += dt.toFloat()
+        val fn = scope.get(fsm.state + "_update", scope)
+        if (fn is Function) invokeFunction(fn, dt)
+    }
+
+    // ---------------------------------------------------------------- hot reload
+    /**
+     * Recompiles every script asset in place while play mode keeps running.
+     * A script's `persist` object is carried over, so health / score / state
+     * survive a reload; `onHotReload` is called instead of `start` for scripts
+     * that were already running. Returns the number of attached instances.
+     */
+    fun hotReload(): Int {
+        if (cx == null || global == null) return 0
+        data class Saved(val scope: Scriptable, val persist: Any?, val started: Boolean, val active: Boolean, val key: String)
+        val saved = instances.map { inst ->
+            val p = inst.scope.get("persist", inst.scope)
+            Saved(inst.scope, if (p is Scriptable && p !== Scriptable.NOT_FOUND) p else null,
+                inst.started, inst.lastActive, "${inst.go.id}:${inst.comp.script}")
+        }
+        compiled.clear()
+        moduleCache.clear()
+        instances.clear()
+        for (go in engine.scene.objects.toList()) attach(go)
+        for (inst in instances) {
+            val key = "${inst.go.id}:${inst.comp.script}"
+            val old = saved.firstOrNull { it.key == key } ?: continue
+            if (old.persist != null) ScriptableObject.putProperty(inst.scope, "persist", old.persist)
+            if (old.started) {
+                inst.started = true
+                inst.lastActive = old.active
+                call(inst, "onHotReload")
+            }
+        }
+        startPending()
+        engine.log(0, "↻ Hot reload: ${instances.size} script instance(s)")
+        return instances.size
     }
 
     fun sendMessage(go: GameObject, fname: String, arg: Any?): Any? {
@@ -312,8 +525,10 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
 function log() { var s = []; for (var i = 0; i < arguments.length; i++) s.push(String(arguments[i])); console.log(s.join(' ')); }
 function warn(m) { console.warn(String(m)); }
 function error(m) { console.error(String(m)); }
-function random(a, b) { if (a === undefined) return Math.random(); return a + Math.random() * (b - a); }
+// Deterministic RNG (seeded from Project Settings -> replay-safe simulation)
+function random(a, b) { var r = __rng.next(); if (a === undefined) return r; return a + r * (b - a); }
 function randomInt(a, b) { return Math.floor(random(a, b + 1)); }
+function setRandomSeed(seed) { return __rng.seed(seed); }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function moveToward(cur, target, maxDelta) { if (Math.abs(target - cur) <= maxDelta) return target; return cur + (target > cur ? 1 : -1) * maxDelta; }
@@ -338,9 +553,103 @@ function rotateToward(cur, target, maxDelta) {
     if (Math.abs(d) <= maxDelta) return target;
     return cur + (d > 0 ? maxDelta : -maxDelta);
 }
-function randomSign() { return Math.random() < 0.5 ? -1 : 1; }
+function randomSign() { return random() < 0.5 ? -1 : 1; }
 function randomPick(arr) { return arr[randomInt(0, arr.length - 1)]; }
 function assert(cond, msg) { if (!cond) throw new Error(msg || "assertion failed"); }
+
+// ---------------------------------------------------------------- event bus
+// events.on(name, fn) / once / off(id) / emit(name, data) / last(name) / clear(name)
+var events = {
+    on: function (name, fn) { return __events.on(name, fn); },
+    once: function (name, fn) { return __events.once(name, fn); },
+    off: function (id) { return __events.off(id); },
+    clear: function (name) { return __events.clear(name === undefined ? null : name); },
+    count: function (name) { return __events.count(name); },
+    last: function (name) { return __events.last(name); },
+    emit: function (name, arg) {
+        var a = arg === undefined ? null : arg;
+        return __events.emit(name, a);
+    }
+};
+
+// ---------------------------------------------------------------- coroutines (ES6 generators)
+// coroutine(function* () { ... yield waitSec(1); yield waitUntil(fn);
+//                           yield waitFrames(3); yield waitFor("event"); ... })
+function waitSec(s) { return { __wait: Math.max(0, s || 0) }; }
+function waitFrames(n) { return { __frames: n || 1 }; }
+function waitUntil(fn) { return { __until: fn }; }
+function waitFor(name) { return { __event: name }; }
+var __fibers = [];
+var __fiberSeq = 1;
+function coroutine(gen) {
+    var it = (typeof gen === 'function') ? gen() : gen;
+    var f = { id: __fiberSeq++, it: it, wait: null, t: 0, frames: 0,
+              done: false, signal: null, arg: null };
+    __fibers.push(f);
+    __fiber_resume(f);
+    return f.id;
+}
+function cancelCoroutine(id) {
+    for (var i = 0; i < __fibers.length; i++) if (__fibers[i].id === id) { __fibers[i].done = true; return true; }
+    return false;
+}
+function cancelCoroutines() { for (var i = 0; i < __fibers.length; i++) __fibers[i].done = true; }
+function activeCoroutines() { var n = 0; for (var i = 0; i < __fibers.length; i++) if (!__fibers[i].done) n++; return n; }
+function __fiber_resume(f, arg) {
+    var r;
+    try { r = f.it.next(arg); }
+    catch (err) { error('coroutine: ' + err); f.it = null; f.done = true; return; }
+    if (r.done) { f.it = null; f.done = true; return; }
+    f.wait = r.value || null; f.t = 0; f.frames = 0; f.arg = null;
+}
+function __fiber_signal(name, arg) {
+    for (var i = 0; i < __fibers.length; i++) {
+        var f = __fibers[i];
+        if (!f.done && f.wait && f.wait.__event === name) { f.signal = name; f.arg = arg; }
+    }
+}
+function __fiber_tick(dt) {
+    for (var i = __fibers.length - 1; i >= 0; i--) {
+        var f = __fibers[i];
+        if (f.done) { __fibers.splice(i, 1); continue; }
+        var w = f.wait, ready = false;
+        if (w === null || w === undefined) ready = true;
+        else if (w.__wait !== undefined) { f.t += dt; ready = f.t >= w.__wait; }
+        else if (w.__frames !== undefined) { f.frames += 1; ready = f.frames >= w.__frames; }
+        else if (typeof w.__until === 'function') {
+            try { ready = !!w.__until(); } catch (err) { error('coroutine waitUntil: ' + err); f.done = true; continue; }
+        }
+        else if (w.__event !== undefined) ready = f.signal === w.__event;
+        else ready = true;
+        if (ready) { var a = f.arg; f.signal = null; f.arg = null; __fiber_resume(f, a); }
+    }
+}
+
+// ---------------------------------------------------------------- state machines
+// state.set("chase") calls chase_enter()/idle_exit(); state.update(dt) calls
+// <state>_update(dt). Hooks live in the same script as the behaviour.
+var state = {
+    get: function () { return __state.getState(); },
+    set: function (s) { __state.setState(s); },
+    is: function (s) { return __state.isState(s); },
+    elapsed: function () { return __state.getElapsed(); },
+    update: function (dt) { __state.update(dt || 0); }
+};
+
+// ---------------------------------------------------------------- studio plan
+// studio.report() / progress() / milestones() / next() / complete(id) / diagnostics()
+var studio = {
+    report: function () { return __studio.report(); },
+    brief: function () { return __studio.brief(); },
+    progress: function () { return __studio.progress(); },
+    years: function () { return __studio.years(); },
+    months: function () { return __studio.months(); },
+    next: function () { return __studio.next(); },
+    milestones: function () { return __studio.milestones(); },
+    complete: function (id) { return __studio.complete(id); },
+    reset: function () { return __studio.reset(); },
+    diagnostics: function () { return __studio.diagnostics(); }
+};
 
 // ---------------------------------------------------------------- timers
 var __timers = [];
@@ -389,6 +698,7 @@ function __tick() {
   var now = time.time;
   var dt = now - (__tick.last === undefined ? now : __tick.last);
   __tick.last = now;
+  __fiber_tick(dt);
   for (var i = __timers.length - 1; i >= 0; i--) {
     var tm = __timers[i];
     if (now >= tm.t) { if (tm.every > 0) tm.t += tm.every; else __timers.splice(i, 1); tm.f(); }

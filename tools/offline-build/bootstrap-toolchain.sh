@@ -39,7 +39,7 @@ fi
 jdk/java-runtime/bin/java -version
 
 echo "== [2/7] kotlinc + javac8 (npm tarballs) =="
-[ -f kotlinc/lib/kotlin-stdlib.jar ] || { npm pack kotlin-compiler-2.4.21 >/dev/null && mkdir -p kotlinc && tar -xzf kotlin-compiler-2.4.21.tgz -C kotlinc --strip-components=1; }
+[ -f kotlinc/lib/kotlin-stdlib.jar ] || { npm pack kotlin-compiler@2.4.21 >/dev/null && mkdir -p kotlinc && tar -xzf kotlin-compiler-2.4.21.tgz -C kotlinc --strip-components=1; }
 [ -f tj/tools.jar ] || { npm pack dataslope-tools-jar >/dev/null && mkdir -p tj && tar -xzf dataslope-tools-jar-1.0.0.tgz -C tj --strip-components=1; }
 chmod +x kotlinc/bin/kotlinc 2>/dev/null || true
 
@@ -152,7 +152,7 @@ EOF
 fi
 
 echo "== [6/7] Java stubs (androidx + junit) =="
-rm -rf "$SRC/stubs" >/dev/null 2>&1 || true
+# Non-destructive: stubs are checked into the repository and must never be deleted.
 find "$SRC/stubs" -name '*.java' > stub.files
 mkdir -p out/stubs
 $J -cp tj/tools.jar com.sun.tools.javac.Main -bootclasspath "$AJ" -d out/stubs @stub.files

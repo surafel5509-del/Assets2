@@ -14,6 +14,8 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -40,6 +42,8 @@ import com.sengine.engine.core.AudioSource
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.GameObject
+import com.sengine.engine.core.Joint2D
+import com.sengine.engine.core.Joint3D
 import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.Scene
@@ -49,8 +53,11 @@ import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.render.EditorState
 import com.sengine.engine.render.SceneRenderer
 import com.sengine.engine.render.Tool
+import com.sengine.project.EngineInfo
 import com.sengine.project.Project
+import com.sengine.project.ProjectDiagnostics
 import com.sengine.project.ProjectManager
+import com.sengine.project.StudioPlan
 import com.sengine.project.Templates
 
 class EditorActivity : AppCompatActivity(), EditorHost {
@@ -210,6 +217,9 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         }
         modeBtn = tbtn("2D") { toggle3D() }
         tbtn("📊") { state.showProfiler = !state.showProfiler }
+        tbtn("⚙") { projectSettingsDialog() }
+        tbtn("🩺") { diagnosticsDialog() }
+        tbtn("🗺") { roadmapDialog() }
         sep()
         playBtn = tbtn("▶") { if (engine.mode == Engine.Mode.EDIT) startPlay() else engine.stop() }
         pauseBtn = tbtn("⏸") { if (engine.mode == Engine.Mode.PAUSED) engine.play() else engine.pause() }
@@ -467,10 +477,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         pm.menu.add("Empty"); pm.menu.add("Empty Child")
         val m2 = pm.menu.addSubMenu("2D Object")
         listOf("Square", "Circle", "Triangle", "Text", "UI Text", "Camera", "Particle System",
-            "Physics Box", "Physics Ball", "Static Platform", "Trigger Zone", "Animated Sprite").forEach { m2.add(it) }
+            "Physics Box", "Physics Ball", "Static Platform", "Trigger Zone", "Animated Sprite",
+            "Joint 2D", "Advanced Camera").forEach { m2.add(it) }
         val m3 = pm.menu.addSubMenu("3D Object")
         listOf("Cube", "Sphere", "Plane", "Cylinder", "Cone", "Torus", "Capsule", "Pyramid",
-            "Physics Cube 3D", "Physics Sphere 3D", "Ground 3D", "3D Camera", "Directional Light", "Point Light").forEach { m3.add(it) }
+            "Physics Cube 3D", "Physics Sphere 3D", "Ground 3D", "3D Camera", "Directional Light", "Point Light",
+            "Joint 3D", "Advanced Camera 3D").forEach { m3.add(it) }
         pm.setOnMenuItemClickListener { if (!it.hasSubMenu()) createObject(it.title.toString()); true }
         pm.show()
     }
@@ -510,6 +522,31 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 }
                 "Static Platform" -> { g.scaleX = 4f; g.scaleY = 0.5f; g.add(SpriteRenderer().also { it.color = 0xFF8D6E63.toInt() }); g.add(Collider2D()) }
                 "Trigger Zone" -> { g.scaleX = 2f; g.scaleY = 2f; g.add(Collider2D().also { it.isTrigger = true }) }
+                "Joint 2D" -> {
+                    g.add(SpriteRenderer().also { it.shape = 1; it.color = 0xFF80DEEA.toInt() })
+                    g.add(Collider2D().also { it.shape = 1 })
+                    g.add(Rigidbody2D())
+                    g.add(Joint2D().also { it.stiffness = 0.85f })
+                }
+                "Advanced Camera" -> g.add(Camera2D().also {
+                    it.priority = 10; it.smoothing = 6f; it.deadZoneW = 1.5f; it.deadZoneH = 1f
+                    it.lookAhead = 0.2f; it.boundsEnabled = true
+                    it.minimumZoom = 0.4f; it.maximumZoom = 4f
+                })
+                "Joint 3D" -> {
+                    g.add(MeshRenderer().also { it.mesh = 1; it.color = 0xFF80DEEA.toInt() })
+                    g.add(Collider3D().also { it.shape = 1 })
+                    g.add(Rigidbody3D())
+                    g.add(Joint3D().also { it.stiffness = 0.85f })
+                }
+                "Advanced Camera 3D" -> {
+                    g.y = 3f; g.z = 10f; g.rotX = -12f
+                    g.add(Camera3D().also {
+                        it.priority = 10; it.fov = 65f; it.smoothing = 5f
+                        it.lookAhead = 0.25f; it.deadZoneW = 2f; it.boundsEnabled = true
+                        it.lookAtTarget = true
+                    })
+                }
             }
             g
         }
@@ -522,7 +559,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private fun objectMenu(go: GameObject, anchor: View) {
         if (engine.mode != Engine.Mode.EDIT) { select(go.id); return }
         val pm = PopupMenu(this, anchor)
-        listOf("Rename", "Duplicate", "Delete", "Create Child", "Move Up", "Move Down", "Unparent", "Frame in View").forEach { pm.menu.add(it) }
+        listOf("Rename", "Duplicate", "Delete", "Create Child", "Move Up", "Move Down", "Unparent",
+            "Frame in View", "Add Joint 2D", "Add Joint 3D", "Add Advanced Camera", "Add Advanced Camera 3D").forEach { pm.menu.add(it) }
         pm.setOnMenuItemClickListener { item ->
             when (item.title) {
                 "Rename" -> renameDialog(go)
@@ -539,6 +577,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                             "Move Up" -> scene.moveInOrder(go, -1)
                             "Move Down" -> scene.moveInOrder(go, 1)
                             "Unparent" -> InspectorPanel.reparentKeepWorld(go, null)
+                            "Add Joint 2D" -> go.add(Joint2D())
+                            "Add Joint 3D" -> go.add(Joint3D())
+                            "Add Advanced Camera" -> go.add(Camera2D().also {
+                                it.priority = 10; it.deadZoneW = 1.5f; it.lookAhead = 0.2f; it.boundsEnabled = true
+                            })
+                            "Add Advanced Camera 3D" -> go.add(Camera3D().also {
+                                it.priority = 10; it.lookAhead = 0.25f; it.deadZoneW = 2f; it.lookAtTarget = true
+                            })
                         }
                         Unit
                     }
@@ -569,7 +615,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private fun mainMenu(anchor: View) {
         val pm = PopupMenu(this, anchor)
         val entries = listOf(
-            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Export Project (.zip)",
+            "Save Scene", "Scenes…", "Project Settings…", "Diagnostics…", "2-Year Roadmap…",
+            "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Export Project (.zip)",
             (if (state.showProfiler) "Hide" else "Show") + " Profiler",
             (if (state.showGrid) "Hide" else "Show") + " Grid",
             (if (state.showColliders) "Hide" else "Show") + " Colliders",
@@ -582,6 +629,9 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             when {
                 t == "Save Scene" -> saveScene()
                 t == "Scenes…" -> scenesDialog()
+                t == "Project Settings…" -> projectSettingsDialog()
+                t == "Diagnostics…" -> diagnosticsDialog()
+                t.startsWith("2-Year Roadmap") -> roadmapDialog()
                 t.startsWith("Build & Run") -> { saveScene(silent = true); startActivity(Intent(this, PlayerActivity::class.java).putExtra("project", project.name)) }
                 t == "Build APK…" -> { saveScene(silent = true); startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
                 t == "Asset Store" -> startActivity(Intent(this, AssetStoreActivity::class.java).putExtra("project", project.name))
@@ -594,17 +644,120 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Toggle Bottom Panel" -> toggle(bottomPanel)
                 t == "Script API Reference" -> showText("Script API", ScriptEditorActivity.API_DOC)
                 t.startsWith("About") -> showText("About S Engine",
-                    "S Engine Ultimate 2.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
-                        "• 3D: meshes, OBJ models, Blinn-Phong lights, fog, sky, 3D physics, orbit editor\n" +
-                        "• Sprite animation editor, asset store, visual blueprints, GLSL shaders & post FX\n" +
-                        "• Build real installable APKs of your game\n" +
-                        "• Scene editor with hierarchy, inspector, gizmos, undo/redo\n• OpenGL ES 2.0 renderer: shapes, sprites, text, particles\n" +
-                        "• Physics: rigidbodies, box/circle colliders, triggers\n• JavaScript behaviours (Mozilla Rhino)\n" +
-                        "• Multiple scenes, audio, touch joystick, fullscreen player\n• Project import/export as .zip")
+                    "S Engine ${EngineInfo.VERSION} — ${EngineInfo.EDITION}\n\n" +
+                        "A completed 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                        "• Deterministic fixed-step simulation, spatial-hash broad phase, joints, Verlet soft bodies, shape casts, CCD and area forces\n" +
+                        "• Professional scripts: event bus, ES6 coroutines, FSMs, hot reload, instruction budgets, profiler timings and durable saves\n" +
+                        "• Camera director: priority blends, dead zones, bounds, look-ahead, trauma shake and cinematic spline paths\n" +
+                        "• Project schema v3 with migrations, quality settings, diagnostics and a two-year production roadmap\n" +
+                        "• Two complete reference games: Citadel of Echoes and Neon Apex GP\n" +
+                        "• Editor: hierarchy, inspector, gizmos, undo/redo, assets, script editor, APK export\n" +
+                        "• OpenGL ES 2.0 renderer, Mozilla Rhino JavaScript, no NDK or external game frameworks")
             }
             true
         }
         pm.show()
+    }
+
+    // ============================================================ studio tooling
+    private fun projectSettingsDialog() {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode to edit project settings"); return }
+        val s = project.settings
+        val box = vbox().apply { setPadding(dp(20), dp(8), dp(20), 0) }
+        fun row(caption: String, value: String): EditText {
+            val row = hbox().apply { setPadding(0, dp(3), 0, dp(3)) }
+            row.addView(label(caption, 12f, C.TEXT), lp(0, WRAP, 1f))
+            val f = field(value, numeric = true)
+            row.addView(f, lp(dp(110), WRAP))
+            box.addView(row, lp(MATCH, WRAP))
+            return f
+        }
+        val fixedHz = row("Fixed Hz (30–240)", s.fixedHz.toString())
+        val maxSubSteps = row("Max substeps (1–12)", s.maxSubSteps.toString())
+        val solverIterations = row("Solver iterations (1–8)", s.solverIterations.toString())
+        val jointIterations = row("Joint iterations (1–12)", s.jointIterations.toString())
+        val broadphaseCell = row("Broadphase cell", s.broadphaseCell.toString())
+        val seed = row("Deterministic seed", s.deterministicSeed.toString())
+        val quality = row("Quality (0 Low … 3 Ultra)", s.quality.toString())
+        val scriptBudget = row("Script instruction cap", s.scriptBudget.toString())
+        val cameraBlend = row("Camera blend seconds", s.cameraBlend.toString())
+        val broadphase = CheckBox(this).apply {
+            text = "Spatial-hash broad phase"; isChecked = s.broadphase; setTextColor(C.TEXT)
+        }
+        val autoMigrate = CheckBox(this).apply {
+            text = "Auto-migrate older project schemas"; isChecked = s.autoMigrate; setTextColor(C.TEXT)
+        }
+        box.addView(broadphase, lp(MATCH, WRAP))
+        box.addView(autoMigrate, lp(MATCH, WRAP))
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Project Settings — ${EngineInfo.VERSION}")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Save") { _, _ ->
+                fun num(f: EditText, fallback: Int, lo: Int, hi: Int) =
+                    f.text.toString().toIntOrNull()?.coerceIn(lo, hi) ?: fallback
+                fun flt(f: EditText, fallback: Float, lo: Float, hi: Float) =
+                    f.text.toString().toFloatOrNull()?.coerceIn(lo, hi) ?: fallback
+                project.settings.fixedHz = num(fixedHz, s.fixedHz, 30, 240)
+                project.settings.maxSubSteps = num(maxSubSteps, s.maxSubSteps, 1, 12)
+                project.settings.solverIterations = num(solverIterations, s.solverIterations, 1, 8)
+                project.settings.jointIterations = num(jointIterations, s.jointIterations, 1, 12)
+                project.settings.broadphaseCell = flt(broadphaseCell, s.broadphaseCell, 0.25f, 64f)
+                project.settings.deterministicSeed = seed.text.toString().toIntOrNull() ?: s.deterministicSeed
+                project.settings.quality = num(quality, s.quality, 0, 3)
+                project.settings.scriptBudget = num(scriptBudget, s.scriptBudget, 10_000, 5_000_000)
+                project.settings.cameraBlend = flt(cameraBlend, s.cameraBlend, 0f, 5f)
+                project.settings.broadphase = broadphase.isChecked
+                project.settings.autoMigrate = autoMigrate.isChecked
+                project.saveSettings()
+                toast("Saved v3 project settings — applied on next Play")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun diagnosticsDialog() {
+        saveScene(silent = true)
+        showText("Project Diagnostics", ProjectDiagnostics.report(project))
+    }
+
+    private fun roadmapDialog() {
+        val plan = StudioPlan.load(project)
+        val labels = plan.milestones.map { m ->
+            val mark = if (m.shipped) "✔" else if (m.done) "☑" else "☐"
+            "$mark  M${m.month.toString().padStart(2, '0')} · ${m.phase} · ${m.title}"
+        } + listOf("Mark next milestone complete", "View full two-year report", "Reset project roadmap")
+        MaterialAlertDialogBuilder(this)
+            .setTitle("2-Year Roadmap — ${plan.progress}% (${plan.completeCount}/${plan.milestones.size})")
+            .setItems(labels.toTypedArray()) { _, i ->
+                when {
+                    i < plan.milestones.size -> {
+                        val m = plan.milestones[i]
+                        if (m.shipped) showText("${m.id} · shipped with v3",
+                            "${m.title}\n\nAcceptance: ${m.acceptance}\n\nDue: ${plan.dueDate(m)}\n" +
+                                "This engine capability ships with S Engine ${EngineInfo.VERSION}.")
+                        else {
+                            StudioPlan.markDone(project, m.id, !m.done)
+                            toast("${m.id} ${if (m.done) "reopened" else "signed off"}")
+                            roadmapDialog()
+                        }
+                    }
+                    i == plan.milestones.size -> {
+                        val m = StudioPlan.markNext(project)
+                        toast(m?.let { "${it.id} signed off" } ?: "All milestones complete")
+                        roadmapDialog()
+                    }
+                    i == plan.milestones.size + 1 ->
+                        showText("Two-Year Production Plan", StudioPlan.report(StudioPlan.load(project)))
+                    else -> MaterialAlertDialogBuilder(this)
+                        .setTitle("Reset roadmap?")
+                        .setMessage("This clears project sign-off but keeps shipped engine milestones.")
+                        .setPositiveButton("Reset") { _, _ -> StudioPlan.reset(project); toast("Roadmap reset"); roadmapDialog() }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     private fun showText(title: String, text: String) {

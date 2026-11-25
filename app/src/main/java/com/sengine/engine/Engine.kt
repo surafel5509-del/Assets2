@@ -1,23 +1,30 @@
 package com.sengine.engine
 
+import com.sengine.engine.camera.CameraDirector
+import com.sengine.engine.camera.CameraPath
+import com.sengine.engine.camera.CameraPose
+import com.sengine.engine.camera.CameraRig
 import com.sengine.engine.core.AudioSource
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Component
+import com.sengine.engine.core.DeterministicRandom
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ParticleEmitter
 import com.sengine.engine.core.Scene
 import com.sengine.engine.core.SceneSerializer
 import com.sengine.engine.core.Steering
+import com.sengine.engine.physics.JointSystem
 import com.sengine.engine.physics.PhysicsWorld
+import com.sengine.engine.physics.SoftBodyWorld
 import com.sengine.engine.render.View2D
 import com.sengine.engine.script.ScriptSystem
+import com.sengine.project.GameStateStore
 import com.sengine.project.Project
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
-import kotlin.random.Random
 
 /**
  * The runtime core. All scene mutation happens while holding [lock];
@@ -46,6 +53,24 @@ class Engine(val project: Project, initialScene: Scene) {
     val scripts = ScriptSystem(this)
     val audio = AudioSystem(project)
     val gameView = View2D()
+
+    // ---------------------------------------------------------------- v3 systems
+    /** Editable simulation/quality settings from project.json. */
+    val settings get() = project.settings
+    val joints = JointSystem()
+    val softBodies = SoftBodyWorld()
+    val gameState = GameStateStore(project.dir)
+    val cameraDirector = CameraDirector()
+    /** Seeded PRNG used by script `random()` — replay deterministic. */
+    val scriptRng = DeterministicRandom(project.settings.deterministicSeed)
+    private val simRng = DeterministicRandom(project.settings.deterministicSeed xor 0x5f3a7c1)
+    var lastCastDistance = 0f
+    private val camBaseSize = HashMap<Long, Float>()
+    private val camBaseFov = HashMap<Long, Float>()
+    private var panFrom: CameraPose? = null
+    private var panTarget: CameraPose? = null
+    private var panTime = 0f
+    private var panDuration = 0f
 
     var time = 0.0; private set
     var frame = 0L; private set
@@ -78,7 +103,35 @@ class Engine(val project: Project, initialScene: Scene) {
     init {
         physics.listener = scripts
         physics3D.listener = scripts
+        applySettings()
     }
+
+    /** Applies project settings to both physics worlds and the joint solver. */
+    fun applySettings() {
+        val s = settings
+        physics.clock.fixedDt = 1f / s.fixedHz
+        physics.clock.maxSubSteps = s.maxSubSteps
+        physics3D.clock.fixedDt = 1f / s.fixedHz
+        physics3D.clock.maxSubSteps = s.maxSubSteps
+        physics.solverIterations = s.solverIterations
+        physics3D.solverIterations = s.solverIterations
+        physics.broadphase = s.broadphase
+        physics3D.broadphase = s.broadphase
+        physics.cellSize = s.broadphaseCell
+        physics3D.cellSize = s.broadphaseCell
+        physics.onPostStep = { scene, dt ->
+            joints.step(scene, dt, s.jointIterations)
+            softBodies.step(dt)
+        }
+    }
+
+    fun resetRandom() {
+        scriptRng.reset(settings.deterministicSeed)
+        simRng.reset(settings.deterministicSeed xor 0x5f3a7c1)
+    }
+
+    /** Re-attaches every script without leaving play mode (editor action). */
+    fun hotReloadScripts() = post { scripts.hotReload() }
 
     // ---------------------------------------------------------------- commands
     fun post(cmd: () -> Unit) { commands.add(cmd) }
@@ -128,7 +181,11 @@ class Engine(val project: Project, initialScene: Scene) {
     }
 
     private fun beginScene() {
+        applySettings()
+        resetRandom()
         clearPools()
+        joints.clear()
+        softBodies.clear()
         for (go in scene.objects) for (c in go.components) c.resetRuntime()
         physics.reset()
         physics3D.reset()
@@ -138,6 +195,7 @@ class Engine(val project: Project, initialScene: Scene) {
         updateCamera3DFollow(10f)
         scene.updateTransforms()
         updateGameView()
+        initCameraRigs()
         for (go in scene.objects) {
             if (!go.isActiveInHierarchy()) continue
             go.get<AudioSource>()?.let { if (it.playOnStart) audio.play(it.clip, it.volume, it.loop) }
@@ -156,6 +214,10 @@ class Engine(val project: Project, initialScene: Scene) {
         if (snap != null) scene = SceneSerializer.fromJson(JSONObject(snap))
         snapshot = null
         input.clear()
+        cameraDirector.clear()
+        camBaseSize.clear(); camBaseFov.clear()
+        panFrom = null; panTarget = null
+        joints.clear(); softBodies.clear()
         setMode(Mode.EDIT)
         listeners.forEach { it.onSceneReplaced() }
         log(0, "■ Stopped")
@@ -196,8 +258,7 @@ class Engine(val project: Project, initialScene: Scene) {
         physicsMs = physicsMs * 0.9f + (t2 - t1) / 1e6f * 0.1f
         cleanupDestroyed()
         scene.updateTransforms()
-        updateCameraFollow(dt)
-        updateCamera3DFollow(dt)
+        updateCameraSystem(dt)
         updateAudioListener()
         updateGameView()
         updateParticles(dt)
@@ -252,8 +313,6 @@ class Engine(val project: Project, initialScene: Scene) {
         while (p != null) { if (p.destroyed) return true; p = p.parent }
         return false
     }
-
-    fun mainCamera3D(): GameObject? = scene.objects.firstOrNull { it.isActiveInHierarchy() && it.get<com.sengine.engine.core.Camera3D>() != null }
 
     // ---------------------------------------------------------------- pooling
     fun clearPools() {
@@ -324,7 +383,7 @@ class Engine(val project: Project, initialScene: Scene) {
                 st.initialized = true
                 st.startX = go.x
                 st.startZ = go.z
-                st.wanderAngle = Random.nextFloat() * 360f
+                st.wanderAngle = simRng.nextFloat() * 360f
             }
             // plane coordinates: XZ for 3D, XY for 2D
             val w3 = if (threeD) go.computeWorld3() else null
@@ -385,7 +444,7 @@ class Engine(val project: Project, initialScene: Scene) {
                 }
                 3 -> { // wander
                     val turn = st.wanderTurn * st.wanderStrength * dt
-                    st.wanderAngle += (Random.nextFloat() - 0.5f) * 2f * turn
+                    st.wanderAngle += (simRng.nextFloat() - 0.5f) * 2f * turn
                     val a = Math.toRadians(st.wanderAngle.toDouble())
                     dvx = (Math.cos(a) * st.speed).toFloat()
                     dvp = (Math.sin(a) * st.speed).toFloat()
@@ -438,21 +497,173 @@ class Engine(val project: Project, initialScene: Scene) {
         }
     }
 
-    private fun updateCamera3DFollow(dt: Float) {
-        val camGo = mainCamera3D() ?: return
-        val cam = camGo.get<com.sengine.engine.core.Camera3D>()!!
-        if (cam.follow.isBlank()) return
-        val t = scene.find(cam.follow) ?: return
-        val tw = t.world3
-        val w = camGo.computeWorld3()
-        val k = if (cam.smoothing <= 0f) 1f else (1f - exp(-cam.smoothing * dt))
-        val gx = tw[12] + cam.offsetX; val gy = tw[13] + cam.offsetY; val gz = tw[14] + cam.offsetZ
-        camGo.setWorldPosition3(w[12] + (gx - w[12]) * k, w[13] + (gy - w[13]) * k, w[14] + (gz - w[14]) * k)
+    // ================================================================ v3 camera system
+    private fun cameras2D(): List<GameObject> =
+        scene.objects.filter { it.isActiveInHierarchy() && it.get<Camera2D>() != null }
+    private fun cameras3D(): List<GameObject> =
+        scene.objects.filter { it.isActiveInHierarchy() && it.get<com.sengine.engine.core.Camera3D>() != null }
+
+    /** Highest-priority active 3D camera; [CameraDirector.activeId] can override. */
+    fun mainCamera3D(): GameObject? {
+        val cams = cameras3D()
+        if (cams.isEmpty()) return null
+        cameraDirector.activeId?.let { id -> cams.firstOrNull { it.id == id }?.let { return it } }
+        return cams.maxByOrNull { cameraDirector.rig(it.id).priority } ?: cams.first()
     }
 
-    fun shake(amount: Float) {
-        mainCamera()?.getAny<Camera2D>()?.let { it.shake = maxOf(it.shake, amount) }
-        mainCamera3D()?.getAny<com.sengine.engine.core.Camera3D>()?.let { it.shake = maxOf(it.shake, amount) }
+    /** Highest-priority active 2D camera; falls back to the first one. */
+    fun mainCamera(): GameObject? {
+        val cams = cameras2D()
+        if (cams.isEmpty()) return null
+        cameraDirector.activeId?.let { id -> cams.firstOrNull { it.id == id }?.let { return it } }
+        return cams.maxByOrNull { cameraDirector.rig(it.id).priority } ?: cams.first()
+    }
+
+    private fun syncRig2(go: GameObject, cam: Camera2D): CameraRig {
+        val r = cameraDirector.rig(go.id)
+        r.priority = cam.priority
+        r.smoothing = cam.smoothing
+        r.deadZoneW = cam.deadZoneW
+        r.deadZoneH = cam.deadZoneH
+        r.lookAhead = cam.lookAhead
+        r.minZoom = cam.minimumZoom
+        r.maxZoom = cam.maximumZoom
+        r.traumaDecay = cam.traumaDecay
+        r.shakeScale = cam.shakeScale
+        r.bounds.apply {
+            enabled = cam.boundsEnabled
+            minX = cam.boundMinX; maxX = cam.boundMaxX
+            minY = cam.boundMinY; maxY = cam.boundMaxY
+            minZ = cam.boundMinY; maxZ = cam.boundMaxY
+            viewWidth = 2f * cam.size * gameView.aspect
+            viewHeight = 2f * cam.size
+        }
+        return r
+    }
+
+    private fun syncRig3(go: GameObject, cam: com.sengine.engine.core.Camera3D): CameraRig {
+        val r = cameraDirector.rig(go.id)
+        r.priority = cam.priority
+        r.smoothing = cam.smoothing
+        r.deadZoneW = cam.deadZoneW
+        r.lookAhead = cam.lookAhead
+        r.traumaDecay = cam.traumaDecay
+        r.shakeScale = cam.shakeScale
+        r.bounds.apply {
+            enabled = cam.boundsEnabled
+            minX = cam.boundMinX; maxX = cam.boundMaxX
+            minY = -10000f; maxY = 10000f
+            minZ = cam.boundMinZ; maxZ = cam.boundMaxZ
+            viewWidth = 0f; viewHeight = 0f; viewDepth = 0f
+        }
+        return r
+    }
+
+    private fun initCameraRigs() {
+        cameraDirector.clear()
+        camBaseSize.clear(); camBaseFov.clear()
+        panFrom = null; panTarget = null
+        for (go in scene.objects) {
+            val c2 = go.get<Camera2D>()
+            if (c2 != null) {
+                val w = go.computeWorld()
+                syncRig2(go, c2).snap(w.tx, w.ty, 0f, 1f)
+                camBaseSize[go.id] = c2.size
+            }
+            val c3 = go.get<com.sengine.engine.core.Camera3D>()
+            if (c3 != null) {
+                val w = go.computeWorld3()
+                syncRig3(go, c3).snap(w[12], w[13], w[14], 1f)
+                camBaseFov[go.id] = c3.fov
+            }
+        }
+    }
+
+    /** Runs cinematics, blends and follow logic once per frame. */
+    private fun updateCameraSystem(dt: Float) {
+        val progress = cameraDirector.update(dt)
+        val path = cameraDirector.cinematicPath
+        if (path != null && progress != null) {
+            val p = path.sample(progress)
+            applyCameraPose(p[0], p[1], p[2])
+            return
+        }
+        if (panFrom != null && panTarget != null) {
+            panTime += dt
+            val t = if (panDuration <= 0f) 1f else (panTime / panDuration).coerceIn(0f, 1f)
+            val blended = CameraRig.blend(panFrom!!, panTarget!!, t)
+            applyCameraPose(blended.x, blended.y, blended.z)
+            if (t >= 1f) {
+                mainCamera()?.let { cameraDirector.rig(it.id).snap(blended.x, blended.y, blended.z) }
+                mainCamera3D()?.let { cameraDirector.rig(it.id).snap(blended.x, blended.y, blended.z) }
+                panFrom = null; panTarget = null
+            }
+            return
+        }
+        updateCameraFollow(dt)
+        updateCamera3DFollow(dt)
+        if (cameraDirector.isBlending) {
+            val fromId = cameraDirector.blendFromId ?: return
+            val active = mainCamera3D() ?: mainCamera() ?: return
+            val from = cameraDirector.rig(fromId)
+            val to = cameraDirector.rig(active.id)
+            val p = CameraRig.blend(from.pose, to.pose, cameraDirector.blendProgress)
+            applyCameraPose(p.x, p.y, p.z)
+        }
+    }
+
+    private fun applyCameraPose(x: Float, y: Float, z: Float) {
+        val c3 = mainCamera3D()
+        if (c3 != null) { c3.setWorldPosition3(x, y, z); return }
+        mainCamera()?.setWorldPosition(x, y)
+    }
+
+    private fun updateCamera3DFollow(dt: Float) {
+        val camGo = mainCamera3D() ?: return
+        val cam = camGo.get<com.sengine.engine.core.Camera3D>() ?: return
+        val rig = syncRig3(camGo, cam)
+        if (cam.follow.isBlank()) {
+            rig.follow(rig.pose.x, rig.pose.y, rig.pose.z, 0f, 0f, dt)
+            return
+        }
+        val t = scene.find(cam.follow) ?: return
+        val tw = t.world3
+        val rb = t.getAny<com.sengine.engine.core.Rigidbody3D>()
+        val p = rig.follow(tw[12] + cam.offsetX, tw[13] + cam.offsetY, tw[14] + cam.offsetZ,
+            rb?.vx ?: 0f, rb?.vy ?: 0f, dt, rb?.vz ?: 0f)
+        camGo.setWorldPosition3(p.x + rig.shakeX, p.y + rig.shakeY, p.z)
+        val base = camBaseFov[camGo.id] ?: cam.fov
+        cam.fov = (base / p.zoom).coerceIn(10f, 150f)
+    }
+
+    private fun updateCameraFollow(dt: Float) {
+        val camGo = mainCamera() ?: return
+        val cam = camGo.get<Camera2D>() ?: return
+        val rig = syncRig2(camGo, cam)
+        if (cam.follow.isBlank()) {
+            rig.follow(rig.pose.x, rig.pose.y, rig.pose.z, 0f, 0f, dt)
+            return
+        }
+        val t = scene.find(cam.follow) ?: return
+        val rb = t.getAny<com.sengine.engine.core.Rigidbody2D>()
+        val p = rig.follow(t.world.tx, t.world.ty, rig.pose.z, rb?.vx ?: 0f, rb?.vy ?: 0f, dt)
+        camGo.setWorldPosition(p.x + rig.shakeX, p.y + rig.shakeY)
+        val base = camBaseSize[camGo.id] ?: cam.size
+        cam.size = (base / p.zoom).coerceAtLeast(0.1f)
+    }
+
+    fun shake(amount: Float) = cameraShake(amount)
+
+    /** Adds trauma to every active rig (quadratic shake) plus the legacy renderer jitter. */
+    fun cameraShake(amount: Float) {
+        for (go in cameras2D()) {
+            syncRig2(go, go.get<Camera2D>()!!).addTrauma(amount)
+            go.get<Camera2D>()?.shake = maxOf(go.get<Camera2D>()!!.shake, amount)
+        }
+        for (go in cameras3D()) {
+            syncRig3(go, go.get<com.sengine.engine.core.Camera3D>()!!).addTrauma(amount)
+            go.get<com.sengine.engine.core.Camera3D>()?.shake = maxOf(go.get<com.sengine.engine.core.Camera3D>()!!.shake, amount)
+        }
     }
 
     private fun decayShake(dt: Float) {
@@ -460,25 +671,131 @@ class Engine(val project: Project, initialScene: Scene) {
         mainCamera3D()?.getAny<com.sengine.engine.core.Camera3D>()?.let { it.shake = maxOf(0f, it.shake - dt * 2f * maxOf(1f, it.shake)) }
     }
 
-    fun mainCamera(): GameObject? = scene.objects.firstOrNull { it.isActiveInHierarchy() && it.get<Camera2D>() != null }
-
     private fun snapCameraToTarget() {
         val camGo = mainCamera() ?: return
-        val cam = camGo.get<Camera2D>()!!
+        val cam = camGo.get<Camera2D>() ?: return
         if (cam.follow.isBlank()) return
         val t = scene.find(cam.follow) ?: return
         camGo.setWorldPosition(t.world.tx, t.world.ty)
     }
 
-    private fun updateCameraFollow(dt: Float) {
-        val camGo = mainCamera() ?: return
-        val cam = camGo.get<Camera2D>()!!
-        if (cam.follow.isBlank()) return
-        val t = scene.find(cam.follow) ?: return
-        val w = camGo.computeWorld()
-        val k = if (cam.smoothing <= 0f) 1f else (1f - exp(-cam.smoothing * dt))
-        camGo.setWorldPosition(w.tx + (t.world.tx - w.tx) * k, w.ty + (t.world.ty - w.ty) * k)
+    // ---------------------------------------------------------------- script camera API
+    fun activeCamera2D(): GameObject? = mainCamera()
+    fun activeCamera3D(): GameObject? = mainCamera3D()
+
+    fun cameraPose(): FloatArray {
+        val c3 = mainCamera3D()
+        if (c3 != null) {
+            val w = c3.computeWorld3()
+            return floatArrayOf(w[12], w[13], w[14], cameraDirector.rig(c3.id).pose.zoom,
+                c3.get<com.sengine.engine.core.Camera3D>()?.fov ?: 60f)
+        }
+        val c2 = mainCamera()
+        if (c2 != null) {
+            val w = c2.computeWorld()
+            return floatArrayOf(w.tx, w.ty, 0f, cameraDirector.rig(c2.id).pose.zoom,
+                c2.get<Camera2D>()?.size ?: 5f)
+        }
+        return floatArrayOf(0f, 0f, 0f, 1f, 60f)
     }
+
+    fun activeCameraPriority(): Int {
+        val go = mainCamera3D() ?: mainCamera() ?: return 0
+        return cameraDirector.rig(go.id).priority
+    }
+
+    fun cameraSetBounds(minX: Float, minY: Float, maxX: Float, maxY: Float, minZ: Float, maxZ: Float) {
+        for (go in cameras2D()) {
+            val c = go.get<Camera2D>() ?: continue
+            c.boundsEnabled = true
+            c.boundMinX = minX; c.boundMaxX = maxX; c.boundMinY = minY; c.boundMaxY = maxY
+            syncRig2(go, c)
+        }
+        for (go in cameras3D()) {
+            val c = go.get<com.sengine.engine.core.Camera3D>() ?: continue
+            c.boundsEnabled = true
+            c.boundMinX = minX; c.boundMaxX = maxX; c.boundMinZ = minZ; c.boundMaxZ = maxZ
+            syncRig3(go, c)
+        }
+    }
+
+    fun cameraClearBounds() {
+        for (go in cameras2D()) { val c = go.get<Camera2D>() ?: continue; c.boundsEnabled = false; syncRig2(go, c) }
+        for (go in cameras3D()) { val c = go.get<com.sengine.engine.core.Camera3D>() ?: continue; c.boundsEnabled = false; syncRig3(go, c) }
+    }
+
+    fun cameraSetDeadZone(w: Float, h: Float) {
+        for (go in cameras2D()) { val c = go.get<Camera2D>() ?: continue; c.deadZoneW = w; c.deadZoneH = h; syncRig2(go, c) }
+        for (go in cameras3D()) { val c = go.get<com.sengine.engine.core.Camera3D>() ?: continue; c.deadZoneW = w; syncRig3(go, c) }
+    }
+
+    fun cameraSetLookAhead(v: Float) {
+        for (go in cameras2D()) { val c = go.get<Camera2D>() ?: continue; c.lookAhead = v.coerceIn(0f, 2f); syncRig2(go, c) }
+        for (go in cameras3D()) { val c = go.get<com.sengine.engine.core.Camera3D>() ?: continue; c.lookAhead = v.coerceIn(0f, 2f); syncRig3(go, c) }
+    }
+
+    fun cameraZoomTo(z: Float) {
+        (mainCamera3D() ?: mainCamera())?.let { cameraDirector.rig(it.id).zoomTo(z) }
+    }
+
+    fun cameraSetFov(v: Float) { mainCamera3D()?.get<com.sengine.engine.core.Camera3D>()?.fov = v.coerceIn(10f, 150f) }
+
+    fun cameraSnap() {
+        val c2 = mainCamera()
+        if (c2 != null) {
+            val cam = c2.get<Camera2D>() ?: return
+            val t = if (cam.follow.isNotBlank()) scene.find(cam.follow) else null
+            val x = t?.world?.tx ?: c2.computeWorld().tx
+            val y = t?.world?.ty ?: c2.computeWorld().ty
+            c2.setWorldPosition(x, y)
+            syncRig2(c2, cam).snap(x, y, 0f, cameraDirector.rig(c2.id).pose.zoom)
+        }
+        val c3 = mainCamera3D()
+        if (c3 != null) {
+            val w = c3.computeWorld3()
+            syncRig3(c3, c3.get<com.sengine.engine.core.Camera3D>()!!).snap(w[12], w[13], w[14])
+        }
+    }
+
+    fun cameraPanTo(x: Float, y: Float, duration: Float) {
+        val p = cameraPose()
+        panFrom = CameraPose(p[0], p[1], p[2], p[3])
+        panTarget = CameraPose(x, y, p[2], p[3])
+        panTime = 0f
+        panDuration = duration.coerceAtLeast(0f)
+    }
+
+    fun cameraSetPriority(v: Int) {
+        (mainCamera3D() ?: mainCamera())?.let { go ->
+            go.get<Camera2D>()?.priority = v
+            go.get<com.sengine.engine.core.Camera3D>()?.priority = v
+            cameraDirector.rig(go.id).priority = v
+        }
+        cameraDirector.activeId = null
+    }
+
+    fun cameraActivate(name: String, duration: Float) {
+        val go = scene.objects.firstOrNull { it.name == name && !it.destroyed &&
+            (it.get<Camera2D>() != null || it.get<com.sengine.engine.core.Camera3D>() != null) } ?: return
+        val previous = cameraDirector.activeId
+        if (previous != null) {
+            scene.findById(previous)?.let { from ->
+                val w = from.computeWorld3()
+                cameraDirector.rig(from.id).pose.x = w[12]
+                cameraDirector.rig(from.id).pose.y = w[13]
+                cameraDirector.rig(from.id).pose.z = w[14]
+            }
+        }
+        cameraDirector.switchTo(go.id, duration)
+    }
+
+    fun cameraPlayPath(points: List<FloatArray>, duration: Float): Boolean {
+        if (points.size < 2) return false
+        cameraDirector.playPath(CameraPath(points), duration)
+        return true
+    }
+
+    fun cameraStopPath() = cameraDirector.stopPath()
 
     fun updateGameView() {
         val camGo = mainCamera()
@@ -505,12 +822,12 @@ class Engine(val project: Project, initialScene: Scene) {
             pe.pendingBurst = 0
             if (!alive) toEmit = 0
             while (toEmit-- > 0 && pe.particles.size < pe.maxParticles) {
-                val ang = Math.toRadians((pe.direction + w.rotationDeg + (Random.nextFloat() - 0.5f) * pe.spread).toDouble())
-                val sp = pe.speed * (0.6f + Random.nextFloat() * 0.8f)
+                val ang = Math.toRadians((pe.direction + w.rotationDeg + (simRng.nextFloat() - 0.5f) * pe.spread).toDouble())
+                val sp = pe.speed * (0.6f + simRng.nextFloat() * 0.8f)
                 pe.particles.add(
                     ParticleEmitter.Particle(
                         w.tx, w.ty, (cos(ang) * sp).toFloat(), (sin(ang) * sp).toFloat(),
-                        0f, pe.lifetime * (0.7f + Random.nextFloat() * 0.6f)
+                        0f, pe.lifetime * (0.7f + simRng.nextFloat() * 0.6f)
                     )
                 )
             }

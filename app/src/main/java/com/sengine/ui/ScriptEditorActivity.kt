@@ -294,6 +294,47 @@ HELPERS
 PARAMS  "speed=5, jump=10" in the Script
         component become variables.
 
+V3 PROFESSIONAL API
+  events.on(name, fn) / once / off(id)
+  events.emit(name, data) / last / count / clear
+  coroutine(function* () {
+      yield waitSec(1); yield waitFrames(3);
+      yield waitUntil(fn); yield waitFor("event");
+  })
+  cancelCoroutine(id) activeCoroutines()
+  state.set("idle") / get() / is() / elapsed()
+  state.update(dt) calls idle_update(dt)
+      idle_enter() / idle_exit() hooks
+  persist.hp = 3  (survives hot reload)
+  onHotReload()   called after scripts reload
+  random() setRandomSeed(s) randomInt(a,b)
+  randomSign() randomPick(arr)
+
+  physics.circleCast(x,y, dx,dy, radius,max,tag)
+  physics.boxCast(...) physics.sphereCast(...)
+  physics.hitDistance()
+  physics.explode(x,y,r,f,tag) / attract / wind
+  physics.joint(a,b,mode,rest,stiff,damp)
+  physics.setIterations(n) getSteps()
+  soft.rope(name,x,y,segments,spacing,dx,dy)
+  soft.cloth(name,x,y,cols,rows,spacing,z)
+  soft.point(name,i) setPoint pin wind force
+  soft.explode step remove count names
+
+  camera.setBounds(minX,minY,maxX,maxY)
+  camera.setDeadZone(w,h) setLookAhead(v)
+  camera.zoomTo(z) shake(amount) snap()
+  camera.panTo(x,y,seconds) setPriority(n)
+  camera.activate(name,seconds) stopPath()
+  camera.playPath([[x,y,z], ...], seconds)
+
+  game.save(key,val) / load(key,default) / has / clear
+  game.keys() getVersion() getEdition()
+  game.fixedStep() instructions() diagnostics()
+  studio.report() progress() years() months()
+  studio.next() milestones() complete("M20")
+  studio.diagnostics()
+
 BLUEPRINTS  .bp files compile to this API.
 """.trimIndent()
 

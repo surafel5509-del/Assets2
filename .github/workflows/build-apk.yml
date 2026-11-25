@@ -1,8 +1,8 @@
-name: Build APK
+name: Build S Engine 3.0.0 APK
 
 on:
   push:
-    branches: [ arena/1772be8b-assets2 ]
+    branches: [ arena/94ba1396-assets2 ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Assemble debug + release APK
+    name: Assemble Professional Studio Edition APKs
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -53,13 +53,13 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: SEngine-debug-apk
+          name: SEngine-3.0.0-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       - name: Upload release APK (debug-key signed, installable)
         uses: actions/upload-artifact@v4
         with:
-          name: SEngine-release-apk
+          name: SEngine-3.0.0-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error

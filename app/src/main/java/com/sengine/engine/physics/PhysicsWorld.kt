@@ -1,5 +1,6 @@
 package com.sengine.engine.physics
 
+import com.sengine.engine.SimulationClock
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.Rigidbody2D
@@ -22,8 +23,20 @@ class PhysicsWorld {
     }
 
     var listener: Listener? = null
-    private var accumulator = 0f
-    private val fixedDt = 1f / 60f
+
+    /** Deterministic fixed-step scheduler shared with the diagnostics HUD. */
+    val clock = SimulationClock()
+    /** Number of contact solver passes per physics step (1 = legacy behaviour). */
+    var solverIterations = 1
+    /** Spatial-hash broad phase (false = brute force, useful for comparisons). */
+    var broadphase = true
+    var cellSize = 4f
+    var lastBroadphasePairs = 0
+        private set
+    var lastBruteForcePairs = 0
+        private set
+    /** Called at the end of every fixed step (joints / soft bodies / gameplay hooks). */
+    var onPostStep: ((Scene, Float) -> Unit)? = null
 
     private class Body(
         val go: GameObject,
@@ -45,22 +58,17 @@ class PhysicsWorld {
     private var prevTriggers = HashSet<Long>()
 
     fun reset() {
-        accumulator = 0f
+        clock.reset()
         prevContacts = HashSet(); prevTriggers = HashSet()
     }
 
     fun step(scene: Scene, dt: Float) {
-        accumulator += min(dt, 0.25f)
-        var steps = 0
-        while (accumulator >= fixedDt && steps < 5) {
-            fixedStep(scene, fixedDt)
-            accumulator -= fixedDt
-            steps++
-        }
-        if (steps == 5) accumulator = 0f
+        val steps = clock.advance(dt)
+        repeat(steps) { stepFixed(scene, clock.fixedDt) }
     }
 
-    private fun fixedStep(scene: Scene, dt: Float) {
+    /** One deterministic physics tick. Exposed for replays and headless tests. */
+    fun stepFixed(scene: Scene, dt: Float) {
         // kinematic bodies record their per-step delta so riders can be carried
         val carry = HashMap<Long, FloatArray>()
         // integrate
@@ -106,8 +114,10 @@ class PhysicsWorld {
         val contacts = HashSet<Long>()
         val triggers = HashSet<Long>()
         val carried = HashSet<Long>()
-        for (i in 0 until bodies.size) {
-            for (j in i + 1 until bodies.size) {
+        val pairs = candidatePairs(bodies)
+        repeat(solverIterations.coerceIn(1, 8)) { iter ->
+            if (iter > 0) for (b in bodies) refresh(b)
+            for ((i, j) in pairs) {
                 val a = bodies[i]
                 val b = bodies[j]
                 if (!layersMatch(a.col, b.col)) continue
@@ -116,7 +126,7 @@ class PhysicsWorld {
                 val key = pairKey(a.go.id, b.go.id)
                 if (a.col.isTrigger || b.col.isTrigger) {
                     triggers.add(key)
-                    if (key !in prevTriggers) listener?.onTriggerEnter(a.go, b.go)
+                    if (iter == 0 && key !in prevTriggers) listener?.onTriggerEnter(a.go, b.go)
                     continue
                 }
                 contacts.add(key)
@@ -125,7 +135,7 @@ class PhysicsWorld {
                 val kin = if (a.rb?.bodyType == 1) a else if (b.rb?.bodyType == 1) b else null
                 val dyn = if (kin === a) b else a
                 val delta = kin?.let { carry[it.go.id] }
-                if (delta != null && dyn.rb?.bodyType == 0 && m.ny >= -0.55f && dyn.go.id !in carried) {
+                if (iter == 0 && delta != null && dyn.rb?.bodyType == 0 && m.ny >= -0.55f && dyn.go.id !in carried) {
                     // only when the dynamic body rests on top of (or is pushed by) the mover
                     // normal points a->b: rider above mover => ny>0.55 when mover is a, ny<-0.55 when mover is b
                     val onTop = if (kin === a) m.ny > 0.55f else m.ny < -0.55f
@@ -135,7 +145,7 @@ class PhysicsWorld {
                         carried.add(dyn.go.id)
                     }
                 }
-                if (key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
+                if (iter == 0 && key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
             }
         }
         for (k in prevTriggers) if (k !in triggers) {
@@ -145,7 +155,96 @@ class PhysicsWorld {
         }
         prevContacts = contacts
         prevTriggers = triggers
+        onPostStep?.invoke(scene, dt)
     }
+
+    /** Broad-phase candidate pairs: spatial hash grid, or brute force for small scenes. */
+    private fun candidatePairs(bodies: List<Body>): List<Pair<Int, Int>> {
+        if (bodies.size < 12 || !broadphase) {
+            val all = ArrayList<Pair<Int, Int>>()
+            for (i in bodies.indices) for (j in i + 1 until bodies.size) all.add(i to j)
+            lastBroadphasePairs = all.size
+            lastBruteForcePairs = all.size
+            return all
+        }
+        val boxes = bodies.mapIndexed { i, b ->
+            val hw = if (b.isCircle) b.r else b.hw
+            val hh = if (b.isCircle) b.r else b.hh
+            Aabb2(b.cx - hw, b.cy - hh, b.cx + hw, b.cy + hh, i)
+        }
+        val hash = SpatialHash2D(cellSize)
+        val pairs = hash.candidatePairs(boxes)
+        lastBroadphasePairs = hash.lastPairCount
+        lastBruteForcePairs = hash.lastBruteForcePairs
+        return pairs
+    }
+
+    // ---------------------------------------------------------------- shape casts
+    /** Result of a swept-shape query. */
+    data class CastResult(val go: GameObject, val distance: Float, val nx: Float, val ny: Float)
+
+    private fun castShapes(scene: Scene, tag: String): Pair<List<CastShape2>, List<GameObject>> {
+        val shapes = ArrayList<CastShape2>()
+        val owners = ArrayList<GameObject>()
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            if (tag.isNotEmpty() && go.tag != tag) continue
+            val col = go.get<Collider2D>() ?: continue
+            val b = Body(go, null, col)
+            refresh(b)
+            shapes.add(CastShape2(b.cx, b.cy, b.hw, b.hh, b.isCircle, b.r, shapes.size))
+            owners.add(go)
+        }
+        return shapes to owners
+    }
+
+    /** Sweeps a circle; returns the first hit (nearest) or null. */
+    fun circleCast(scene: Scene, ox: Float, oy: Float, dx: Float, dy: Float,
+                   radius: Float, maxDist: Float, tag: String = "", ignore: GameObject? = null): CastResult? {
+        val (shapes, owners) = castShapes(scene, tag)
+        val hit = ShapeCasts.circleCast(shapes, ox, oy, dx, dy, radius, maxDist) { owners[it] !== ignore } ?: return null
+        return CastResult(owners[hit.index], hit.distance, hit.nx, hit.ny)
+    }
+
+    /** Sweeps an axis-aligned box of half-size (hw,hh). */
+    fun boxCast(scene: Scene, ox: Float, oy: Float, dx: Float, dy: Float,
+                hw: Float, hh: Float, maxDist: Float, tag: String = "", ignore: GameObject? = null): CastResult? {
+        val (shapes, owners) = castShapes(scene, tag)
+        val hit = ShapeCasts.boxCast(shapes, ox, oy, dx, dy, hw, hh, maxDist) { owners[it] !== ignore } ?: return null
+        return CastResult(owners[hit.index], hit.distance, hit.nx, hit.ny)
+    }
+
+    // ---------------------------------------------------------------- area forces
+    private class RigidForceAdapter(val go: GameObject, val rb: Rigidbody2D) : ForcePoint {
+        private val w = go.computeWorld()
+        override val x: Float = w.tx
+        override val y: Float = w.ty
+        override val z: Float = 0f
+        override val mass: Float = rb.mass.coerceAtLeast(0.001f)
+        override val active: Boolean = go.isActiveInHierarchy() && rb.bodyType == 0
+        override var vx: Float get() = rb.vx; set(v) { rb.vx = v }
+        override var vy: Float get() = rb.vy; set(v) { rb.vy = v }
+        override var vz: Float = 0f
+    }
+
+    private fun forceBodies(scene: Scene, tag: String): List<ForcePoint> {
+        val out = ArrayList<ForcePoint>()
+        for (go in scene.objects) {
+            if (tag.isNotEmpty() && go.tag != tag) continue
+            val rb = go.get<Rigidbody2D>() ?: continue
+            out.add(RigidForceAdapter(go, rb))
+        }
+        return out
+    }
+
+    fun explode(scene: Scene, x: Float, y: Float, radius: Float, force: Float, tag: String = "", falloff: Int = 0): Int =
+        ForceFields.explode(forceBodies(scene, tag), x, y, 0f, radius, force, Falloff.values().getOrElse(falloff) { Falloff.LINEAR })
+
+    fun attract(scene: Scene, x: Float, y: Float, radius: Float, force: Float, tag: String = "", falloff: Int = 1): Int =
+        ForceFields.attract(forceBodies(scene, tag), x, y, 0f, radius, force, Falloff.values().getOrElse(falloff) { Falloff.INVERSE_SQUARE })
+
+    fun wind(scene: Scene, fx: Float, fy: Float, dt: Float, tag: String = ""): Int =
+        ForceFields.wind(forceBodies(scene, tag), fx, fy, 0f, dt)
 
     private fun clampSpeed(rb: Rigidbody2D) {
         if (rb.maxSpeed <= 0f) return

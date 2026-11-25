@@ -1,5 +1,6 @@
 package com.sengine.engine.physics
 
+import com.sengine.engine.SimulationClock
 import com.sengine.engine.core.Collider3D
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.Rigidbody3D
@@ -17,8 +18,14 @@ import kotlin.math.sqrt
  */
 class PhysicsWorld3D {
     var listener: PhysicsWorld.Listener? = null
-    private var accumulator = 0f
-    private val fixedDt = 1f / 60f
+    val clock = SimulationClock()
+    var solverIterations = 1
+    var broadphase = true
+    var cellSize = 6f
+    var lastBroadphasePairs = 0
+        private set
+    var lastBruteForcePairs = 0
+        private set
     private var prevContacts = HashSet<Long>()
     private var prevTriggers = HashSet<Long>()
 
@@ -35,14 +42,15 @@ class PhysicsWorld3D {
     private fun layersMatch(a: Collider3D, b: Collider3D): Boolean =
         (a.mask and (1 shl b.layer)) != 0 && (b.mask and (1 shl a.layer)) != 0
 
-    fun reset() { accumulator = 0f; prevContacts = HashSet(); prevTriggers = HashSet() }
+    fun reset() { clock.reset(); prevContacts = HashSet(); prevTriggers = HashSet() }
 
     fun step(scene: Scene, dt: Float) {
-        if (scene.objects.none { it.getAny<Collider3D>() != null || it.getAny<Rigidbody3D>() != null }) return
-        accumulator += min(dt, 0.25f)
-        var n = 0
-        while (accumulator >= fixedDt && n < 5) { fixed(scene, fixedDt); accumulator -= fixedDt; n++ }
-        if (n == 5) accumulator = 0f
+        if (scene.objects.none { it.getAny<Collider3D>() != null || it.getAny<Rigidbody3D>() != null }) {
+            clock.advance(dt)
+            return
+        }
+        val steps = clock.advance(dt)
+        repeat(steps) { stepFixed(scene, clock.fixedDt) }
     }
 
     private fun move(go: GameObject, dx: Float, dy: Float, dz: Float) {
@@ -52,7 +60,8 @@ class PhysicsWorld3D {
         }
     }
 
-    private fun fixed(scene: Scene, dt: Float) {
+    /** One deterministic 3D physics tick. */
+    fun stepFixed(scene: Scene, dt: Float) {
         for (go in scene.objects) {
             if (!go.isActiveInHierarchy()) continue
             val rb = go.get<Rigidbody3D>() ?: continue
@@ -83,24 +92,28 @@ class PhysicsWorld3D {
         }
         val contacts = HashSet<Long>()
         val triggers = HashSet<Long>()
-        for (i in bodies.indices) for (j in i + 1 until bodies.size) {
-            val a = bodies[i]; val b = bodies[j]
-            if (!layersMatch(a.col, b.col)) continue
-            val trig = a.col.isTrigger || b.col.isTrigger
-            if (a.invMass == 0f && b.invMass == 0f && !trig) continue
-            val m = collide(a, b) ?: continue
-            val key = key(a.go.id, b.go.id)
-            if (trig) {
-                triggers.add(key)
-                if (key !in prevTriggers) listener?.onTriggerEnter(a.go, b.go)
-                continue
+        val pairs = candidatePairs(bodies)
+        repeat(solverIterations.coerceIn(1, 8)) { iter ->
+            if (iter > 0) for (b in bodies) refresh(b)
+            for ((i, j) in pairs) {
+                val a = bodies[i]; val b = bodies[j]
+                if (!layersMatch(a.col, b.col)) continue
+                val trig = a.col.isTrigger || b.col.isTrigger
+                if (a.invMass == 0f && b.invMass == 0f && !trig) continue
+                val m = collide(a, b) ?: continue
+                val key = key(a.go.id, b.go.id)
+                if (trig) {
+                    triggers.add(key)
+                    if (iter == 0 && key !in prevTriggers) listener?.onTriggerEnter(a.go, b.go)
+                    continue
+                }
+                contacts.add(key)
+                resolve(a, b, m)
+                // record ground normal for slope-aware gameplay
+                if (m.ny > 0.55f) b.rb?.let { it.groundNx = m.nx; it.groundNy = m.ny; it.groundNz = m.nz }
+                if (m.ny < -0.55f) a.rb?.let { it.groundNx = m.nx; it.groundNy = -m.ny; it.groundNz = m.nz }
+                if (iter == 0 && key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
             }
-            contacts.add(key)
-            resolve(a, b, m)
-            // record ground normal for slope-aware gameplay
-            if (m.ny > 0.55f) b.rb?.let { it.groundNx = m.nx; it.groundNy = m.ny; it.groundNz = m.nz }
-            if (m.ny < -0.55f) a.rb?.let { it.groundNx = m.nx; it.groundNy = -m.ny; it.groundNz = m.nz }
-            if (key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
         }
         for (k in prevTriggers) if (k !in triggers) {
             val a = scene.findById(k shr 32); val b = scene.findById(k and 0xFFFFFFFFL)
@@ -109,6 +122,72 @@ class PhysicsWorld3D {
         terrainSupport(scene)
         prevContacts = contacts; prevTriggers = triggers
     }
+
+    private fun candidatePairs(bodies: List<Body>): List<Pair<Int, Int>> {
+        if (bodies.size < 12 || !broadphase) {
+            val all = ArrayList<Pair<Int, Int>>()
+            for (i in bodies.indices) for (j in i + 1 until bodies.size) all.add(i to j)
+            lastBroadphasePairs = all.size; lastBruteForcePairs = all.size
+            return all
+        }
+        val boxes = bodies.mapIndexed { i, b ->
+            val hx = if (b.sphere) b.r else b.hx
+            val hy = if (b.sphere) b.r else b.hy
+            val hz = if (b.sphere) b.r else b.hz
+            Aabb3(b.cx - hx, b.cy - hy, b.cz - hz, b.cx + hx, b.cy + hy, b.cz + hz, i)
+        }
+        val hash = SpatialHash3D(cellSize)
+        val pairs = hash.candidatePairs(boxes)
+        lastBroadphasePairs = hash.lastPairCount; lastBruteForcePairs = hash.lastBruteForcePairs
+        return pairs
+    }
+
+    data class CastResult(val go: GameObject, val distance: Float, val nx: Float, val ny: Float, val nz: Float)
+
+    /** Sweeps a sphere through the 3D colliders. */
+    fun sphereCast(scene: Scene, ox: Float, oy: Float, oz: Float, dx: Float, dy: Float, dz: Float,
+                   radius: Float, maxDist: Float, tag: String = "", ignore: GameObject? = null): CastResult? {
+        val shapes = ArrayList<CastShape3>()
+        val owners = ArrayList<GameObject>()
+        for (go in scene.objects) {
+            if (!go.isActiveInHierarchy()) continue
+            if (tag.isNotEmpty() && go.tag != tag) continue
+            val col = go.get<Collider3D>() ?: continue
+            val b = Body(go, null, col); refresh(b)
+            shapes.add(CastShape3(b.cx, b.cy, b.cz, b.hx, b.hy, b.hz, b.sphere, b.r, shapes.size))
+            owners.add(go)
+        }
+        val hit = ShapeCasts.sphereCast(shapes, ox, oy, oz, dx, dy, dz, radius, maxDist) { owners[it] !== ignore } ?: return null
+        return CastResult(owners[hit.index], hit.distance, hit.nx, hit.ny, hit.nz)
+    }
+
+    private class RigidForceAdapter(val go: GameObject, val rb: Rigidbody3D) : ForcePoint {
+        private val w = go.computeWorld3()
+        override val x: Float = w[12]
+        override val y: Float = w[13]
+        override val z: Float = w[14]
+        override val mass: Float = rb.mass.coerceAtLeast(0.001f)
+        override val active: Boolean = go.isActiveInHierarchy() && rb.bodyType == 0
+        override var vx: Float get() = rb.vx; set(v) { rb.vx = v }
+        override var vy: Float get() = rb.vy; set(v) { rb.vy = v }
+        override var vz: Float get() = rb.vz; set(v) { rb.vz = v }
+    }
+
+    private fun forceBodies(scene: Scene, tag: String): List<ForcePoint> {
+        val out = ArrayList<ForcePoint>()
+        for (go in scene.objects) {
+            if (tag.isNotEmpty() && go.tag != tag) continue
+            val rb = go.get<Rigidbody3D>() ?: continue
+            out.add(RigidForceAdapter(go, rb))
+        }
+        return out
+    }
+
+    fun explode(scene: Scene, x: Float, y: Float, z: Float, radius: Float, force: Float, tag: String = "", falloff: Int = 0): Int =
+        ForceFields.explode(forceBodies(scene, tag), x, y, z, radius, force, Falloff.values().getOrElse(falloff) { Falloff.LINEAR })
+
+    fun wind(scene: Scene, fx: Float, fy: Float, fz: Float, dt: Float, tag: String = ""): Int =
+        ForceFields.wind(forceBodies(scene, tag), fx, fy, fz, dt)
 
     /** Ground support against Terrain heightfields: lands, walks and climbs slopes. */
     private fun terrainSupport(scene: Scene) {
@@ -134,7 +213,7 @@ class PhysicsWorld3D {
                     rb.vy = if (e > 0.05f && rb.vy < -3f) -rb.vy * e else 0f
                 }
                 rb.grounded = true
-                val fr = (rb.friction * fixedDt * 6f).coerceAtMost(1f)
+                val fr = (rb.friction * clock.fixedDt * 6f).coerceAtMost(1f)
                 rb.vx *= 1f - fr
                 rb.vz *= 1f - fr
             }

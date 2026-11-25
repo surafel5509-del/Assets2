@@ -6,7 +6,7 @@ import com.sengine.engine.core.SceneSerializer
 import org.json.JSONObject
 import java.io.File
 
-/** A game project stored in app-private storage. */
+/** A game project stored in app-private storage. v3 projects carry a schema version + settings. */
 class Project(val dir: File) {
     val name: String get() = dir.name
     val assetsDir = File(dir, "assets")
@@ -16,6 +16,12 @@ class Project(val dir: File) {
     var startScene = "Main"
     var created = System.currentTimeMillis()
     var orientation = 0 // 0 landscape, 1 portrait
+    var schemaVersion = EngineInfo.SCHEMA_VERSION
+    var engineVersion = EngineInfo.VERSION
+    /** Applied at play start; editable from the editor's Project Settings dialog. */
+    var settings = ProjectSettings()
+    /** Descriptions of migrations applied when this project was opened. */
+    val appliedMigrations = ArrayList<String>()
 
     init {
         if (metaFile.exists()) {
@@ -24,6 +30,17 @@ class Project(val dir: File) {
                 startScene = o.optString("startScene", "Main")
                 created = o.optLong("created", created)
                 orientation = o.optInt("orientation", 0)
+                engineVersion = o.optString("engineVersion", EngineInfo.VERSION)
+                schemaVersion = o.optInt("schemaVersion", 0)
+                settings = ProjectSettings.fromJson(o.optJSONObject("settings"))
+                if (settings.autoMigrate && schemaVersion < EngineInfo.SCHEMA_VERSION) {
+                    appliedMigrations.addAll(ProjectSchema.migrate(o))
+                    schemaVersion = o.optInt("schemaVersion", EngineInfo.SCHEMA_VERSION)
+                    engineVersion = o.optString("engineVersion", EngineInfo.VERSION)
+                    settings = ProjectSettings.fromJson(o.optJSONObject("settings"))
+                    metaFile.writeText(o.toString(2)) // persist the upgrade once
+                }
+                if (!o.has("settings")) saveMeta()
             } catch (_: Exception) {
             }
         }
@@ -33,12 +50,19 @@ class Project(val dir: File) {
         dir.mkdirs(); assetsDir.mkdirs(); scenesDir.mkdirs()
         val o = JSONObject()
         o.put("name", name)
-        o.put("engine", "S Engine 1.0")
+        o.put("engine", "${EngineInfo.ENGINE_ID} ${EngineInfo.VERSION}")
+        o.put("engineVersion", EngineInfo.VERSION)
+        o.put("edition", EngineInfo.EDITION)
+        o.put("schemaVersion", EngineInfo.SCHEMA_VERSION)
         o.put("startScene", startScene)
         o.put("created", created)
         o.put("orientation", orientation)
+        o.put("settings", settings.toJson())
         metaFile.writeText(o.toString(2))
     }
+
+    /** Persists edited [settings] without touching scenes or assets. */
+    fun saveSettings() = saveMeta()
 
     fun sceneFile(n: String) = File(scenesDir, "$n.scene.json")
     fun sceneExists(n: String) = sceneFile(n).exists()

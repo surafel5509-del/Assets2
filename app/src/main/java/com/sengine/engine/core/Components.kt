@@ -18,13 +18,15 @@ object ComponentRegistry {
         "Collider3D" to { Collider3D() },
         "Terrain" to { Terrain() },
         "Steering" to { Steering() },
+        "Joint2D" to { Joint2D() },
+        "Joint3D" to { Joint3D() },
     )
 
     val categories: LinkedHashMap<String, List<String>> = linkedMapOf(
         "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "Camera"),
         "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light", "Terrain"),
-        "Physics 2D" to listOf("Rigidbody2D", "Collider2D"),
-        "Physics 3D" to listOf("Rigidbody3D", "Collider3D"),
+        "Physics 2D" to listOf("Rigidbody2D", "Collider2D", "Joint2D"),
+        "Physics 3D" to listOf("Rigidbody3D", "Collider3D", "Joint3D"),
         "AI" to listOf("Steering"),
         "Scripting & Audio" to listOf("Script", "AudioSource"),
     )
@@ -96,6 +98,20 @@ class Camera2D : Component() {
     var postIntensity = 1f
     var postShader = ""
     var shake = 0f // runtime
+    // v3 camera rig
+    var priority = 0
+    var deadZoneW = 0f
+    var deadZoneH = 0f
+    var lookAhead = 0f
+    var boundsEnabled = false
+    var boundMinX = -30f
+    var boundMaxX = 30f
+    var boundMinY = -20f
+    var boundMaxY = 20f
+    var minimumZoom = 0.4f
+    var maximumZoom = 4f
+    var traumaDecay = 1.6f
+    var shakeScale = 1f
 
     override fun props() = listOf(
         Prop.F("Size", { size }, { size = it.coerceAtLeast(0.1f) }),
@@ -105,6 +121,19 @@ class Camera2D : Component() {
         Prop.Choice("Post FX", ComponentRegistry.POST_FX, { postFx }, { postFx = it }),
         Prop.F("FX Intensity", { postIntensity }, { postIntensity = it.coerceIn(0f, 4f) }, 0.05f),
         Prop.Asset("FX Shader", AssetKind.SHADER, { postShader }, { postShader = it }),
+        Prop.I("Priority", { priority }, { priority = it }),
+        Prop.F("Dead Zone W", { deadZoneW }, { deadZoneW = it.coerceAtLeast(0f) }, 0.1f),
+        Prop.F("Dead Zone H", { deadZoneH }, { deadZoneH = it.coerceAtLeast(0f) }, 0.1f),
+        Prop.F("Look Ahead", { lookAhead }, { lookAhead = it.coerceIn(0f, 2f) }, 0.05f),
+        Prop.B("Clamp To Bounds", { boundsEnabled }, { boundsEnabled = it }),
+        Prop.F("Bound Min X", { boundMinX }, { boundMinX = it }),
+        Prop.F("Bound Max X", { boundMaxX }, { boundMaxX = it }),
+        Prop.F("Bound Min Y", { boundMinY }, { boundMinY = it }),
+        Prop.F("Bound Max Y", { boundMaxY }, { boundMaxY = it }),
+        Prop.F("Min Zoom", { minimumZoom }, { minimumZoom = it.coerceIn(0.05f, 1f) }, 0.05f),
+        Prop.F("Max Zoom", { maximumZoom }, { maximumZoom = it.coerceIn(1f, 20f) }),
+        Prop.F("Trauma Decay", { traumaDecay }, { traumaDecay = it.coerceIn(0.1f, 10f) }, 0.1f),
+        Prop.F("Shake Scale", { shakeScale }, { shakeScale = it.coerceIn(0f, 4f) }, 0.1f),
     )
 
     override fun resetRuntime() { shake = 0f }
@@ -322,6 +351,17 @@ class Camera3D : Component() {
     var postIntensity = 1f
     var postShader = ""
     var shake = 0f
+    // v3 camera rig
+    var priority = 0
+    var deadZoneW = 0f
+    var lookAhead = 0f
+    var boundsEnabled = false
+    var boundMinX = -150f
+    var boundMaxX = 150f
+    var boundMinZ = -150f
+    var boundMaxZ = 150f
+    var traumaDecay = 1.6f
+    var shakeScale = 1f
 
     override fun props() = listOf(
         Prop.F("Field of View", { fov }, { fov = it.coerceIn(10f, 150f) }, 1f),
@@ -338,6 +378,16 @@ class Camera3D : Component() {
         Prop.Choice("Post FX", ComponentRegistry.POST_FX, { postFx }, { postFx = it }),
         Prop.F("FX Intensity", { postIntensity }, { postIntensity = it.coerceIn(0f, 4f) }, 0.05f),
         Prop.Asset("FX Shader", AssetKind.SHADER, { postShader }, { postShader = it }),
+        Prop.I("Priority", { priority }, { priority = it }),
+        Prop.F("Dead Zone", { deadZoneW }, { deadZoneW = it.coerceAtLeast(0f) }, 0.1f),
+        Prop.F("Look Ahead", { lookAhead }, { lookAhead = it.coerceIn(0f, 2f) }, 0.05f),
+        Prop.B("Clamp To Bounds", { boundsEnabled }, { boundsEnabled = it }),
+        Prop.F("Bound Min X", { boundMinX }, { boundMinX = it }),
+        Prop.F("Bound Max X", { boundMaxX }, { boundMaxX = it }),
+        Prop.F("Bound Min Z", { boundMinZ }, { boundMinZ = it }),
+        Prop.F("Bound Max Z", { boundMaxZ }, { boundMaxZ = it }),
+        Prop.F("Trauma Decay", { traumaDecay }, { traumaDecay = it.coerceIn(0.1f, 10f) }, 0.1f),
+        Prop.F("Shake Scale", { shakeScale }, { shakeScale = it.coerceIn(0f, 4f) }, 0.1f),
     )
 
     override fun resetRuntime() { shake = 0f }
@@ -577,4 +627,49 @@ class Steering : Component() {
     companion object {
         val MODES = listOf("Seek", "Flee", "Pursue", "Wander", "Patrol")
     }
+}
+
+/**
+ * Constraint between this object and [target], solved every physics step.
+ * mode: 0 Distance, 1 Spring, 2 Rope (pull only), 3 Weld.
+ */
+class Joint2D : Component() {
+    override val type = "Joint2D"
+    var mode = 0
+    var target = ""
+    var restLength = 0f // 0 = use the distance at play start
+    var stiffness = 0.85f
+    var damping = 0.08f
+    var breakForce = 0f // 0 = never breaks
+
+    override fun props() = listOf(
+        Prop.Choice("Mode", MODES, { mode }, { mode = it }),
+        Prop.S("Target", { target }, { target = it }),
+        Prop.F("Rest Length", { restLength }, { restLength = it.coerceAtLeast(0f) }, 0.1f),
+        Prop.F("Stiffness", { stiffness }, { stiffness = it.coerceIn(0f, 1f) }, 0.05f),
+        Prop.F("Damping", { damping }, { damping = it.coerceIn(0f, 1f) }, 0.01f),
+        Prop.F("Break Force", { breakForce }, { breakForce = it.coerceAtLeast(0f) }),
+    )
+
+    companion object { val MODES = listOf("Distance", "Spring", "Rope", "Weld") }
+}
+
+/** 3D counterpart of [Joint2D] (XYZ distance / spring / rope / weld). */
+class Joint3D : Component() {
+    override val type = "Joint3D"
+    var mode = 0
+    var target = ""
+    var restLength = 0f
+    var stiffness = 0.85f
+    var damping = 0.08f
+    var breakForce = 0f
+
+    override fun props() = listOf(
+        Prop.Choice("Mode", Joint2D.MODES, { mode }, { mode = it }),
+        Prop.S("Target", { target }, { target = it }),
+        Prop.F("Rest Length", { restLength }, { restLength = it.coerceAtLeast(0f) }, 0.1f),
+        Prop.F("Stiffness", { stiffness }, { stiffness = it.coerceIn(0f, 1f) }, 0.05f),
+        Prop.F("Damping", { damping }, { damping = it.coerceIn(0f, 1f) }, 0.01f),
+        Prop.F("Break Force", { breakForce }, { breakForce = it.coerceAtLeast(0f) }),
+    )
 }
