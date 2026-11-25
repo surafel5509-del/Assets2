@@ -48,5 +48,5 @@ if [ "$step" = "run" ] || [ "$step" = "all" ]; then
   $J -cp "out/test:out/main:$STUBS:$JSON:$RHINO:$AJ:$STD:$ANN" LocalRunnerKt \
     com.sengine.EngineUpgradeTest \
     com.sengine.EngineSimulationTest com.sengine.EngineV2Test com.sengine.EngineV3Test \
-    com.sengine.BigGamesTest com.sengine.ApkExportTest
+    com.sengine.BigGamesTest com.sengine.AiGameClientTest com.sengine.ApkExportTest
 fi

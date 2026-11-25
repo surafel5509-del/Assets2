@@ -1,114 +1,23 @@
 import http from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { validateGameSpec, normalizeGameSpec, toSengineProject, ENGINE_COMPONENTS, CHOICES } from "./schema.js";
 
-const PORT = Number(process.env.PORT || 3000);
-const MODEL = process.env.OPENAI_MODEL || "z-ai/glm-5.3-flash";
-const API_BASE = (process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "");
-const REASONING_ENABLED = process.env.OPENROUTER_REASONING_ENABLED !== "false";
-const API_KEY = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
+const VERSION = "0.3.0";
 const MAX_BODY = 1_000_000;
+const MAX_PROMPT = 4_000;
 const MAX_REPAIRS = 2;
-const COMPONENTS = new Set([
-  "SpriteRenderer", "TextRenderer", "Camera", "Rigidbody2D", "Collider2D",
-  "Script", "ParticleEmitter", "AudioSource", "Animator", "MeshRenderer",
-  "Camera3D", "Light", "Rigidbody3D", "Collider3D", "Terrain", "Steering",
-  "Joint2D", "Joint3D"
-]);
+const MODEL_ATTEMPTS = 3;
+const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
+const DEFAULT_GENERATION_TIMEOUT_MS = 540_000;
 
-const json = (res, status, value) => {
-  res.writeHead(status, {
-    "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": process.env.CORS_ORIGIN || "*",
-    "cache-control": "no-store"
-  });
-  res.end(JSON.stringify(value));
-};
+const COMPONENT_FIELD_HELP = Object.entries(ENGINE_COMPONENTS)
+  .map(([type, fields]) => `${type}: ${Object.keys(fields).map(k => `${k}(${fields[k]})`).join(", ")}`)
+  .join("\n");
+const CHOICE_HELP = Object.entries(CHOICES).map(([key, values]) => `${key}=${values.join("|")}`).join("; ");
 
-async function readBody(req) {
-  let raw = "";
-  for await (const chunk of req) {
-    raw += chunk;
-    if (raw.length > MAX_BODY) throw Object.assign(new Error("Request body too large"), { status: 413 });
-  }
-  try { return raw ? JSON.parse(raw) : {}; }
-  catch { throw Object.assign(new Error("Body must be valid JSON"), { status: 400 }); }
-}
-
-function validateGameSpec(spec) {
-  const errors = [];
-  if (!spec || typeof spec !== "object" || Array.isArray(spec)) return ["spec must be an object"];
-  if (!spec.project || typeof spec.project.name !== "string" || !spec.project.name.trim()) errors.push("project.name is required");
-  if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) errors.push("at least one scene is required");
-  if (spec.scenes?.length > 30) errors.push("maximum 30 scenes are supported");
-  const assets = Array.isArray(spec.assets) ? spec.assets : [];
-  const assetNames = new Set(assets.map(a => a?.name).filter(Boolean));
-  for (const [si, scene] of (spec.scenes || []).entries()) {
-    if (!scene || typeof scene.name !== "string" || !scene.name.trim()) errors.push(`scenes[${si}].name is required`);
-    if (!Array.isArray(scene.objects)) { errors.push(`scenes[${si}].objects must be an array`); continue; }
-    if (scene.objects.length > 2000) errors.push(`scenes[${si}] exceeds 2000 objects`);
-    const ids = new Set();
-    for (const [oi, obj] of scene.objects.entries()) {
-      const at = `scenes[${si}].objects[${oi}]`;
-      if (!Number.isInteger(obj.id) || obj.id < 1) errors.push(`${at}.id must be a positive integer`);
-      else if (ids.has(obj.id)) errors.push(`${at}.id is duplicated`);
-      else ids.add(obj.id);
-      if (typeof obj.name !== "string" || !obj.name.trim()) errors.push(`${at}.name is required`);
-      if (!Array.isArray(obj.components)) { errors.push(`${at}.components must be an array`); continue; }
-      for (const [ci, component] of obj.components.entries()) {
-        if (!COMPONENTS.has(component?.type)) errors.push(`${at}.components[${ci}] uses unsupported component type: ${component?.type}`);
-        if (component?.type === "Script" && component.script && !assetNames.has(component.script)) {
-          errors.push(`${at} references missing script asset: ${component.script}`);
-        }
-      }
-    }
-    for (const obj of scene.objects) {
-      if (obj.parent != null && !ids.has(Number(obj.parent))) errors.push(`object ${obj.name} references missing parent ${obj.parent}`);
-    }
-  }
-  for (const asset of assets) {
-    if (!asset || typeof asset.name !== "string" || typeof asset.content !== "string") {
-      errors.push("each asset requires name and string content"); continue;
-    }
-    if (asset.name.includes("..") || asset.name.startsWith("/") || asset.name.includes("\\\\") || asset.name.includes("/")) {
-      errors.push(`unsafe asset path: ${asset.name}`);
-    }
-  }
-  return errors;
-}
-
-function toSengineProject(spec) {
-  const scenes = spec.scenes.map(scene => ({
-    name: scene.name,
-    gravityX: scene.gravityX ?? 0,
-    gravityY: scene.gravityY ?? -9.81,
-    gravityZ: scene.gravityZ ?? 0,
-    gravity3D: scene.gravity3D ?? -9.81,
-    ambient: scene.ambient ?? "#FF4A505A",
-    fogColor: scene.fogColor ?? "#FF9DB4CF",
-    fogStart: scene.fogStart ?? 20,
-    fogEnd: scene.fogEnd ?? 80,
-    fog: scene.fog ?? false,
-    nextId: Math.max(1, ...(scene.objects || []).map(o => Number(o.id) + 1)),
-    objects: scene.objects.map(o => ({
-      id: o.id, name: o.name, tag: o.tag ?? "Untagged", active: o.active ?? true,
-      order: o.order ?? 0, x: o.x ?? 0, y: o.y ?? 0, rotation: o.rotation ?? 0,
-      scaleX: o.scaleX ?? 1, scaleY: o.scaleY ?? 1, z: o.z ?? 0,
-      rotX: o.rotX ?? 0, rotY: o.rotY ?? 0, scaleZ: o.scaleZ ?? 1,
-      ...(o.parent == null ? {} : { parent: o.parent }),
-      components: o.components
-    }))
-  }));
-  return {
-    format: "s-engine-project",
-    formatVersion: 1,
-    project: { name: spec.project.name, startScene: spec.project.startScene || scenes[0].name, orientation: spec.project.orientation ?? 0 },
-    scenes,
-    assets: spec.assets || [],
-    notes: spec.notes || []
-  };
-}
-
-const PLANNER_PROMPT = "You are the Game Director and Planner for S Engine. Turn the user request into an implementable game design. Return JSON with keys title, genre, coreLoop, controls, objective, winCondition, loseCondition, scenes (array of name and purpose), mechanics, requiredObjects (name, role and components), hud, progression, visualStyle, audioNotes, constraints and implementationNotes. Prefer a complete playable 2D game unless 3D is requested. Specify mobile touch controls and screen layout. Do not invent engine capabilities or reveal chain-of-thought.";
+const PLANNER_PROMPT = "You are the Game Director and Planner for S Engine. Turn the user request into an implementable game design. Return JSON with keys title, genre, coreLoop, controls, objective, winCondition, loseCondition, scenes (array of name and purpose), mechanics, requiredObjects (name, role and components), hud, progression, visualStyle, audioNotes, constraints and implementationNotes. Prefer a complete playable 2D game unless 3D is requested. Specify mobile touch controls and screen layout. Plan only supported S Engine components and script APIs. Do not invent engine capabilities or reveal chain-of-thought.";
 
 const SYSTEM_PROMPT = `You are the autonomous game-generation engineer for S Engine 3.0, an existing Android Kotlin/OpenGL ES game engine.
 Return ONLY one JSON object matching this GameSpec:
@@ -126,182 +35,480 @@ Return ONLY one JSON object matching this GameSpec:
  "assets":[{"name":"Player.js","content":"function start() {}\\nfunction update(dt) {}"}],
  "notes":[]
 }
-IMPORTANT COMPONENT SERIALIZATION: Component.fromJson reads inspector property names exactly as written (case-sensitive, including spaces), not lowercase API aliases. For example SpriteRenderer uses "Shape":"Square", "Color":"#FFFFFFFF", "Texture":"", "Flip X":false, "Flip Y":false, "Shader":"", "Shader Param":1, "Screen Space UI":false. TextRenderer uses "Text", "Screen Space UI", "Size", "Color", "Align":"Center", "Bold". Rigidbody2D uses "Body Type":"Dynamic"|"Kinematic"|"Static", "Mass", "Gravity Scale", "Linear Drag", "Bounciness", "Friction", "Velocity X", "Velocity Y", "Max Speed", "Continuous Collision". Collider2D uses "Shape":"Box"|"Circle", "Width", "Height", "Radius", "Offset X", "Offset Y", "Is Trigger", "Layer", "Mask". Camera uses "Size", "Background", "Follow Target", "Follow Smoothing", "Post FX", "FX Intensity", "FX Shader", "Priority". Script uses "Script":"file.js", "Params":"". Choice fields are their visible string labels, not numeric indices. Color values are #AARRGGBB.
+ENGINE CONTRACT (exact, case-sensitive serialized property names; never use lowercase aliases):
+${COMPONENT_FIELD_HELP}
+Choice values: ${CHOICE_HELP}. Color values are #AARRGGBB or #RRGGBB.
+Component.fromJson ignores unknown fields and silently skips unsupported component types; generation must not rely on that behavior.
 SCRIPT API CONTRACT (only use these actual globals and methods):
-- Lifecycle functions: start(), update(dt), onCollision(other), onTrigger(other), onTriggerExit(other), onTap(), onDestroy(), onStop().
-- self/transform/gameObject refer to the attached object. Properties: name, tag, active, x, y, rotation, scaleX, scaleY, worldX, worldY, vx, vy, grounded, visible, color, text. Methods: setPosition(x,y), move(dx,dy), rotate(deg), setVelocity(vx,vy), addForce(fx,fy), destroy(), child(name), distanceTo(other), overlaps(other), is(other), send("fn",arg), hasComponent(type), setComponentEnabled(type,bool), setTexture(name), burst(n), setEmitting(bool), play("Run.anim"), stopAnimation().
-- input: axisX, axisY, a, b, aDown, bDown, touching, tapped, touchX, touchY.
-- scene: find(name), findAll(tag), count(tag), spawn(name,x,y), load(sceneName), reload(), camera, gravityX, gravityY.
-- time: time.time, time.frame, time.fps. audio.play("file.wav"), audio.beep(), audio.stopAll().
-- helpers: log(), warn(), error(), after(seconds,fn), every(seconds,fn), random(a,b), randomInt(a,b), clamp(v,a,b), lerp(a,b,t).
-- events.on/once/off/emit; coroutine(function*(){ yield waitSec(seconds); yield waitFrames(n); }); state.set/get/is/elapsed; persist.key; game.save/load; camera.setBounds/shake/zoomTo.
-Use only these API names. Do not invent DOM, browser, Unity, Godot, Phaser or arbitrary engine functions.
-Allowed component types only: SpriteRenderer, TextRenderer, Camera, Rigidbody2D, Collider2D, Script, ParticleEmitter, AudioSource, Animator, MeshRenderer, Camera3D, Light, Rigidbody3D, Collider3D, Terrain, Steering, Joint2D, Joint3D.
-Use exact component names and engine-native serialized fields. Scene JSON uses name, gravityX/Y/Z, gravity3D, ambient, fogColor, fogStart, fogEnd, fog, nextId, objects. Object JSON uses id,name,tag,active,order,x,y,rotation,scaleX,scaleY,z,rotX,rotY,scaleZ,parent,components.
-Scripts are Rhino JavaScript assets stored under assets/. Script component.script must exactly equal an asset name. Only use the engine's documented S Engine scripting API; never invent APIs. Prefer a complete playable 2D game unless 3D is requested. Include menu/title, game loop, player controls, obstacles/enemies, score/HUD, win/loss, restart and progression as appropriate. Use deterministic simple mechanics and built-in shapes when art is unavailable. IDs must be unique within each scene; parent IDs must exist. Every script must be syntactically valid, defensive, and use engine-supported APIs. Add concise notes for any requested feature the engine cannot represent. Return valid JSON only.`;
+- Lifecycle functions: start(), update(dt), onCollision(other), onTrigger(other), onTriggerExit(other), onTap(), onDestroy(), onStop(), onFixedUpdate(dt), onLateUpdate(dt), onEnable(), onDisable(), onHotReload().
+- self/transform/gameObject refer to the attached object. Properties: name, tag, active, x, y, rotation, scaleX, scaleY, worldX, worldY, vx, vy, grounded, visible, color, text. Methods: setPosition(x,y), move(dx,dy), rotate(deg), setVelocity(vx,vy), addForce(fx,fy), destroy(), child(name), distanceTo(other), distanceTo3(other), overlaps(other), is(other), send("fn",arg), hasComponent(type), setComponentEnabled(type,bool), setTexture(name), burst(n), setEmitting(bool), play("Run.anim"), stopAnimation(), isAnimationFinished(), setAnimSpeed(s), setShaderParam(v), setMeshColor(color), forward(), setSky(color), getParent(), setColor(color), setIntensity(v), setSize(v).
+- input: axisX, axisY, a, b, aDown, bDown, touching, tapped, touchX, touchY, key(name).
+- scene: find(name), findAll(tag), count(tag), spawn(name,x,y), load(sceneName), reload(), camera, gravityX, gravityY, broadcast(name,arg), obtain(pool), release(pool,object), raycast(...), raycastAll(...), terrainHeight(x,z), getCamera3D(), gravity3D(v).
+- time: time.time, time.frame, time.fps. audio.play("file.wav"), audio.beep(freq,duration), audio.stopAll(), audio.play3d(...), audio.play3dLoop(...), audio.move3d(...), audio.stop3d(...), audio.setFalloff(...), audio.setBusVolume(...), audio.playMusic(...), audio.pauseMusic(), audio.resumeMusic(), audio.setMusicVolume(...).
+- helpers: log(), warn(), error(), after(seconds,fn), every(seconds,fn), random(a,b), randomInt(a,b), clamp(v,a,b), lerp(a,b,t), waitSec(seconds), waitFrames(n).
+- events.on/once/off/emit/last/count/clear; state.set/get/is/elapsed/update; persist.key; game.save/load/has/clear/keys/emit/getVersion/getEdition/getSchema/fixedStep/instructions/diagnostics; camera.setBounds/shake/zoomTo/snap/panTo/setPriority/activate/stopPath/playPath; physics.circleCast/boxCast/sphereCast/hitDistance/explode/attract/wind/joint/joint3; coroutine(function*(){ yield waitSec(seconds); yield waitFrames(n); }).
+Use ES5-style compatible Rhino JavaScript (var, function, function* generators). Do not use let, const, class, async/await, arrow functions, template literals, optional chaining, nullish coalescing, eval, new Function, DOM, browser, Node.js, Unity, Godot, Phaser, Three.js, Babylon, fetch, XMLHttpRequest, setTimeout, setInterval, console, or hardcoded keys.
+Scripts are text assets stored under assets/. A Script component MUST use the exact property "Script" (capital S) whose value equals an asset name ending in .js. Every scene needs a Camera or Camera3D and at least one Script. IDs must be unique positive integers within each scene; parent IDs must exist and must not form cycles. Include mobile touch controls and a useful playable loop with score/HUD, obstacles/enemies, win/loss and restart as appropriate. Use built-in shapes/meshes; do not claim binary art or audio generation. Add concise notes for any requested feature the engine cannot represent. Return valid JSON only.`;
 
 const QA_PROMPT = `You are the independent QA reviewer for an S Engine GameSpec. Review the previous assistant JSON carefully.
-Check JSON/game structure, unique IDs, parent references, allowed component types, Script asset references, whether the requested game has a playable loop, controls, collision/score/end/restart flow, and whether scripts avoid invented APIs.
+Check JSON/game structure, exact component/property names, unique IDs, valid parents, allowed component types, Script asset references, syntactically valid Rhino scripts using only documented APIs, whether the requested game has a mobile playable loop, controls, collision/score/end/restart flow, and whether any unsupported feature was falsely claimed.
 Return ONLY JSON: {"pass":true|false,"issues":["specific actionable issue"],"summary":"short assessment"}.
 Do not reveal hidden chain-of-thought. Report only concise findings.`;
 
-async function modelCall(messages, model) {
-  if (!API_KEY) throw Object.assign(new Error("OPENROUTER_API_KEY is not configured on the Game Agent service"), { status: 503 });
-  const body = {
-    model: model || MODEL,
-    temperature: 0.25,
-    response_format: { type: "json_object" },
-    messages,
-    ...(REASONING_ENABLED ? { reasoning: { enabled: true } } : {})
+function configFromEnv(env) {
+  return {
+    port: Number(env.PORT || 3000),
+    model: env.OPENAI_MODEL || "z-ai/glm-5.3-flash",
+    apiBase: (env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, ""),
+    reasoningEnabled: env.OPENROUTER_REASONING_ENABLED !== "false",
+    apiKey: env.OPENROUTER_API_KEY || env.OPENAI_API_KEY,
+    siteUrl: env.OPENROUTER_SITE_URL || "https://game-agent-production.up.railway.app",
+    appName: env.OPENROUTER_APP_NAME || "S Engine Game Agent",
+    apiToken: env.AGENT_API_TOKEN,
+    corsOrigin: env.CORS_ORIGIN || "*",
+    nodeEnv: env.NODE_ENV || "development",
   };
-  const response = await fetch(`${API_BASE}/chat/completions`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${API_KEY}`,
-      "content-type": "application/json",
-      "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://game-agent-production.up.railway.app",
-      "X-Title": process.env.OPENROUTER_APP_NAME || "S Engine Game Agent"
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120000)
+}
+
+const json = (res, status, value, requestId, corsOrigin) => {
+  if (res.headersSent || res.writableEnded) return;
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": corsOrigin || "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization",
+    "cache-control": "no-store",
+    "x-request-id": requestId || "unknown",
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(data.error?.message || `Model request failed (${response.status})`), { status: 502 });
-  const message = data.choices?.[0]?.message;
-  if (!message?.content) throw Object.assign(new Error("Model returned an empty response"), { status: 502 });
-  return message;
+  res.end(JSON.stringify(value));
+};
+
+function errorStatus(error) {
+  return Number.isInteger(error?.status) && error.status >= 400 && error.status < 600 ? error.status : 500;
 }
 
-function parseModelJson(content, label) {
-  try { return JSON.parse(content); }
-  catch {
-    const cleaned = content.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
-    try { return JSON.parse(cleaned); }
-    catch { throw Object.assign(new Error(`${label} response was not valid JSON`), { status: 502 }); }
+function safeError(error, requestId) {
+  const status = errorStatus(error);
+  const redact = text => text
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[redacted]")
+    .slice(0, 500);
+  const message = typeof error?.message === "string"
+    ? redact(error.message)
+    : "Game Agent request failed";
+  return {
+    error: message,
+    details: Array.isArray(error?.details) ? error.details.map(x => redact(String(x)).slice(0, 300)).slice(0, 30) : [],
+    qaSummary: typeof error?.qaSummary === "string" ? redact(error.qaSummary).slice(0, 1000) : null,
+    requestId,
+  };
+}
+
+async function readBody(req) {
+  const declared = Number(req.headers["content-length"] || 0);
+  if (Number.isFinite(declared) && declared > MAX_BODY) {
+    req.resume();
+    throw Object.assign(new Error("Request body too large"), { status: 413 });
   }
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY) {
+      req.resume();
+      throw Object.assign(new Error("Request body too large"), { status: 413 });
+    }
+    chunks.push(chunk);
+  }
+  const raw = Buffer.concat(chunks).toString("utf8");
+  try { return raw ? JSON.parse(raw) : {}; }
+  catch { throw Object.assign(new Error("Body must be valid JSON"), { status: 400 }); }
 }
 
-// Preserve OpenRouter's reasoning_details exactly as returned when the assistant turn is replayed.
+function sameToken(expected, supplied) {
+  const a = createHash("sha256").update(String(expected)).digest();
+  const b = createHash("sha256").update(String(supplied)).digest();
+  return timingSafeEqual(a, b);
+}
+
+function isAuthorized(req, apiToken) {
+  if (!apiToken) return true;
+  const header = String(req.headers.authorization || "");
+  if (!header.startsWith("Bearer ")) return false;
+  return sameToken(apiToken, header.slice(7).trim());
+}
+
+function messageText(message) {
+  if (!message) return "";
+  if (typeof message.content === "string") return message.content;
+  if (Array.isArray(message.content)) {
+    return message.content.map(part => typeof part === "string" ? part : (typeof part?.text === "string" ? part.text : "")).join("\n");
+  }
+  return "";
+}
+
 function assistantHistoryMessage(message) {
   return {
     role: "assistant",
-    content: message.content,
-    ...(message.reasoning_details === undefined ? {} : { reasoning_details: message.reasoning_details })
+    content: messageText(message),
+    ...(message?.reasoning_details === undefined ? {} : { reasoning_details: message.reasoning_details }),
   };
 }
 
-async function generate(prompt, options = {}) {
-  const model = options.model || MODEL;
+function balancedJsonObjects(text) {
+  const candidates = [];
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (start < 0) {
+      if (ch === "{") { start = i; depth = 1; inString = false; escaped = false; }
+      continue;
+    }
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === "\"") inString = false;
+      continue;
+    }
+    if (ch === "\"") inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) { candidates.push(text.slice(start, i + 1)); start = -1; }
+    }
+  }
+  return candidates;
+}
+
+export function parseModelJson(content, label) {
+  const raw = typeof content === "string" ? content.trim() : messageText({ content });
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+  const attempts = [cleaned, ...balancedJsonObjects(cleaned)];
+  for (const candidate of attempts) {
+    if (!candidate) continue;
+    try { return JSON.parse(candidate); }
+    catch { /* try the next balanced JSON object */ }
+  }
+  throw Object.assign(new Error(`${label} response was not valid JSON`), { status: 502, retryable: false });
+}
+
+function combinedSignal(signal, timeoutMs) {
+  const signals = [AbortSignal.timeout(timeoutMs)];
+  if (signal) signals.unshift(signal);
+  return AbortSignal.any(signals);
+}
+
+async function callOpenAiCompatible(messages, context) {
+  const { config, model, signal, timeoutMs, fetchImpl } = context;
+  if (!config.apiKey) {
+    throw Object.assign(new Error("AI provider key is not configured on the Game Agent service"), { status: 503, retryable: false });
+  }
+  const payload = {
+    model: model || config.model,
+    temperature: 0.25,
+    response_format: { type: "json_object" },
+    messages,
+    ...(config.reasoningEnabled ? { reasoning: { enabled: true } } : {}),
+  };
+  let response;
+  try {
+    response = await fetchImpl(`${config.apiBase}/chat/completions`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${config.apiKey}`,
+        "content-type": "application/json",
+        "HTTP-Referer": config.siteUrl,
+        "X-Title": config.appName,
+      },
+      body: JSON.stringify(payload),
+      signal: combinedSignal(signal, timeoutMs),
+    });
+  } catch (error) {
+    if (signal?.aborted) throw Object.assign(new Error("Generation cancelled"), { status: 504, retryable: false });
+    const aborted = error?.name === "AbortError" || error?.name === "TimeoutError";
+    throw Object.assign(new Error(aborted ? "AI provider request timed out" : "AI provider transport failed"), { status: 504, retryable: aborted });
+  }
+  if (!response.ok) {
+    const providerStatus = Number(response.status);
+    const retryable = [408, 409, 429, 500, 502, 503, 504].includes(providerStatus);
+    throw Object.assign(new Error(`AI provider request failed (${providerStatus})`), { status: 502, retryable });
+  }
+  const data = await response.json().catch(() => ({}));
+  const message = data.choices?.[0]?.message;
+  const content = messageText(message);
+  if (!content) throw Object.assign(new Error("AI provider returned an empty response"), { status: 502, retryable: true });
+  return { ...message, content };
+}
+
+function delay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(Object.assign(new Error("Generation cancelled"), { status: 504, retryable: false }));
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", onAbort); resolve(); }, ms);
+    function onAbort() { clearTimeout(timer); reject(Object.assign(new Error("Generation cancelled"), { status: 504, retryable: false })); }
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function withRetry(fn, { signal, attempts, retryDelayMs }) {
+  let last;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    if (signal?.aborted) throw Object.assign(new Error("Generation cancelled"), { status: 504, retryable: false });
+    try { return await fn(attempt); }
+    catch (error) {
+      last = error;
+      if (error?.retryable === false || attempt === attempts || signal?.aborted) break;
+      await delay(retryDelayMs * (2 ** (attempt - 1)), signal);
+    }
+  }
+  throw last;
+}
+
+function modelJson(label, message) {
+  return parseModelJson(messageText(message), label);
+}
+
+async function generateGame(prompt, options) {
+  const { callModel, model, signal } = options;
+  const call = (messages, label) => withRetry(
+    attempt => callModel(messages, { model, signal, label, attempt }),
+    { signal, attempts: options.modelAttempts, retryDelayMs: options.retryDelayMs },
+  );
+
   const plannerHistory = [
     { role: "system", content: PLANNER_PROMPT },
-    { role: "user", content: prompt }
+    { role: "user", content: prompt },
   ];
-  const planMessage = await modelCall(plannerHistory, model);
-  const plan = parseModelJson(planMessage.content, "Planner");
+  const planMessage = await call(plannerHistory, "planner");
+  const plan = modelJson("Planner", planMessage);
+  if (!plan || typeof plan !== "object" || Array.isArray(plan)) throw Object.assign(new Error("Planner response was not an object"), { status: 502, retryable: false });
 
-  // Replay the planner assistant turn and its reasoning_details unchanged for the builder.
   const history = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: "Build a complete playable S Engine GameSpec for this request: " + prompt },
     assistantHistoryMessage(planMessage),
-    { role: "user", content: "Use the preceding design plan as the source of truth. Generate the complete GameSpec JSON now. DESIGN PLAN: " + JSON.stringify(plan) }
+    { role: "user", content: "Use the preceding design plan as the source of truth. Generate the complete GameSpec JSON now. DESIGN PLAN: " + JSON.stringify(plan) },
   ];
-  let gameMessage = await modelCall(history, model);
-  let spec = parseModelJson(gameMessage.content, "Game generation");
-  let errors = validateGameSpec(spec);
-  let qaSummary = "Not yet reviewed";
+
+  let gameMessage;
+  let spec;
+  let normalizations = [];
+  let warnings = [];
+  let errors;
   let repairs = 0;
+  let qaSummary = "Not yet reviewed";
+
+  const acceptGameMessage = label => {
+    const normalized = normalizeGameSpec(modelJson(label, gameMessage));
+    spec = normalized.spec;
+    normalizations = [...normalizations, ...normalized.normalizations];
+    warnings = [...warnings, ...normalized.warnings];
+    errors = validateGameSpec(spec);
+  };
+
+  gameMessage = await call(history, "builder");
+  try {
+    acceptGameMessage("Game generation");
+  } catch (error) {
+    if (errorStatus(error) !== 502 || !/not valid JSON/i.test(error.message)) throw error;
+    errors = [`Builder returned malformed JSON: ${error.message}`];
+    gameMessage = { role: "assistant", content: "{}" };
+  }
 
   for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
     if (errors.length) {
       qaSummary = errors.join("; ");
-    } else {
-      const qaHistory = [
-        ...history,
-        assistantHistoryMessage(gameMessage),
-        { role: "user", content: QA_PROMPT }
-      ];
-      const qaMessage = await modelCall(qaHistory, model);
-      const qa = parseModelJson(qaMessage.content, "QA");
-      const qaIssues = Array.isArray(qa.issues) ? qa.issues.filter(x => typeof x === "string") : [];
-      errors = qa.pass === true ? [] : (qaIssues.length ? qaIssues : ["QA did not confirm the game is playable"]);
-      qaSummary = typeof qa.summary === "string" ? qa.summary : (errors.length ? errors.join("; ") : "QA passed");
-      if (!errors.length) break;
       if (attempt === MAX_REPAIRS) break;
       const repairHistory = [
-        ...qaHistory,
-        assistantHistoryMessage(qaMessage),
-        { role: "user", content: "Repair the GameSpec using this QA feedback. Keep valid work and return the complete corrected GameSpec JSON only. QA issues: " + errors.join("; ") }
+        ...history,
+        assistantHistoryMessage(gameMessage),
+        { role: "user", content: "Repair the GameSpec using these deterministic validation errors. Keep valid work and return the complete corrected GameSpec JSON only. ERRORS: " + errors.join("; ") },
       ];
-      gameMessage = await modelCall(repairHistory, model);
-      spec = parseModelJson(gameMessage.content, "Repair");
-      errors = validateGameSpec(spec);
+      gameMessage = await call(repairHistory, "repair");
       repairs++;
+      acceptGameMessage("Repair");
       continue;
     }
-    if (attempt === MAX_REPAIRS) break;
-    const repairHistory = [
+
+    const qaHistory = [
       ...history,
       assistantHistoryMessage(gameMessage),
-      { role: "user", content: "Fix these deterministic S Engine validation errors. Return the complete corrected GameSpec JSON only: " + errors.join("; ") }
+      { role: "user", content: `${QA_PROMPT}\nORIGINAL REQUEST: ${prompt}\nFINAL GAMESPEC: ${JSON.stringify(spec)}` },
     ];
-    gameMessage = await modelCall(repairHistory, model);
-    spec = parseModelJson(gameMessage.content, "Repair");
-    errors = validateGameSpec(spec);
+    let qaMessage;
+    let qa;
+    try {
+      qaMessage = await call(qaHistory, "qa");
+      qa = modelJson("QA", qaMessage);
+    } catch (error) {
+      if (errorStatus(error) !== 502) throw error;
+      qa = { pass: false, issues: [`QA response was malformed: ${error.message}`], summary: "QA could not parse its response" };
+      qaMessage = { role: "assistant", content: JSON.stringify(qa) };
+    }
+    const qaIssues = Array.isArray(qa.issues) ? qa.issues.filter(x => typeof x === "string" && x.trim()).map(x => x.slice(0, 300)) : [];
+    errors = qa.pass === true && qaIssues.length === 0 ? [] : (qaIssues.length ? qaIssues : ["QA did not confirm the game is playable"]);
+    qaSummary = typeof qa.summary === "string" ? qa.summary.slice(0, 1000) : errors.join("; ");
+    if (!errors.length) break;
+    if (attempt === MAX_REPAIRS) break;
+
+    const repairHistory = [
+      ...qaHistory,
+      assistantHistoryMessage(qaMessage),
+      { role: "user", content: "Repair the GameSpec using this QA feedback. Keep valid work and return the complete corrected GameSpec JSON only. QA issues: " + errors.join("; ") },
+    ];
+    gameMessage = await call(repairHistory, "repair");
     repairs++;
+    acceptGameMessage("Repair");
   }
 
-  if (errors.length) throw Object.assign(new Error("Generated game did not pass QA"), { status: 422, details: errors, qaSummary });
+  if (errors.length) {
+    throw Object.assign(new Error("Generated game did not pass QA"), { status: 422, details: errors, qaSummary, retryable: false });
+  }
   return {
     id: randomUUID(),
     plan,
     spec,
     project: toSengineProject(spec),
-    agent: { plannerModel: model, builderModel: model, qaModel: model, repairs, qaSummary },
-    model
+    agent: {
+      plannerModel: model,
+      builderModel: model,
+      qaModel: model,
+      repairs,
+      maxRepairs: MAX_REPAIRS,
+      qaSummary,
+      normalizations,
+      warnings,
+    },
+    model,
   };
 }
 
-const server = http.createServer(async (req, res) => {
+async function handle(req, res, runtime) {
+  const requestId = randomUUID();
+  const controller = new AbortController();
+  let aborted = false;
+  const abort = () => { if (!aborted) { aborted = true; controller.abort(); } };
+  req.on("aborted", abort);
+  res.on("close", () => { if (!res.writableEnded) abort(); });
+
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
-      "access-control-allow-origin": process.env.CORS_ORIGIN || "*",
+      "access-control-allow-origin": runtime.config.corsOrigin,
       "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization"
+      "access-control-allow-headers": "content-type,authorization",
+      "x-request-id": requestId,
     });
     return res.end();
   }
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  if (process.env.AGENT_API_TOKEN && req.method === "POST" && url.pathname.startsWith("/api/")) {
-    const supplied = req.headers.authorization || "";
-    if (supplied !== `Bearer ${process.env.AGENT_API_TOKEN}`) {
-      return json(res, 401, { error: "Unauthorized: configure the Game Agent token in S Engine settings" });
-    }
-  }
+
   if (req.method === "GET" && url.pathname === "/health") {
-    return json(res, 200, { ok: true, service: "S Engine Game Agent", version: "0.2.0", provider: API_BASE.includes("openrouter.ai") ? "openrouter" : "openai", model: MODEL, apiKeyConfigured: Boolean(API_KEY) });
+    return json(res, 200, {
+      ok: true,
+      service: "S Engine Game Agent",
+      version: VERSION,
+      provider: runtime.config.apiBase.includes("openrouter.ai") ? "openrouter" : "openai",
+      model: runtime.config.model,
+      apiKeyConfigured: Boolean(runtime.config.apiKey),
+    }, requestId, runtime.config.corsOrigin);
   }
   if (req.method === "GET" && url.pathname === "/api/agent/status") {
-    return json(res, 200, { ready: Boolean(API_KEY), provider: API_BASE, model: MODEL, reasoningEnabled: REASONING_ENABLED, qaEnabled: true, maxRepairs: MAX_REPAIRS });
+    return json(res, 200, {
+      ready: Boolean(runtime.config.apiKey),
+      provider: runtime.config.apiBase,
+      model: runtime.config.model,
+      reasoningEnabled: runtime.config.reasoningEnabled,
+      qaEnabled: true,
+      maxRepairs: MAX_REPAIRS,
+      modelAttempts: runtime.modelAttempts,
+      modelTimeoutMs: runtime.modelTimeoutMs,
+      authRequired: Boolean(runtime.config.apiToken),
+    }, requestId, runtime.config.corsOrigin);
   }
-  if (req.method === "POST" && url.pathname === "/api/games/validate") {
+
+  if (!isAuthorized(req, runtime.config.apiToken) && req.method === "POST" && url.pathname.startsWith("/api/")) {
+    console.warn(JSON.stringify({ requestId, event: "auth_failed", path: url.pathname }));
+    return json(res, 401, { error: "Unauthorized: configure the Game Agent token in S Engine settings", requestId }, requestId, runtime.config.corsOrigin);
+  }
+
+  if (url.pathname === "/api/games/validate" || url.pathname === "/api/games/generate") {
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed", requestId }, requestId, runtime.config.corsOrigin);
     try {
       const body = await readBody(req);
-      const errors = validateGameSpec(body.spec);
-      return json(res, errors.length ? 422 : 200, { valid: errors.length === 0, errors });
-    } catch (error) { return json(res, error.status || 400, { error: error.message }); }
-  }
-  if (req.method === "POST" && url.pathname === "/api/games/generate") {
-    try {
-      const body = await readBody(req);
-      if (typeof body.prompt !== "string" || body.prompt.trim().length < 8) return json(res, 400, { error: "prompt must contain at least 8 characters" });
-      const result = await generate(body.prompt.trim(), { model: body.model });
-      return json(res, 200, result);
+      if (url.pathname === "/api/games/validate") {
+        const errors = validateGameSpec(body?.spec);
+        return json(res, errors.length ? 422 : 200, {
+          valid: errors.length === 0,
+          errors,
+          supportedComponents: Object.keys(ENGINE_COMPONENTS),
+          requestId,
+        }, requestId, runtime.config.corsOrigin);
+      }
+      const prompt = body?.prompt;
+      if (typeof prompt !== "string" || prompt.trim().length < 8 || prompt.length > MAX_PROMPT) {
+        return json(res, 400, { error: `prompt must contain between 8 and ${MAX_PROMPT} characters`, requestId }, requestId, runtime.config.corsOrigin);
+      }
+      const requestedModel = body?.model;
+      if (requestedModel !== undefined && (typeof requestedModel !== "string" || !/^[A-Za-z0-9._:/-]{1,120}$/.test(requestedModel))) {
+        return json(res, 400, { error: "model must be a safe provider model identifier", requestId }, requestId, runtime.config.corsOrigin);
+      }
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(runtime.generationTimeoutMs)]);
+      const result = await generateGame(prompt.trim(), {
+        ...runtime,
+        model: requestedModel || runtime.config.model,
+        signal,
+      });
+      console.log(JSON.stringify({ requestId, event: "generation_complete", repairs: result.agent.repairs, warnings: result.agent.warnings.length }));
+      return json(res, 200, { ...result, requestId }, requestId, runtime.config.corsOrigin);
     } catch (error) {
-      return json(res, error.status || 500, { error: error.message, details: error.details || [], qaSummary: error.qaSummary || null });
+      const status = errorStatus(error);
+      console.warn(JSON.stringify({ requestId, event: "request_failed", status, message: status >= 500 ? "internal" : "validation" }));
+      return json(res, status, safeError(error, requestId), requestId, runtime.config.corsOrigin);
     }
   }
-  return json(res, 404, { error: "Not found" });
-});
+  return json(res, 404, { error: "Not found", requestId }, requestId, runtime.config.corsOrigin);
+}
 
-server.listen(PORT, "0.0.0.0", () => console.log(`S Engine Game Agent listening on ${PORT}; provider=${API_BASE}; model=${MODEL}`));
+export function createServer(options = {}) {
+  const env = options.env || process.env;
+  const config = configFromEnv(env);
+  const runtime = {
+    config,
+    modelAttempts: options.modelAttempts || MODEL_ATTEMPTS,
+    modelTimeoutMs: options.modelTimeoutMs || DEFAULT_MODEL_TIMEOUT_MS,
+    generationTimeoutMs: options.generationTimeoutMs || DEFAULT_GENERATION_TIMEOUT_MS,
+    retryDelayMs: options.retryDelayMs ?? 200,
+    callModel: options.callModel || ((messages, context) => callOpenAiCompatible(messages, {
+      config,
+      model: context.model,
+      signal: context.signal,
+      timeoutMs: options.modelTimeoutMs || DEFAULT_MODEL_TIMEOUT_MS,
+      fetchImpl: options.fetchImpl || globalThis.fetch,
+    })),
+  };
+  const server = http.createServer((req, res) => {
+    handle(req, res, runtime).catch(error => {
+      console.error(JSON.stringify({ event: "unhandled_request_error", message: "internal" }));
+      json(res, 500, { error: "Internal Game Agent error" }, "unknown", config.corsOrigin);
+    });
+  });
+  server.requestTimeout = runtime.generationTimeoutMs + 30_000;
+  server.headersTimeout = 65_000;
+  return server;
+}
+
+export { configFromEnv, validateGameSpec, normalizeGameSpec, toSengineProject, VERSION };
+
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  const server = createServer();
+  const config = configFromEnv(process.env);
+  server.listen(config.port, "0.0.0.0", () => {
+    console.log(JSON.stringify({ event: "listening", version: VERSION, port: config.port, provider: config.apiBase, model: config.model, nodeEnv: config.nodeEnv }));
+  });
+}

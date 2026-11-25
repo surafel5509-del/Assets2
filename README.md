@@ -189,9 +189,17 @@ Requirements: JDK 17 and Android SDK API 34. Android Studio Hedgehog or newer wo
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Every push to `arena/94ba1396-assets2` and every manual **Build S Engine 3.0.0 APK** workflow run uploads `SEngine-3.0.0-debug-apk` and `SEngine-3.0.0-release-apk` artifacts. A manual **workflow_dispatch** run of the same workflow (or a `[publish-apk]` commit) also places the verified installable files in [`release/`](release/README.md); only those two final APKs are exceptions to the repository's `*.apk` ignore rule. Release builds are signed with the debug key so they install immediately; replace the signing config before publishing to a store.
+Every push to `arena/94ba1396-assets2` and every manual **Build S Engine 3.0.0 APK** workflow run uploads `SEngine-3.0.0-debug-apk` and `SEngine-3.0.0-release-apk` artifacts. The **Android build and unit tests** workflow additionally runs backend syntax/mocked-provider tests, Android unit tests, an advisory lint report, a debug APK assembly/structure check, and uploads `s-engine-debug-apk`. A manual **workflow_dispatch** run of the APK workflow (or a `[publish-apk]` commit) also places the verified installable files in [`release/`](release/README.md); only those two final APKs are exceptions to the repository's `*.apk` ignore rule. Release builds are signed with the debug key so they install immediately; replace the signing config before publishing to a store.
 
 Enable “Install unknown apps” for your browser / file manager, then open the APK.
+
+---
+
+## Autonomous AI Game Agent
+
+The **AI Game** button on the Projects screen sends a prompt to the optional HTTPS service in [`game-agent/`](game-agent/README.md). The backend runs Planner → Builder → independent QA → Repair, validates the GameSpec against the exact `ComponentRegistry` and `SceneSerializer` contracts, and returns a normalized project. The Android client parses that response strictly, writes text script/blueprint assets with `Project.writeAsset`, saves scenes with `Project.saveScene`, verifies the staged project, and opens it in the existing editor. Failed or cancelled imports leave no partial project.
+
+Generation uses only supported components, inspector property names, and documented Rhino/blueprint script APIs. Binary art/audio synthesis, emulator gameplay QA, and automatic APK export are **not implemented**; generated games use built-in shapes, meshes, text, and procedural mechanics. Real-provider generation requires a provider key on the Railway service and optionally `AGENT_API_TOKEN`; ordinary tests use mocked provider responses and never need production credentials. See [`game-agent/README.md`](game-agent/README.md) for environment-variable names, Railway settings, API behavior, and limitations.
 
 ---
 
@@ -211,8 +219,10 @@ app/src/main/java/com/sengine/
 ├── project/                      Project, schema/settings, diagnostics, roadmap,
 │                                 GameState, 12 templates, BigGames
 ├── export/                       standalone APK builder
+├── ai/                          strict Game Agent client, parsing and staged import
 └── ui/                           Projects, Editor, Inspector, Script editor, Player, Build
-app/src/test/java/com/sengine/    39 headless regression tests
+app/src/test/java/com/sengine/    44 headless regression tests (including AI import)
+game-agent/                      Node backend, strict schema, mocked-provider tests, Railway config
 docs/                             Professional Studio Edition + 24-month roadmap
 tools/offline-build/              Gradle-free JVM verification pipeline
 ```

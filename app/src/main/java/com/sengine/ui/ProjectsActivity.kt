@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.text.InputFilter
 import android.view.Gravity
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -191,10 +192,12 @@ class ProjectsActivity : AppCompatActivity() {
             setPadding(dp(12), dp(10), dp(12), dp(10))
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            filters = arrayOf(InputFilter.LengthFilter(4000))
         }
         val token = EditText(this).apply {
             hint = "Agent access token (only if enabled by your server)"
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            filters = arrayOf(InputFilter.LengthFilter(256))
             setText(getSharedPreferences("sengine_ai", MODE_PRIVATE).getString("api_token", ""))
         }
         val form = vbox().apply {
@@ -217,24 +220,33 @@ class ProjectsActivity : AppCompatActivity() {
                 }
                 getSharedPreferences("sengine_ai", MODE_PRIVATE).edit()
                     .putString("api_token", token.text.toString().trim()).apply()
+                val cancellation = AiGameClient.Cancellation()
                 val progress = ProgressDialog(this).apply {
                     setMessage("AI is planning, building and checking your game…")
-                    setCancelable(false)
+                    setCancelable(true)
+                    setOnCancelListener {
+                        cancellation.cancel()
+                        toast("Cancelling AI generation…")
+                    }
                     show()
                 }
+                val enteredToken = token.text.toString().trim()
                 Thread {
                     try {
-                        val generated = AiGameClient.generate(this, request)
+                        val generated = AiGameClient.generate(this@ProjectsActivity, request, enteredToken, cancellation)
                         runOnUiThread {
-                            progress.dismiss()
+                            if (progress.isShowing) progress.dismiss()
+                            if (isDestroyed || cancellation.isCancelled()) return@runOnUiThread
                             refresh()
                             toast("Created ${generated.name}")
                             open(generated)
                         }
                     } catch (e: Exception) {
                         runOnUiThread {
-                            progress.dismiss()
-                            toast("AI generation failed: ${e.message ?: "Unknown error"}")
+                            if (progress.isShowing) progress.dismiss()
+                            if (isDestroyed) return@runOnUiThread
+                            val reason = e.message?.take(240) ?: "Unknown error"
+                            toast(if (cancellation.isCancelled()) "AI generation cancelled" else "AI generation failed: $reason")
                         }
                     }
                 }.start()

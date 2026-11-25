@@ -4,34 +4,198 @@ on:
   push:
     branches:
       - "arena/94ba1396-assets2"
+      - "main"
   pull_request:
     branches:
       - "arena/94ba1396-assets2"
+      - "main"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
+    name: Verify agent, engine tests and debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     steps:
-      - name: Checkout
+      - name: Checkout requested branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install Android platform
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run unit tests and assemble APK
+
+      - name: Validate Gradle wrapper and Android configuration
+        id: config
+        shell: bash
         run: |
-          chmod +x ./gradlew
-          ./gradlew testDebugUnitTest assembleDebug
+          set -euo pipefail
+          test -x ./gradlew || chmod +x ./gradlew
+          for f in gradlew gradle/wrapper/gradle-wrapper.properties settings.gradle.kts build.gradle.kts app/build.gradle.kts; do
+            test -f "$f" || { echo "Missing required Gradle config: $f" >&2; exit 1; }
+          done
+          grep -q 'distributionUrl' gradle/wrapper/gradle-wrapper.properties
+          COMPILE_SDK="$(sed -nE 's/.*compileSdk[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' app/build.gradle.kts | head -1)"
+          test -n "$COMPILE_SDK" || { echo "Could not determine compileSdk from app/build.gradle.kts" >&2; exit 1; }
+          echo "compileSdk=$COMPILE_SDK" | tee -a "$GITHUB_OUTPUT"
+          ./gradlew --version
+
+      - name: Set up Android SDK from checked-in compileSdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "Using Android SDK root: $SDK"
+          mkdir -p "$SDK/cmdline-tools"
+          if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -fsSL -o /tmp/cmdline-tools.zip \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools
+            rm -rf "$SDK/cmdline-tools/latest"
+            mv /tmp/cmdline-tools/cmdline-tools "$SDK/cmdline-tools/latest"
+          fi
+          SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SM" --licenses >/dev/null 2>&1 || true
+          "$SM" --install "platforms;android-${{ steps.config.outputs.compileSdk }}" "build-tools;34.0.0"
+
+      - name: Backend syntax checks and mocked-provider tests
+        id: backend_tests
+        working-directory: game-agent
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run check
+          npm test
+
+      - name: Railway public health and optional real-provider smoke check
+        id: railway
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[railway-smoke]')
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://game-agent-production.up.railway.app"
+          curl -fsS --max-time 20 "$BASE/health" -o /tmp/railway-health.json
+          curl -fsS --max-time 20 "$BASE/api/agent/status" -o /tmp/railway-status.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const health = JSON.parse(fs.readFileSync('/tmp/railway-health.json', 'utf8'));
+          const status = JSON.parse(fs.readFileSync('/tmp/railway-status.json', 'utf8'));
+          if (!health.ok || !status.ready) throw new Error('Railway health/status not ready');
+          console.log(`Railway version=${health.version} model=${status.model} authRequired=${status.authRequired === true}`);
+          fs.writeFileSync('/tmp/railway-auth', status.authRequired === true ? 'yes' : 'no');
+          NODE
+          if [ "$(cat /tmp/railway-auth)" = "yes" ]; then
+            echo "Skipping public generation: AGENT_API_TOKEN is configured and no token is available to CI."
+            echo "result=skipped-auth" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CODE="$(curl -sS --max-time 360 -o /tmp/railway-generate.json -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            --data '{"prompt":"Create a small playable 2D endless runner with touch jump, score and restart using only built-in shapes."}' \
+            "$BASE/api/games/generate")"
+          echo "Railway generation HTTP status: $CODE"
+          if [ "$CODE" != "200" ]; then
+            node -e 'const fs=require("fs");try{const x=JSON.parse(fs.readFileSync("/tmp/railway-generate.json","utf8"));console.log(`Railway generation skipped: ${x.error || "non-200 response"}`)}catch{console.log("Railway generation skipped: non-JSON response")}'
+            echo "result=unavailable-$CODE" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/railway-generate.json', 'utf8'));
+          if (!result.project || !result.project.project || !result.agent || !Array.isArray(result.project.scenes)) {
+            throw new Error('Railway generation response was not a complete agent result');
+          }
+          if (result.project.project.name && result.agent.qaSummary) {
+            console.log(`Railway generation OK: project=${result.project.project.name}, scenes=${result.project.scenes.length}, repairs=${result.agent.repairs}`);
+          }
+          NODE
+          echo "result=generation-ok" >> "$GITHUB_OUTPUT"
+
+      - name: Android unit tests
+        id: android_tests
+        shell: bash
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Android lint report (advisory)
+        id: lint
+        continue-on-error: true
+        shell: bash
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Assemble debug APK
+        id: assemble
+        shell: bash
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Verify debug APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK" || { echo "Expected APK is missing: $APK" >&2; exit 1; }
+          unzip -t "$APK" >/dev/null
+          for entry in AndroidManifest.xml classes.dex resources.arsc; do
+            unzip -Z1 "$APK" | grep -qx "$entry"
+          done
+          sha256sum "$APK" | tee apk-debug.sha256.txt
+          ls -lh "$APK"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: s-engine-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            apk-debug.sha256.txt
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload unit-test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s-engine-build-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest/**
+            app/build/reports/lint-results-debug.*
+            app/build/test-results/testDebugUnitTest/**
+          if-no-files-found: ignore
+
+      - name: Build summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## S Engine verification summary"
+            echo ""
+            echo "- Branch/ref: \`${{ github.ref_name }}\`"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Backend syntax + mocked-provider tests: \`${{ steps.backend_tests.outcome }}\`"
+            echo "- Railway health/status + optional secure generation smoke: \`${{ steps.railway.outcome }}\` (\`${{ steps.railway.outputs.result || 'not-requested' }}\`)"
+            echo "- Android unit tests: \`${{ steps.android_tests.outcome }}\`"
+            echo "- Android lint: \`${{ steps.lint.outcome }}\` (report only; compile/test failures still fail the workflow)"
+            echo "- Debug APK: \`${{ steps.assemble.outcome }}\`"
+            echo "- Expected APK path: \`app/build/outputs/apk/debug/app-debug.apk\`"
+            echo "- Artifact: \`s-engine-debug-apk\`"
+          } >> "$GITHUB_STEP_SUMMARY"
