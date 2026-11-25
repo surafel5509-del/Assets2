@@ -6,7 +6,7 @@ Autonomous backend companion for the existing S Engine Android editor/runtime. I
 
 Set these variables on the `Game Agent` service:
 
-- `OPENAI_API_KEY`: required; paste your OpenRouter key into Railway Variables, never into the Android app or source code.
+- `OPENROUTER_API_KEY` (the code also accepts `OPENAI_API_KEY` as a compatibility alias): required; paste your OpenRouter key into Railway Variables, never into the Android app or source code.
 - `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
 - `OPENAI_MODEL=z-ai/glm-5.3-flash`
 - `OPENROUTER_REASONING_ENABLED=true`
@@ -26,7 +26,7 @@ The service uses the OpenAI-compatible OpenRouter Chat Completions endpoint. Whe
 - `GET /health` — service, provider, model and API-key readiness.
 - `GET /api/agent/status` — agent configuration and QA readiness (never returns secrets).
 - `POST /api/games/validate` — validate a GameSpec against S Engine's registered component types and scene/object structure.
-- `POST /api/games/generate` — plan and generate a game, validate it, run an independent model QA pass, repair up to two times, and return a normalized S Engine project payload.
+- `POST /api/games/generate` — run a Planner → Builder → QA pipeline, validate it, run an independent model QA pass, repair up to two times, and return a normalized S Engine project payload.
 
 Example request:
 
