@@ -243,8 +243,23 @@ async function callOpenAiCompatible(messages, context) {
   }
   if (!response.ok) {
     const providerStatus = Number(response.status);
+    // Billing/credit and authentication failures are not transient: retrying only burns time.
+    if (providerStatus === 402) {
+      throw Object.assign(new Error("OpenRouter returned 402 Payment Required: account credits or spending limit are insufficient for this model. Add credits or increase the limit in OpenRouter, then try again."), {
+        status: 402,
+        retryable: false,
+        providerStatus,
+      });
+    }
+    if (providerStatus === 401 || providerStatus === 403) {
+      throw Object.assign(new Error(`OpenRouter rejected the API key or model access (${providerStatus}). Check the key and model permissions in OpenRouter.`), {
+        status: providerStatus,
+        retryable: false,
+        providerStatus,
+      });
+    }
     const retryable = [408, 409, 429, 500, 502, 503, 504].includes(providerStatus);
-    // Read but never echo provider response bodies: they may contain sensitive metadata.
+    // Never echo provider response bodies: they may contain sensitive metadata.
     throw Object.assign(new Error(`AI provider request failed (${providerStatus})`), { status: 502, retryable });
   }
   let data;
