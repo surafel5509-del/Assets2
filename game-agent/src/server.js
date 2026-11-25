@@ -113,11 +113,26 @@ Return ONLY one JSON object matching this GameSpec:
  "project":{"name":"string","startScene":"string","orientation":0},
  "scenes":[{"name":"Main","gravityX":0,"gravityY":-9.81,"objects":[
   {"id":1,"name":"Player","tag":"Player","active":true,"x":0,"y":0,"rotation":0,"scaleX":1,"scaleY":1,
-   "components":[{"type":"SpriteRenderer","shape":0,"color":"#FFFFFFFF"},{"type":"Rigidbody2D","bodyType":0},{"type":"Collider2D","shape":0},{"type":"Script","script":"Player.js","params":""}]}
+   "components":[
+    {"type":"SpriteRenderer","Shape":"Square","Color":"#FFFFFFFF","Texture":"","Screen Space UI":false},
+    {"type":"Rigidbody2D","Body Type":"Dynamic","Mass":1,"Gravity Scale":1},
+    {"type":"Collider2D","Shape":"Box","Width":1,"Height":1,"Is Trigger":false},
+    {"type":"Script","Script":"Player.js","Params":""}
+   ]}
  ]}],
  "assets":[{"name":"Player.js","content":"function start() {}\\nfunction update(dt) {}"}],
  "notes":[]
 }
+IMPORTANT COMPONENT SERIALIZATION: Component.fromJson reads inspector property names exactly as written (case-sensitive, including spaces), not lowercase API aliases. For example SpriteRenderer uses "Shape":"Square", "Color":"#FFFFFFFF", "Texture":"", "Flip X":false, "Flip Y":false, "Shader":"", "Shader Param":1, "Screen Space UI":false. TextRenderer uses "Text", "Screen Space UI", "Size", "Color", "Align":"Center", "Bold". Rigidbody2D uses "Body Type":"Dynamic"|"Kinematic"|"Static", "Mass", "Gravity Scale", "Linear Drag", "Bounciness", "Friction", "Velocity X", "Velocity Y", "Max Speed", "Continuous Collision". Collider2D uses "Shape":"Box"|"Circle", "Width", "Height", "Radius", "Offset X", "Offset Y", "Is Trigger", "Layer", "Mask". Camera uses "Size", "Background", "Follow Target", "Follow Smoothing", "Post FX", "FX Intensity", "FX Shader", "Priority". Script uses "Script":"file.js", "Params":"". Choice fields are their visible string labels, not numeric indices. Color values are #AARRGGBB.
+SCRIPT API CONTRACT (only use these actual globals and methods):
+- Lifecycle functions: start(), update(dt), onCollision(other), onTrigger(other), onTriggerExit(other), onTap(), onDestroy(), onStop().
+- self/transform/gameObject refer to the attached object. Properties: name, tag, active, x, y, rotation, scaleX, scaleY, worldX, worldY, vx, vy, grounded, visible, color, text. Methods: setPosition(x,y), move(dx,dy), rotate(deg), setVelocity(vx,vy), addForce(fx,fy), destroy(), child(name), distanceTo(other), overlaps(other), is(other), send("fn",arg), hasComponent(type), setComponentEnabled(type,bool), setTexture(name), burst(n), setEmitting(bool), play("Run.anim"), stopAnimation().
+- input: axisX, axisY, a, b, aDown, bDown, touching, tapped, touchX, touchY.
+- scene: find(name), findAll(tag), count(tag), spawn(name,x,y), load(sceneName), reload(), camera, gravityX, gravityY.
+- time: time.time, time.frame, time.fps. audio.play("file.wav"), audio.beep(), audio.stopAll().
+- helpers: log(), warn(), error(), after(seconds,fn), every(seconds,fn), random(a,b), randomInt(a,b), clamp(v,a,b), lerp(a,b,t).
+- events.on/once/off/emit; coroutine(function*(){ yield waitSec(seconds); yield waitFrames(n); }); state.set/get/is/elapsed; persist.key; game.save/load; camera.setBounds/shake/zoomTo.
+Use only these API names. Do not invent DOM, browser, Unity, Godot, Phaser or arbitrary engine functions.
 Allowed component types only: SpriteRenderer, TextRenderer, Camera, Rigidbody2D, Collider2D, Script, ParticleEmitter, AudioSource, Animator, MeshRenderer, Camera3D, Light, Rigidbody3D, Collider3D, Terrain, Steering, Joint2D, Joint3D.
 Use exact component names and engine-native serialized fields. Scene JSON uses name, gravityX/Y/Z, gravity3D, ambient, fogColor, fogStart, fogEnd, fog, nextId, objects. Object JSON uses id,name,tag,active,order,x,y,rotation,scaleX,scaleY,z,rotX,rotY,scaleZ,parent,components.
 Scripts are Rhino JavaScript assets stored under assets/. Script component.script must exactly equal an asset name. Only use the engine's documented S Engine scripting API; never invent APIs. Prefer a complete playable 2D game unless 3D is requested. Include menu/title, game loop, player controls, obstacles/enemies, score/HUD, win/loss, restart and progression as appropriate. Use deterministic simple mechanics and built-in shapes when art is unavailable. IDs must be unique within each scene; parent IDs must exist. Every script must be syntactically valid, defensive, and use engine-supported APIs. Add concise notes for any requested feature the engine cannot represent. Return valid JSON only.`;
