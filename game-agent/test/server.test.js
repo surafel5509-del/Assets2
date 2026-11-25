@@ -64,7 +64,8 @@ function scriptedProvider(responses) {
 }
 
 async function withServer(t, options, fn) {
-  // Isolate tests from Railway build/runtime environment variables (especially AGENT_API_TOKEN).\n  const server = createServer({ env: {}, retryDelayMs: 1, ...options });
+  // Isolate tests from Railway build/runtime environment variables (especially AGENT_API_TOKEN).
+  const server = createServer({ env: {}, retryDelayMs: 1, ...options });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const port = server.address().port;
   t.after(() => new Promise(resolve => server.close(resolve)));
