@@ -61,6 +61,7 @@ function configFromEnv(env) {
     model: env.OPENAI_MODEL || "z-ai/glm-5.3-flash",
     apiBase: (env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, ""),
     reasoningEnabled: env.OPENROUTER_REASONING_ENABLED !== "false",
+    maxTokens: Math.min(65536, Math.max(4096, Number(env.OPENAI_MAX_TOKENS || 24576))),
     apiKey: env.OPENROUTER_API_KEY || env.OPENAI_API_KEY,
     siteUrl: env.OPENROUTER_SITE_URL || "https://game-agent-production.up.railway.app",
     appName: env.OPENROUTER_APP_NAME || "S Engine Game Agent",
@@ -209,12 +210,18 @@ async function callOpenAiCompatible(messages, context) {
   if (!config.apiKey) {
     throw Object.assign(new Error("AI provider key is not configured on the Game Agent service"), { status: 503, retryable: false });
   }
+  const attempt = Number(context.attempt || 1);
   const payload = {
     model: model || config.model,
     temperature: 0.25,
-    response_format: { type: "json_object" },
+    max_tokens: config.maxTokens || 24576,
     messages,
-    ...(config.reasoningEnabled ? { reasoning: { enabled: true } } : {}),
+    // OpenRouter's GLM reasoning models can spend the entire output budget thinking.
+    // Keep the reasoning budget conservative and reserve room for the actual JSON.
+    ...(config.reasoningEnabled ? { reasoning: { effort: "low" } } : {}),
+    // Some reasoning/provider combinations return empty message.content with JSON mode.
+    // Retry without constrained decoding; parseModelJson still validates the result.
+    ...(attempt === 1 ? { response_format: { type: "json_object" } } : {}),
   };
   let response;
   try {
@@ -237,12 +244,26 @@ async function callOpenAiCompatible(messages, context) {
   if (!response.ok) {
     const providerStatus = Number(response.status);
     const retryable = [408, 409, 429, 500, 502, 503, 504].includes(providerStatus);
+    // Read but never echo provider response bodies: they may contain sensitive metadata.
     throw Object.assign(new Error(`AI provider request failed (${providerStatus})`), { status: 502, retryable });
   }
-  const data = await response.json().catch(() => ({}));
-  const message = data.choices?.[0]?.message;
+  let data;
+  try { data = await response.json(); }
+  catch {
+    throw Object.assign(new Error("AI provider returned a non-JSON response"), { status: 502, retryable: true });
+  }
+  const message = data?.choices?.[0]?.message;
   const content = messageText(message);
-  if (!content) throw Object.assign(new Error("AI provider returned an empty response"), { status: 502, retryable: true });
+  if (!content.trim()) {
+    const finishReason = String(data?.choices?.[0]?.finish_reason || "unknown").slice(0, 40);
+    const completionTokens = Number.isFinite(data?.usage?.completion_tokens) ? data.usage.completion_tokens : "unknown";
+    const diagnostic = `finish_reason=${finishReason}, completion_tokens=${completionTokens}`;
+    throw Object.assign(new Error(`AI provider returned empty content (${diagnostic})`), {
+      status: 502,
+      retryable: true,
+      providerDiagnostic: { finishReason, completionTokens, hasReasoning: Boolean(message?.reasoning || message?.reasoning_content) },
+    });
+  }
   return { ...message, content };
 }
 
@@ -488,6 +509,7 @@ export function createServer(options = {}) {
       model: context.model,
       signal: context.signal,
       timeoutMs: options.modelTimeoutMs || DEFAULT_MODEL_TIMEOUT_MS,
+      attempt: context.attempt,
       fetchImpl: options.fetchImpl || globalThis.fetch,
     })),
   };
