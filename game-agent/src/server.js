@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 const PORT = Number(process.env.PORT || 3000);
 const MODEL = process.env.OPENAI_MODEL || "z-ai/glm-5.3-flash";
-const API_BASE = (process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\\/$/, "");
+const API_BASE = (process.env.OPENAI_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "");
 const REASONING_ENABLED = process.env.OPENROUTER_REASONING_ENABLED !== "false";
 const MAX_BODY = 1_000_000;
 const MAX_REPAIRS = 2;
