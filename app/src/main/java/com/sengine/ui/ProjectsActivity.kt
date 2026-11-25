@@ -62,7 +62,9 @@ class ProjectsActivity : AppCompatActivity() {
         titleBox.addView(label("S Engine", 28f, C.TEXT, true))
         titleBox.addView(label("2D & 3D game engine & editor for Android  •  Ultimate v2.0", 13f, C.DIM))
         header.addView(titleBox, lp(0, WRAP, 1f))
-        header.addView(button("AI Game", C.ACCENT, 0xFFFFFFFF.toInt()) { aiGameDialog() },\n            lp(WRAP, WRAP).margins(0, 0, dp(8), 0))\n        header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
+        header.addView(button("AI Game", C.ACCENT, 0xFFFFFFFF.toInt()) { aiGameDialog() },
+            lp(WRAP, WRAP).margins(0, 0, dp(8), 0))
+        header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             lp(WRAP, WRAP).margins(0, 0, dp(8), 0))
         header.addView(button("+ New Project", C.ACCENT, 0xFFFFFFFF.toInt()) { newProjectDialog() })
         root.addView(header, lp(MATCH, WRAP))
