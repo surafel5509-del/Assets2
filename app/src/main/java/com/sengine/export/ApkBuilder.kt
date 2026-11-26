@@ -73,7 +73,12 @@ object ApkBuilder {
                 }
                 progress("Embedding game data…", 0.7f)
                 val base = projectDir.canonicalFile
-                val files = base.walkTopDown().filter { it.isFile && !it.name.startsWith(".") }.sortedBy { it.path }.toList()
+                // Exclude hidden/internal files (atomic-write temps, scene backups,
+                // build settings) anywhere in the project tree.
+                val files = base.walkTopDown().filter { f ->
+                    f.isFile && f.relativeTo(base).invariantSeparatorsPath
+                        .split('/').none { it.startsWith(".") }
+                }.sortedBy { it.path }.toList()
                 for (f in files) {
                     val rel = f.canonicalFile.relativeTo(base).invariantSeparatorsPath
                     val ext = f.extension.lowercase()

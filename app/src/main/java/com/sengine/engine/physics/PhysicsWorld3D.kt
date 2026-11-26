@@ -60,8 +60,9 @@ class PhysicsWorld3D {
             rb.groundNx = 0f; rb.groundNy = 1f; rb.groundNz = 0f
             when (rb.bodyType) {
                 0 -> {
-                    rb.vx += scene.gravityX * 0f
+                    rb.vx += scene.gravityX * rb.gravityScale * dt
                     rb.vy += scene.gravity3D * rb.gravityScale * dt
+                    rb.vz += scene.gravityZ * rb.gravityScale * dt
                     if (rb.drag > 0f) { val k = max(0f, 1f - rb.drag * dt); rb.vx *= k; rb.vy *= k; rb.vz *= k }
                     if (rb.maxSpeed > 0f) {
                         val s = sqrt(rb.vx * rb.vx + rb.vy * rb.vy + rb.vz * rb.vz)
@@ -103,7 +104,7 @@ class PhysicsWorld3D {
             if (key !in prevContacts) listener?.onCollisionEnter(a.go, b.go)
         }
         for (k in prevTriggers) if (k !in triggers) {
-            val a = scene.findById(k shr 32); val b = scene.findById(k and 0xFFFFFFFFL)
+            val a = scene.findById(k ushr 32); val b = scene.findById(k and 0xFFFFFFFFL)
             if (a != null && b != null) listener?.onTriggerExit(a, b)
         }
         terrainSupport(scene)
@@ -362,6 +363,7 @@ class PhysicsWorld3D {
         val lx = ox - b.cx; val ly = oy - b.cy; val lz = oz - b.cz
         val bb = lx * dx + ly * dy + lz * dz
         val c = lx * lx + ly * ly + lz * lz - b.r * b.r
+        if (c <= 0f) return 0f // ray origin is inside the sphere
         val disc = bb * bb - c
         if (disc < 0f) return null
         return -bb - sqrt(disc)

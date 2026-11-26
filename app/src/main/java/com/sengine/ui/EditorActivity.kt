@@ -61,6 +61,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     val state = EditorState()
 
     private lateinit var glView: GLSurfaceView
+    private lateinit var renderer: SceneRenderer
     private lateinit var controller: ViewportController
     private lateinit var inspector: InspectorPanel
     private lateinit var hierarchy: HierarchyAdapter
@@ -179,11 +180,31 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         if (::engine.isInitialized) {
             engine.listeners.remove(engineListener)
+            // Engine.release() is thread-safe: it queues script teardown and stops
+            // audio immediately. Drain that command and free GL resources on the
+            // owning GL thread before the GLSurfaceView is destroyed.
             engine.release()
+            if (::glView.isInitialized && ::renderer.isInitialized) {
+                val done = java.util.concurrent.CountDownLatch(1)
+                glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+                glView.onResume()
+                glView.queueEvent {
+                    try {
+                        synchronized(engine.lock) { engine.tick(0f) }
+                        renderer.release()
+                    } finally { done.countDown() }
+                }
+                glView.requestRender()
+                try {
+                    if (!done.await(2, java.util.concurrent.TimeUnit.SECONDS))
+                        engine.log(1, "GL teardown timed out")
+                } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
+                glView.onPause()
+            }
         }
+        super.onDestroy()
     }
 
     // ================================================================== UI construction
@@ -247,7 +268,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         val vp = FrameLayout(this)
         glView = GLSurfaceView(this).apply {
             setEGLContextClientVersion(2)
-            setRenderer(SceneRenderer(engine, state))
+            renderer = SceneRenderer(engine, state)
+            setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         }
         controller = ViewportController(this, engine, state)
@@ -852,6 +874,22 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         consoleText.append(line)
         if (consoleText.text.length > 20000) consoleText.text = consoleText.text.subSequence(consoleText.text.length - 15000, consoleText.text.length)
         consoleScroll.post { consoleScroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    /** Real editor shortcuts: Ctrl+S save, Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo, Ctrl+P play/stop. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && event.isCtrlPressed) {
+            if (event.keyCode == KeyEvent.KEYCODE_P) {
+                if (engine.mode == Engine.Mode.EDIT) startPlay() else engine.stop()
+                return true
+            }
+            if (engine.mode == Engine.Mode.EDIT) when (event.keyCode) {
+                KeyEvent.KEYCODE_S -> { saveScene(); return true }
+                KeyEvent.KEYCODE_Z -> { if (event.isShiftPressed) redo() else undo(); return true }
+                KeyEvent.KEYCODE_Y -> { redo(); return true }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

@@ -69,9 +69,24 @@ class ShaderLibrary(private val project: Project, private val log: (String) -> U
     lateinit var defaultMesh: MeshProgram
 
     fun init() {
+        // Cached ids from a lost EGL context are invalid; discard without GL calls.
         sprites.clear(); meshes.clear(); posts.clear()
         defaultSprite = SpriteProgram(GL.tryCompile(SPRITE_VS, spriteFs(DEFAULT_EFFECT)).first)
         defaultMesh = MeshProgram(GL.tryCompile(MESH_VS, meshFs(DEFAULT_EFFECT)).first)
+    }
+
+    /** Delete all programs owned by this context, then make the library inert. */
+    fun release() {
+        val ids = LinkedHashSet<Int>()
+        if (::defaultSprite.isInitialized && defaultSprite.id != 0) ids += defaultSprite.id
+        if (::defaultMesh.isInitialized && defaultMesh.id != 0) ids += defaultMesh.id
+        sprites.values.forEach { it.second?.let { p -> if (p.id != 0) ids += p.id } }
+        meshes.values.forEach { it.second?.let { p -> if (p.id != 0) ids += p.id } }
+        posts.values.forEach { it.second?.let { p -> if (p.id != 0) ids += p.id } }
+        for (id in ids) GLES20.glDeleteProgram(id)
+        sprites.clear(); meshes.clear(); posts.clear()
+        defaultSprite = SpriteProgram(0)
+        defaultMesh = MeshProgram(0)
     }
 
     private fun source(name: String): Pair<Long, String>? {

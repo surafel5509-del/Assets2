@@ -1,0 +1,112 @@
+S ENGINE — JAVASCRIPT API, runtime v2.2.0, Phase 1 audited
+
+LIFECYCLE — define any of these in a Script component
+  start()              once, when play begins
+  update(dt)           every frame, dt in seconds
+  onFixedUpdate(dt)    fixed 1/60 s step [max 3 per frame]
+  onLateUpdate(dt)     after all update() calls
+  onEnable() / onDisable()
+  onCollision(other)   solid collision began
+  onTrigger(other)     entered a trigger
+  onTriggerExit(other) left a trigger
+  onTap()              this object's collider was tapped
+  onDestroy()          object was destroyed
+  onStop()             play mode / scene ended
+
+GLOBALS
+  self  transform  gameObject   [the same object wrapper]
+  scene  input  time  audio  console
+  log()  warn()  error()
+
+SELF / TRANSFORM / GAMEOBJECT
+  id name tag active order              [read/write except id]
+  x y rotation scaleX scaleY           [local, read/write]
+  worldX worldY                        [read-only]
+  setPosition(x,y)  setPosition(x,y,z)
+  setWorldPosition(x,y)
+  move(dx,dy)  move(dx,dy,dz)
+  rotate(deg)  rotate(rx,ry,rz)
+  distanceTo(o)  distanceTo3(o)
+  is(o)  child(name)  parent           [read-only]
+  destroy()  unwrap()                 [unwrap: raw GameObject, advanced]
+  hasComponent(type)  setComponentEnabled(type, enabled)
+
+PHYSICS / SELF
+  vx vy vz grounded                   [read/write velocity; grounded read-only]
+  setVelocity(vx,vy)  setVelocity(x,y,z)
+  addForce(fx,fy)  addForce(x,y,z)   [instant impulse / mass]
+  addImpulse(fx,fy)  addImpulse(x,y,z)
+  groundNormal -> [x,y,z] array, 3D
+  setLayer(layer)  setMask(mask)      [0..15 / 16-bit mask]
+  overlaps(o)                         [real box/circle collider test]
+
+3D / SELF
+  z rotX rotY rotZ scaleZ worldZ vz
+  forward() -> [x,y,z] world direction
+  setMeshColor(hex)  setIntensity(v)  setSky(top, horizon)
+
+ANIMATION & RENDERING / SELF
+  play(clip)  stopAnimation()  animation  animationFinished
+  setAnimSpeed(s)  setShaderParam(v)
+  color  visible  flipX  text  setTexture(name)
+  burst(n)  setEmitting(enabled)      [particles]
+  size                                [Camera2D size]
+  send(fn, arg)  send(fn)             [call fn on another object's scripts]
+
+INPUT
+  axisX axisY [-1..1]  a b aDown bDown
+  up down left right
+  touching tapped touchX touchY        [world-space touch]
+  key(code)                            [Android KeyEvent code held]
+
+SCENE
+  name  camera  camera3D  gravityX gravityY gravity3D
+  find(name)  findAll(tag)  count(tag)
+  spawn(name)  spawn(name,x,y)  spawn(name,x,y,z)
+  load(sceneName)  reload()  shake(amount)
+  broadcast(fn)  broadcast(fn, arg)
+  pool(name,size)  obtain(name,x,y)  obtain(name,x,y,z)  release(o)
+  raycast2D(ox,oy,dx,dy,max)          -> object or null
+  raycast(ox,oy,oz,dx,dy,dz,max)      -> object or null
+  raycastAll2D(ox,oy,dx,dy,max)       -> array of objects, nearest first
+  raycastAll(ox,oy,oz,dx,dy,dz,max)   -> array of objects, nearest first
+  overlapCircle(x,y,r)  overlapCircle(x,y,r,tag)
+  overlapSphere(x,y,z,r)  overlapSphere(x,y,z,r,tag)
+  terrainHeight(x,z)                  -> world height [0 if no terrain]
+  setFog(start,end)  setFogColor(hex)
+
+TIME
+  time.time  time.frame  time.fps  time.delta  time.scale [0..4]
+
+AUDIO
+  audio.play(file)  audio.play(file, volume)  audio.beep()
+  audio.stopAll()
+  audio.play3d(file,x,y,z)  audio.play3d(file,x,y,z,volume)
+  audio.play3dLoop(file,x,y,z)  audio.stop3d(handle)
+  audio.move3d(handle,x,y,z)  audio.setListener(x,y,z)
+  audio.setFalloff(minDist,maxDist)
+  audio.playMusic(file)  audio.playMusic(file,loop)
+  audio.pauseMusic()  audio.resumeMusic()  audio.stopMusic()
+  audio.setMusicVolume(v)  audio.setSfxVolume(v)
+
+HELPERS
+  random()  random(a,b)  random(a)  randomInt()  randomInt(a,b)  randomInt(a)
+  clamp(v,a,b)  lerp(a,b,t)  moveToward(cur,target,maxDelta)  sign(x)
+  choose(a,b,...)  angleDeg(dx,dy)
+  dist(x1,y1,x2,y2)  dist3(x1,y1,z1,x2,y2,z2)
+  smoothstep(a,b,x)  mapRange(v,inLo,inHi,outLo,outHi)  wrap(v,lo,hi)
+  damp(a,b,lambda,dt)  lerpAngle(a,b,t)  rotateToward(cur,target,maxDelta)
+  randomSign()  randomPick(arr)  assert(cond,msg)
+  after(sec,fn)  every(sec,fn)  wait(sec,fn)  cancelTimers()
+  tween(obj,prop,to,dur,ease,onDone)  cancelTweens(obj)
+  require("Utils.js")                 [module.exports cached]
+
+PARAMS
+  "speed=5, jump=10" in a Script component become top-level variables.
+
+BLUEPRINTS
+  .bp files compile to this same API.
+
+SAFETY
+  Scripts cannot access host Java classes, the file system or the network.
+  A runaway script is aborted after its per-frame instruction/time budget.

@@ -58,6 +58,11 @@ object Audio3DMath {
  * [Audio3DMath] helpers remain fully testable.
  */
 class AudioSystem(private val project: Project) {
+    companion object {
+        /** Bounds the number of tracked stream ids; finished one-shots are forgotten. */
+        const val MAX_TRACKED_STREAMS = 128
+    }
+
     private var pool: SoundPool? = null
     private val ids = HashMap<String, Int>()
     private val streams = ArrayList<Int>()
@@ -103,6 +108,19 @@ class AudioSystem(private val project: Project) {
         try { createPool() } catch (_: Throwable) { pool = null }
     }
 
+    /** Tracks a stream for stopAll()/volume updates without growing forever. */
+    private fun trackStream(stream: Int) {
+        streams.add(stream)
+        while (streams.size > MAX_TRACKED_STREAMS) {
+            val old = streams.removeAt(0)
+            sounds3.remove(old)
+        }
+    }
+
+    /** Diagnostics for the profiler and tests. */
+    val activeStreams: Int get() = streams.size
+    val active3dSounds: Int get() = sounds3.size
+
     private fun createPool() {
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_GAME)
@@ -123,7 +141,7 @@ class AudioSystem(private val project: Project) {
         val id = ids[name] ?: return 0
         val v = volume * sfxVolume
         val s = p.play(id, v, v, 1, if (loop) -1 else 0, 1f)
-        if (s != 0) streams.add(s)
+        if (s != 0) trackStream(s)
         return s
     }
 
@@ -161,7 +179,7 @@ class AudioSystem(private val project: Project) {
         val s = p.play(id, l, r, 1, if (loop) -1 else 0, 1f)
         if (s != 0) {
             sounds3[s] = Sound3(name, x, y, z, volume, minDist, maxDist)
-            streams.add(s)
+            trackStream(s)
         }
         return s
     }
@@ -195,20 +213,27 @@ class AudioSystem(private val project: Project) {
     // ---------------------------------------------------------------- music
     /** Starts background music (looping by default). Safe no-op when playback fails. */
     fun playMusic(name: String, loop: Boolean = true, volume: Float = -1f) {
+        stopMusic()
+        val file = project.assetFile(name)
+        if (!file.isFile) return
+        var mp: android.media.MediaPlayer? = null
         try {
-            stopMusic()
-            val file = project.assetFile(name)
-            if (!file.exists()) return
-            val mp = android.media.MediaPlayer()
-            mp.setDataSource(file.absolutePath)
-            mp.isLooping = loop
+            val player = android.media.MediaPlayer()
+            mp = player
+            player.setDataSource(file.absolutePath)
+            player.isLooping = loop
             val v = (if (volume < 0f) musicVolume else volume)
-            mp.setVolume(v, v)
-            mp.prepare()
-            mp.start()
-            music = mp
+            player.setVolume(v, v)
+            player.prepare()
+            player.start()
+            if (!loop) player.setOnCompletionListener {
+                try { it.release() } catch (_: Throwable) {}
+                if (music === player) { music = null; musicName = "" }
+            }
+            music = player
             musicName = name
         } catch (_: Throwable) {
+            try { mp?.release() } catch (_: Throwable) {}
             music = null
         }
     }
@@ -231,8 +256,8 @@ class AudioSystem(private val project: Project) {
     }
 
     fun stopAll() {
-        val p = pool ?: return
-        try { for (s in streams) p.stop(s) } catch (_: Throwable) {}
+        val p = pool
+        if (p != null) try { for (s in streams) p.stop(s) } catch (_: Throwable) {}
         streams.clear()
         sounds3.clear()
     }

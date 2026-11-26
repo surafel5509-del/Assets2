@@ -2,9 +2,9 @@ name: Build APK
 
 on:
   push:
-    branches: [ arena/1772be8b-assets2 ]
+    branches: [ arena/1772be8b-assets2, arena/5831a3b7-assets2 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, arena/5831a3b7-assets2 ]
   workflow_dispatch:
 
 permissions:

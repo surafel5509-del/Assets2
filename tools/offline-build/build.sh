@@ -23,7 +23,8 @@ step=${1:-all}
 
 if [ "$step" = "stubs" ] || [ "$step" = "all" ]; then
   echo "== compiling java stubs =="
-  find stubs -name '*.java' > stub.files
+  # Stub sources are versioned in the repository, not in the toolchain dir.
+  find "$TH/tools/offline-build/stubs" -name '*.java' > stub.files
   rm -rf out/stubs && mkdir -p out/stubs
   $JAVAC -bootclasspath "$AJ" -d out/stubs @stub.files
   echo "stubs ok: $(find out/stubs -name '*.class' | wc -l) classes"
@@ -45,7 +46,10 @@ fi
 
 if [ "$step" = "run" ] || [ "$step" = "all" ]; then
   echo "== running tests =="
-  $J -cp "out/test:out/main:$STUBS:$JSON:$RHINO:$AJ:$STD:$ANN" LocalRunnerKt \
-    com.sengine.EngineUpgradeTest \
-    com.sengine.EngineSimulationTest com.sengine.EngineV2Test com.sengine.ApkExportTest
+  # Auto-discover every *Test.kt so new regression suites are never silently skipped.
+  TESTS=$(cd "$TH" && find app/src/test/java -name '*Test.kt' -print \
+    | sed -e 's#^app/src/test/java/##' -e 's#/#.#g' -e 's#\.kt$##' | sort)
+  echo "test classes: $(echo "$TESTS" | tr '\n' ' ')"
+  SENGINE_REPO="$TH" $J -Dsengine.repo="$TH" \
+    -cp "out/test:out/main:$STUBS:$JSON:$RHINO:$AJ:$STD:$ANN" LocalRunnerKt $TESTS
 fi

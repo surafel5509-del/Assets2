@@ -145,13 +145,8 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
         go.getAny<com.sengine.engine.core.MeshRenderer>()?.color = c
     }
-    fun overlaps(other: SObject): Boolean {
-        val a = go.computeWorld(); val b = other.go.computeWorld()
-        val ca = go.getAny<Collider2D>(); val cb = other.go.getAny<Collider2D>()
-        val aw = (ca?.width ?: 1f) * a.scaleX / 2; val ah = (ca?.height ?: 1f) * a.scaleY / 2
-        val bw = (cb?.width ?: 1f) * b.scaleX / 2; val bh = (cb?.height ?: 1f) * b.scaleY / 2
-        return kotlin.math.abs(a.tx - b.tx) < aw + bw && kotlin.math.abs(a.ty - b.ty) < ah + bh
-    }
+    /** True when the two objects' real colliders intersect (box/circle, offsets, scale). */
+    fun overlaps(other: SObject): Boolean = engine.physics.overlaps(go, other.go)
 
     // rendering
     fun getText(): String = go.getAny<TextRenderer>()?.text ?: ""

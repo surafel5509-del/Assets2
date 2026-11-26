@@ -9,6 +9,19 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 object ProjectManager {
+    /**
+     * Resolves a zip entry inside [root], or null when it would escape the
+     * extraction directory (zip-slip). Pure JVM so it is unit-testable.
+     */
+    fun resolveZipEntry(root: File, entryName: String): File? {
+        val entry = entryName.replace('\\', '/')
+        if (entry.startsWith("/") || entry.contains("..") || entry.contains(':')) return null
+        val f = File(root, entry)
+        val prefix = root.canonicalPath + File.separator
+        if (f.canonicalPath != root.canonicalPath && !f.canonicalPath.startsWith(prefix)) return null
+        return f
+    }
+
     fun root(ctx: Context) = File(ctx.filesDir, "projects").also { it.mkdirs() }
 
     fun list(ctx: Context): List<Project> =
@@ -48,14 +61,26 @@ object ProjectManager {
         return Project(target)
     }
 
+    /** True when a file (or any of its parents) is a hidden/internal work file. */
+    private fun isInternal(f: File, root: File): Boolean {
+        var cur: File? = f
+        while (cur != null && cur != root) {
+            if (cur.name.startsWith(".")) return true
+            cur = cur.parentFile
+        }
+        return false
+    }
+
     fun exportZip(p: Project, out: OutputStream) {
         ZipOutputStream(out).use { zip ->
-            p.dir.walkTopDown().filter { it.isFile }.forEach { f ->
-                val rel = f.relativeTo(p.dir).path.replace('\\', '/')
-                zip.putNextEntry(ZipEntry("${p.name}/$rel"))
-                f.inputStream().use { it.copyTo(zip) }
-                zip.closeEntry()
-            }
+            p.dir.walkTopDown()
+                .filter { it.isFile && !isInternal(it, p.dir) }
+                .forEach { f ->
+                    val rel = f.relativeTo(p.dir).path.replace('\\', '/')
+                    zip.putNextEntry(ZipEntry("${p.name}/$rel"))
+                    f.inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                }
         }
     }
 
@@ -66,8 +91,9 @@ object ProjectManager {
         ZipInputStream(input).use { zip ->
             while (true) {
                 val e = zip.nextEntry ?: break
-                val f = File(tmp, e.name)
-                if (!f.canonicalPath.startsWith(tmp.canonicalPath)) continue // zip-slip guard
+                // Zip-slip guard: compare with a trailing separator so a sibling
+                // directory whose name merely starts with tmp's name is rejected.
+                val f = resolveZipEntry(tmp, e.name) ?: continue
                 if (e.isDirectory) f.mkdirs() else {
                     f.parentFile?.mkdirs()
                     f.outputStream().use { zip.copyTo(it) }

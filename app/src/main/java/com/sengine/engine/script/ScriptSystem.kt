@@ -14,6 +14,11 @@ import org.mozilla.javascript.ScriptableObject
 /**
  * JavaScript behaviour runtime backed by Mozilla Rhino (interpreted mode).
  * Every Script component gets its own scope whose prototype is the shared global scope.
+ *
+ * Phase 1: all JS execution goes through [ScriptContextFactory], which denies
+ * LiveConnect access to host Java classes and enforces a per-frame instruction
+ * / time budget. Errors are reported to the console; they never escape into
+ * the render loop.
  */
 class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
 
@@ -24,6 +29,8 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         var fixedAcc = 0f
     }
 
+    private val factory = ScriptContextFactory()
+    private var budgetDepth = 0
     private var cx: Context? = null
     private var global: ScriptableObject? = null
     private var ownerThread: Thread? = null
@@ -35,16 +42,33 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
 
     val isRunning get() = cx != null
 
+    /** Nests safely: only the outermost call starts a fresh per-frame budget. */
+    private inline fun <T> withBudget(block: () -> T): T {
+        if (budgetDepth++ == 0) factory.beginBudget()
+        try {
+            return block()
+        } finally {
+            if (--budgetDepth == 0) factory.endBudget()
+        }
+    }
+
     fun begin() {
         end()
-        val c = Context.enter()
-        c.optimizationLevel = -1
-        c.languageVersion = Context.VERSION_ES6
-        // return Java strings / numbers / booleans as native JS values
-        c.wrapFactory.isJavaPrimitiveWrap = false
+        // Rhino associates Contexts with threads. `enterContext()` returns an
+        // already-associated Context without calling our factory's
+        // onContextCreated(), which would silently disable the sandbox and the
+        // instruction budget. A previous Engine (or a compile-only helper) may
+        // have left one on this thread, so detach stale contexts first.
+        while (Context.getCurrentContext() != null) {
+            try { Context.exit() } catch (e: Exception) { break }
+        }
+        val c = factory.enterContext()
         cx = c
         ownerThread = Thread.currentThread()
-        val g = c.initStandardObjects()
+        // Safe standard objects omit Packages/java/com/... and JavaAdapter entirely.
+        // Together with ScriptContextFactory's allow-list shutter this closes
+        // Rhino's LiveConnect escape hatches to the host file system / classes.
+        val g = c.initSafeStandardObjects()
         global = g
         inputApi.sync()
         put(g, "input", inputApi)
@@ -53,17 +77,39 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         put(g, "audio", SAudio(engine))
         put(g, "console", SConsole(engine))
         put(g, "__modules", SModules(this))
-        c.evaluateString(g, PRELUDE, "prelude", 1, null)
+        withBudget {
+            try { c.evaluateString(g, PRELUDE, "prelude", 1, null) }
+            catch (e: ScriptBudgetException) { engine.log(2, "prelude: ${e.message}") }
+        }
         compiled.clear()
         moduleCache.clear()
-        for (go in engine.scene.objects.toList()) attach(go)
-        startPending()
+        withBudget {
+            for (go in engine.scene.objects.toList()) attach(go)
+            startPending()
+        }
     }
 
     fun end() {
-        if (cx != null && Thread.currentThread() === ownerThread) {
-            for (inst in instances.toList()) if (inst.started && !inst.failed) call(inst, "onStop")
-            try { Context.exit() } catch (_: Exception) {}
+        val c = cx
+        val sameThread = c == null || Thread.currentThread() === ownerThread
+        if (c != null && !sameThread) {
+            // A Rhino Context is thread-local. It cannot be exited from another
+            // thread; keep the state intact so the next begin()/release() on the
+            // owner (GL) thread performs the real teardown and fires onStop().
+            return
+        }
+        if (c != null) {
+            val current = Context.getCurrentContext()
+            if (current === c) {
+                withBudget {
+                    for (inst in instances.toList()) if (inst.started && !inst.failed) call(inst, "onStop")
+                }
+                try { Context.exit() } catch (_: Exception) {}
+            } else {
+                // The context was detached by a newer Engine on this thread;
+                // calling Context.exit() here would tear down the wrong one.
+                engine.log(1, "Script context already detached; onStop skipped")
+            }
         }
         cx = null
         global = null
@@ -72,6 +118,8 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         wrappers.clear()
         compiled.clear()
         moduleCache.clear()
+        factory.endBudget()
+        budgetDepth = 0
     }
 
     private fun put(scope: Scriptable, name: String, obj: Any) {
@@ -92,9 +140,9 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
     }
 
     /** Create script instances for a (newly spawned) object and its children. */
-    fun attach(go: GameObject) {
-        val c = cx ?: return
-        val g = global ?: return
+    fun attach(go: GameObject): Unit = withBudget {
+        val c = cx ?: return@withBudget
+        val g = global ?: return@withBudget
         for (comp in go.components) {
             if (comp !is ScriptComponent || comp.script.isBlank()) continue
             val script = compiled[comp.script] ?: compileScript(comp.script) ?: continue
@@ -112,6 +160,8 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
                 // Inspector params override top-level defaults like `var speed = 5;`
                 applyParams(scope, comp.params)
                 instances.add(inst)
+            } catch (e: ScriptBudgetException) {
+                engine.log(2, "${comp.script}: ${e.message}")
             } catch (e: RhinoException) {
                 engine.log(2, "${comp.script}:${e.lineNumber()} ${e.details()}")
             } catch (e: Exception) {
@@ -162,16 +212,16 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
      * The file runs once in its own scope with `module`/`exports`; the resulting
      * `module.exports` is cached and shared with every later require.
      */
-    fun requireModule(name: String): Any? {
-        val c = cx ?: return null
-        val g = global ?: return null
-        moduleCache[name]?.let { return it }
+    fun requireModule(name: String): Any? = withBudget {
+        val c = cx ?: return@withBudget null
+        val g = global ?: return@withBudget null
+        moduleCache[name]?.let { return@withBudget it }
         val raw = engine.project.readAsset(name)
         val src = if (raw != null && name.endsWith(".bp")) {
             try { com.sengine.engine.blueprint.BlueprintCompiler.compile(com.sengine.engine.blueprint.Blueprint.parse(raw)) }
             catch (e: Exception) { engine.log(2, "Blueprint $name: ${e.message}"); null }
         } else raw
-        if (src == null) { engine.log(2, "require: module not found: $name"); return null }
+        if (src == null) { engine.log(2, "require: module not found: $name"); return@withBudget null }
         val scope = c.newObject(g)
         scope.prototype = g
         scope.parentScope = null
@@ -180,11 +230,14 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         ScriptableObject.putProperty(module, "exports", exports)
         ScriptableObject.putProperty(scope, "module", module)
         ScriptableObject.putProperty(scope, "exports", exports)
-        return try {
+        return@withBudget try {
             c.compileString(src, name, 1, null).exec(c, scope)
             val result = ScriptableObject.getProperty(module, "exports")
             moduleCache[name] = result
             result
+        } catch (e: ScriptBudgetException) {
+            engine.log(2, "require $name: ${e.message}")
+            null
         } catch (e: RhinoException) {
             engine.log(2, "require $name:${e.lineNumber()} ${e.details()}")
             null
@@ -205,7 +258,12 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         }
     }
 
-    fun update(dt: Float) {
+    fun update(dt: Float): Unit = withBudget {
+        try { updateInternal(dt) }
+        catch (e: ScriptBudgetException) { engine.log(2, "script frame aborted: ${e.message}") }
+    }
+
+    private fun updateInternal(dt: Float) {
         if (cx == null) return
         inputApi.sync()
         startPending()
@@ -249,17 +307,23 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         val g = global ?: return
         val tick = g.get("__tick", g)
         if (tick is Function) {
-            try { tick.call(cx, g, g, emptyArray()) } catch (e: RhinoException) {
+            try { tick.call(cx, g, g, emptyArray()) }
+            catch (e: ScriptBudgetException) { engine.log(2, "timer: ${e.message}") }
+            catch (e: RhinoException) {
                 engine.log(2, "timer: line ${e.lineNumber()} ${e.details()}")
             } catch (e: Exception) { engine.log(2, "timer: ${e.message}") }
         }
     }
 
-    private fun call(inst: Instance, fname: String, vararg args: Any?): Any? {
+    private fun call(inst: Instance, fname: String, vararg args: Any?): Any? = withBudget {
         val f = inst.scope.get(fname, inst.scope)
-        if (f !is Function) return null
-        return try {
+        if (f !is Function) return@withBudget null
+        return@withBudget try {
             f.call(cx, inst.scope, inst.scope, arrayOf(*args))
+        } catch (e: ScriptBudgetException) {
+            engine.log(2, "${inst.comp.script} in $fname(): ${e.message}")
+            inst.failed = true
+            null
         } catch (e: RhinoException) {
             engine.log(2, "${inst.comp.script}:${e.lineNumber()} in $fname(): ${e.details()}")
             inst.failed = true
@@ -271,23 +335,23 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         }
     }
 
-    fun sendMessage(go: GameObject, fname: String, arg: Any?): Any? {
+    fun sendMessage(go: GameObject, fname: String, arg: Any?): Any? = withBudget {
         var result: Any? = null
         for (inst in instances.toList()) {
             if (inst.go === go && !inst.failed) result = call(inst, fname, arg) ?: result
         }
-        return result
+        return@withBudget result
     }
 
-    private fun dispatch(go: GameObject, fname: String, other: GameObject) {
-        if (cx == null) return
+    private fun dispatch(go: GameObject, fname: String, other: GameObject): Unit = withBudget {
+        if (cx == null) return@withBudget
         val o = toJs(other)
         for (inst in instances.toList()) {
             if (inst.go === go && inst.started && !inst.failed && inst.comp.enabled) call(inst, fname, o)
         }
     }
 
-    fun onDestroyed(go: GameObject) {
+    fun onDestroyed(go: GameObject): Unit = withBudget {
         for (inst in instances.toList()) if (inst.go === go) {
             if (inst.started && !inst.failed) call(inst, "onDestroy")
             instances.remove(inst)
@@ -312,8 +376,16 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
 function log() { var s = []; for (var i = 0; i < arguments.length; i++) s.push(String(arguments[i])); console.log(s.join(' ')); }
 function warn(m) { console.warn(String(m)); }
 function error(m) { console.error(String(m)); }
-function random(a, b) { if (a === undefined) return Math.random(); return a + Math.random() * (b - a); }
-function randomInt(a, b) { return Math.floor(random(a, b + 1)); }
+function random(a, b) {
+    if (a === undefined) return Math.random();
+    if (b === undefined) { b = a; a = 0; }
+    return a + Math.random() * (b - a);
+}
+function randomInt(a, b) {
+    if (a === undefined) return Math.floor(Math.random() * 2);
+    if (b === undefined) { b = a; a = 0; }
+    return Math.floor(a + Math.random() * (b - a + 1));
+}
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function moveToward(cur, target, maxDelta) { if (Math.abs(target - cur) <= maxDelta) return target; return cur + (target > cur ? 1 : -1) * maxDelta; }
@@ -348,6 +420,11 @@ function after(sec, fn) { __timers.push({ t: time.time + sec, f: fn, every: 0 })
 function every(sec, fn) { __timers.push({ t: time.time + sec, f: fn, every: sec }); }
 function wait(sec, fn) { after(sec, fn); }
 function cancelTimers() { __timers.length = 0; }
+/** Runs one callback without letting a broken timer/tween kill the whole tick. */
+function __safeCall(fn, label) {
+    try { fn(); }
+    catch (err) { error(label + ': ' + (err && err.message ? err.message : String(err))); }
+}
 
 // ---------------------------------------------------------------- tween engine
 var __tweens = [];
@@ -391,18 +468,25 @@ function __tick() {
   __tick.last = now;
   for (var i = __timers.length - 1; i >= 0; i--) {
     var tm = __timers[i];
-    if (now >= tm.t) { if (tm.every > 0) tm.t += tm.every; else __timers.splice(i, 1); tm.f(); }
+    if (now >= tm.t) {
+      if (tm.every > 0) tm.t = now + tm.every; else __timers.splice(i, 1);
+      __safeCall(tm.f, 'timer');
+    }
   }
   for (var j = __tweens.length - 1; j >= 0; j--) {
     var tw = __tweens[j];
     if (tw.dead || tw.obj === undefined) { __tweens.splice(j, 1); continue; }
-    tw.t += dt;
-    var k = Math.min(tw.t / tw.dur, 1);
-    var e = tw.fn(k);
-    tw.obj[tw.prop] = tw.from + (tw.to - tw.from) * e;
-    if (k >= 1) {
+    try {
+      tw.t += dt;
+      var k = Math.min(tw.t / tw.dur, 1);
+      var e = tw.fn(k);
+      tw.obj[tw.prop] = tw.from + (tw.to - tw.from) * e;
+      if (k >= 1) __tweens.splice(j, 1);
+      else continue;
+      if (tw.onDone) __safeCall(tw.onDone, 'tween callback');
+    } catch (err) {
       __tweens.splice(j, 1);
-      if (tw.onDone) { try { tw.onDone(); } catch (err) { error(err); } }
+      error('tween: ' + (err && err.message ? err.message : String(err)));
     }
   }
 }

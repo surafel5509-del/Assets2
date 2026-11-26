@@ -6,9 +6,20 @@
 
 **v2.2.0** upgrades the runtime itself:
 
-* **Professional script system** — full lifecycle (`start`, `update`, `onFixedUpdate`, `onLateUpdate`, `onEnable` / `onDisable`, `onCollision`, `onTrigger`, `onTap`, `onDestroy`, `onStop`), a **tween engine** (`tween(obj, "x", 10, 0.5, "backOut")` with7 easing curves), **CommonJS modules** (`require("Utils.js")`), a math toolkit (`damp`, `smoothstep`, `mapRange`, `wrap`, `lerpAngle`, `rotateToward`, `dist`, `randomPick`, …), timers (`after` / `every` / `wait` / `cancelTimers`), `time.scale` (pause / slow-motion), `time.delta`, `scene.broadcast`, `input.up/down/left/right` + `input.key(code)`, and `assert()`.
+* **Professional script system** — full lifecycle (`start`, `update`, `onFixedUpdate`, `onLateUpdate`, `onEnable` / `onDisable`, `onCollision`, `onTrigger`, `onTap`, `onDestroy`, `onStop`), a **tween engine** (`tween(obj, "x", 10, 0.5, "backOut")` with 7 easing curves), **CommonJS modules** (`require("Utils.js")`), a math toolkit (`damp`, `smoothstep`, `mapRange`, `wrap`, `lerpAngle`, `rotateToward`, `dist`, `randomPick`, …), timers (`after` / `every` / `wait` / `cancelTimers`), `time.scale` (pause / slow-motion), `time.delta`, `scene.broadcast`, `input.up/down/left/right` + `input.key(code)`, and `assert()`.
 * **Most powerful physics engine yet** — **collision layers & masks** (16 layers per collider), **continuous collision detection** (fast bullets never tunnel), **max speed clamps**, **kinematic platform carrying** (riders move with moving platforms), **ground normals** for slope-aware gameplay, **overlap queries** (`overlapCircle` / `overlapSphere`), **sorted multi-hit raycasts** (`raycastAll` in 2D & 3D), plus instant `addImpulse` from scripts.
 * **3D audio engine** — positional `audio.play3d(name, x, y, z)` / `play3dLoop` with **distance attenuation + live stereo panning** against the camera listener, `move3d` / `stop3d` handles, falloff profiles (`setFalloff`), SFX/music **bus volumes**, and a **music channel** (`playMusic` / `pauseMusic` / `resumeMusic` / `setMusicVolume`) — all backed by a pure, unit-tested `Audio3DMath` core.
+
+**Phase 1 reliability pass** (architecture inspection first, then targeted fixes — no engine rewrite):
+
+* Rhino scripts now run in a real sandbox: safe standard objects, an allow-list `ClassShutter` and a per-frame instruction/time budget. Host Java/file/network access is denied and infinite loops are aborted with a visible console error.
+* Play / Stop resets time scale, profilers, physics accumulators, pending scene loads, input and object pools; `onStop()` is delivered on the owning GL thread before teardown.
+* Physics correctness: 3D gravity now applies all three axes, `overlaps()` uses the real box/circle collider manifolds, and kinematic platform carrying works in either broadphase pair order.
+* Persistence safety: atomic scene writes with `.bak` recovery, extensionless-safe asset naming, strict zip-slip validation, and exclusion of hidden temp/backup files from exports and standalone APKs.
+* One audited scripting API reference shared by the editor, Markdown docs and an automated test; JS/GLSL/Blueprint editor status, Rhino syntax validation, and real Ctrl+S / Ctrl+Z / Ctrl+Y / Ctrl+P shortcuts.
+* GL programs, textures and FBOs are explicitly released on the GL thread when the editor or player is destroyed.
+
+See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and remaining work.
 
 > Written from scratch in Kotlin. OpenGL ES 2.0 renderer, custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
 
@@ -22,8 +33,8 @@
 | **Scene editor** | Viewport with grid, pan (drag) & pinch-zoom, tap-to-select, **Move / Rotate / Scale gizmos** with axis handles, snapping, frame selected |
 | **Hierarchy** | Parent/child tree, collapse, visibility toggle, rename / duplicate / delete / reorder / create child / unparent |
 | **Inspector** | Edit name, tag, sorting order, parent, transform (drag labels to scrub values), every component property, color picker, asset pickers, add / remove / reorder / reset components |
-| **Undo / Redo** | Snapshot-based history for every edit |
-| **Play mode** | Play / Pause / Step frame inside the editor; scene is restored when you stop (like Unity) |
+| **Undo / Redo** | Snapshot-based history for every edit; Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z shortcuts |
+| **Play mode** | Play / Pause / Step frame inside the editor; scene is restored when you stop (like Unity); Ctrl+P toggles Play/Stop |
 | **Rendering** | Squares, circles, triangles, textured sprites (PNG/JPG/WebP) with flip, text, particles, sorting order, camera background |
 | **3D rendering** | Perspective camera (follow / look-at / shake / post-FX), primitive + OBJ meshes, per-vertex lighting (sun + 4 point lights), sky with sun disc, distance fog, Toon / Pulse / custom shaders |
 | **Terrain** | Procedural heightmap (FBM value noise), texture tiling, baked mesh cache, **collides with rigidbodies**, `scene.terrainHeight(x, z)` queries |
@@ -36,7 +47,7 @@
 | **3D audio** | Positional play/loop with live pan + attenuation, listener follows the camera, falloff ranges, SFX/music buses, MediaPlayer music channel |
 | **Physics 2D** | Dynamic / Kinematic / Static rigidbodies, box & circle colliders, gravity, bounciness, friction, drag, triggers, collision & trigger callbacks, `grounded` detection |
 | **Scripting** | JavaScript (ES6 subset via Rhino) with `start`, `update(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging |
-| **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference |
+| **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference, Rhino syntax validation, Ctrl+S / Ctrl+Z / Ctrl+Y |
 | **Assets** | Import images and sounds from the device, create scripts, preview / assign / attach from the Assets panel |
 | **Audio** | `AudioSource` component + `audio.play()` / `audio.beep()` |
 | **Input** | On-screen joystick + A/B buttons, touch position / taps in world space, hardware keyboard & gamepad (WASD / arrows / Space / Enter) |
@@ -88,14 +99,9 @@ function onTrigger(other) {
 }
 ```
 
-### API summary
+### API reference
 
-* **Lifecycle:** `start()`, `update(dt)`, `onCollision(other)`, `onTrigger(other)`, `onTriggerExit(other)`, `onTap()`, `onDestroy()`, `onStop()`
-* **self / transform:** `name tag active order x y rotation scaleX scaleY worldX worldY vx vy grounded color visible flipX text size`, `setPosition() move() rotate() addForce() setVelocity() destroy() child() parent distanceTo() overlaps() send() burst() setEmitting() setTexture() hasComponent() setComponentEnabled()`
-* **input:** `axisX axisY a b aDown bDown touching tapped touchX touchY`
-* **scene:** `find(name) findAll(tag) count(tag) spawn(name, x, y) load(name) reload() camera gravityX gravityY`
-* **time:** `time.time time.frame time.fps` — **audio:** `play(file) beep() stopAll()`
-* **helpers:** `log() warn() error() after(sec, fn) every(sec, fn) random() randomInt() clamp() lerp()`
+The complete, runtime-audited JavaScript API is in [`docs/SCRIPTING_API.md`](docs/SCRIPTING_API.md). That file, the in-editor **API** button and `ApiAuditTest` all consume the same `ApiReference.kt` constant, so the documentation cannot drift away from the runtime without a test failure. It covers lifecycle hooks, `self`/`transform`/`gameObject`, physics and 3D properties, scene queries, object pools, audio, timers, tweens, modules, parameters and the safety model.
 
 Inactive objects make great **prefab templates** – `scene.spawn("Enemy", x, y)` clones them and activates the copy.
 
@@ -119,7 +125,19 @@ Requirements: JDK 17 and the Android SDK (API 34). Android Studio Hedgehog or ne
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Every push is also built by GitHub Actions (`.github/workflows/android.yml`); download the APK from the run's **Artifacts** section.
+Every push is also built by GitHub Actions (`.github/workflows/build-apk.yml`); download the APK from the run's **Artifacts** section.
+
+### Headless regression tests
+
+The JVM-only toolchain compiles the real Kotlin engine against Android/Rhino/JSON stubs and runs every `*Test.kt` with the headless `LocalRunner`. It exercises the actual engine loop, physics, script runtime, serialization and asset/project code — no Android emulator required:
+
+```bash
+bash tools/offline-build/bootstrap-toolchain.sh
+cp tools/offline-build/build.sh /home/user/toolchain/build.sh
+bash /home/user/toolchain/build.sh all
+```
+
+`build.sh` auto-discovers test classes, so adding a regression suite is enough to include it in CI locally. The standalone APK export test remains skipped unless the export environment (Gradle/Android SDK/configuration) is provided.
 
 Minimum Android version: 8.0 (API 26). Requires OpenGL ES 2.0.
 

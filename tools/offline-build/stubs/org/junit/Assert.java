@@ -7,6 +7,7 @@ public class Assert {
     public static void assertFalse(boolean condition) { if (condition) fail("expected false"); }
     public static void assertFalse(String message, boolean condition) { if (condition) fail(message); }
     public static void assertNull(Object object) { if (object != null) fail("expected null but was: " + object); }
+    public static void assertNull(String message, Object object) { if (object != null) fail(message + " expected null but was: " + object); }
     public static void assertNotNull(Object object) { if (object == null) fail("expected not null"); }
     public static void assertNotNull(String message, Object object) { if (object == null) fail(message); }
     public static void assertEquals(Object expected, Object actual) {

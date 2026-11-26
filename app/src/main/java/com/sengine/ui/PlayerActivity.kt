@@ -24,6 +24,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private lateinit var engine: Engine
     private lateinit var glView: GLSurfaceView
+    private lateinit var renderer: SceneRenderer
     private lateinit var fpsText: TextView
     private val handler = Handler(Looper.getMainLooper())
     private val fpsTick = object : Runnable {
@@ -52,7 +53,8 @@ class PlayerActivity : AppCompatActivity() {
         val root = FrameLayout(this)
         glView = GLSurfaceView(this).apply {
             setEGLContextClientVersion(2)
-            setRenderer(SceneRenderer(engine, null))
+            renderer = SceneRenderer(engine, null)
+            setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         }
         glView.setOnTouchListener { v, e -> forwardTouch(v, e); true }
@@ -106,7 +108,27 @@ class PlayerActivity : AppCompatActivity() {
     override fun onPause() { super.onPause(); glView.onPause(); handler.removeCallbacks(fpsTick) }
 
     override fun onDestroy() {
+        handler.removeCallbacks(fpsTick)
+        if (::engine.isInitialized) {
+            engine.release()
+            if (::glView.isInitialized && ::renderer.isInitialized) {
+                val done = java.util.concurrent.CountDownLatch(1)
+                glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+                glView.onResume()
+                glView.queueEvent {
+                    try {
+                        synchronized(engine.lock) { engine.tick(0f) }
+                        renderer.release()
+                    } finally { done.countDown() }
+                }
+                glView.requestRender()
+                try {
+                    if (!done.await(2, java.util.concurrent.TimeUnit.SECONDS))
+                        engine.log(1, "GL teardown timed out")
+                } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
+                glView.onPause()
+            }
+        }
         super.onDestroy()
-        if (::engine.isInitialized) engine.release()
     }
 }

@@ -49,6 +49,11 @@ class Renderer3D {
         fullscreen.put(floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)).position(0)
     }
 
+    fun release() {
+        if (skyProg != 0) GLES20.glDeleteProgram(skyProg)
+        skyProg = 0
+    }
+
     fun drawSky(v: View3D, top: Int, horizon: Int) {
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthMask(false)

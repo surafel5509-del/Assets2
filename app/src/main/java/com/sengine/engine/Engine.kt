@@ -10,6 +10,7 @@ import com.sengine.engine.core.SceneSerializer
 import com.sengine.engine.core.Steering
 import com.sengine.engine.physics.PhysicsWorld
 import com.sengine.engine.render.View2D
+import com.sengine.engine.script.ScriptBudgetException
 import com.sengine.engine.script.ScriptSystem
 import com.sengine.project.Project
 import org.json.JSONObject
@@ -67,6 +68,7 @@ class Engine(val project: Project, initialScene: Scene) {
     private var snapshot: String? = null
     private var snapshotScene = ""
     private var pendingSceneLoad: String? = null
+    @Volatile private var released = false
 
     val logs = ArrayDeque<String>()
 
@@ -118,13 +120,37 @@ class Engine(val project: Project, initialScene: Scene) {
 
     // ---------------------------------------------------------------- play mode
     private fun startPlay() {
+        resetRuntimeState()
         snapshot = SceneSerializer.toJson(scene).toString()
         snapshotScene = scene.name
-        time = 0.0; frame = 0
-        input.clear()
         setMode(Mode.PLAY)
         beginScene()
         log(0, "▶ Play: ${scene.name}")
+    }
+
+    /**
+     * Clears every piece of mutable runtime state that a previous play session
+     * could leave behind (time scale, profilers, physics accumulators, pending
+     * scene loads, input, pools). Without this, a script that sets
+     * `time.scale = 0` or queues `scene.load()` makes the *next* Play unusable.
+     */
+    private fun resetRuntimeState() {
+        time = 0.0
+        frame = 0
+        timeScale = 1f
+        lastDt = 1f / 60f
+        fps = 0f
+        fpsAcc = 0f
+        fpsFrames = 0
+        scriptMs = 0f
+        physicsMs = 0f
+        renderMs = 0f
+        drawCalls = 0
+        pendingSceneLoad = null
+        input.clear()
+        physics.reset()
+        physics3D.reset()
+        clearPools()
     }
 
     private fun beginScene() {
@@ -155,7 +181,8 @@ class Engine(val project: Project, initialScene: Scene) {
         val snap = snapshot
         if (snap != null) scene = SceneSerializer.fromJson(JSONObject(snap))
         snapshot = null
-        input.clear()
+        snapshotScene = ""
+        resetRuntimeState()
         setMode(Mode.EDIT)
         listeners.forEach { it.onSceneReplaced() }
         log(0, "■ Stopped")
@@ -166,7 +193,9 @@ class Engine(val project: Project, initialScene: Scene) {
     fun tick(dt: Float) {
         while (true) {
             val c = commands.poll() ?: break
-            try { c() } catch (e: Exception) { log(2, "Engine error: ${e.message}") }
+            try { c() }
+            catch (e: ScriptBudgetException) { log(2, "Engine error: ${e.message}") }
+            catch (e: Exception) { log(2, "Engine error: ${e.message}") }
         }
         fpsAcc += dt; fpsFrames++
         if (fpsAcc >= 0.5f) { fps = fpsFrames / fpsAcc; fpsAcc = 0f; fpsFrames = 0 }
@@ -211,7 +240,7 @@ class Engine(val project: Project, initialScene: Scene) {
             val fromSnapshot = snap != null && load == snapshotScene
             if (fromSnapshot || project.sceneExists(load)) {
                 endScene()
-                scene = if (fromSnapshot) SceneSerializer.fromJson(JSONObject(snap!!)) else project.loadScene(load)
+                scene = if (fromSnapshot) SceneSerializer.fromJson(JSONObject(snap)) else project.loadScene(load)
                 listeners.forEach { it.onSceneReplaced() }
                 beginScene()
                 log(0, "Loaded scene $load")
@@ -332,7 +361,7 @@ class Engine(val project: Project, initialScene: Scene) {
             val px = w3?.get(12) ?: w2!!.tx
             val pz = w3?.get(14) ?: w2!!.ty
             val cvx = rb3?.vx ?: rb2?.vx ?: 0f
-            val cvp = if (threeD) rb3!!.vz else rb2?.vy ?: 0f
+            val cvp = if (threeD) rb3.vz else rb2?.vy ?: 0f
             // 2D: only steer vertically when gravity is off (top-down style)
             val steerY = !threeD && (scene.gravityY == 0f || (rb2?.gravityScale ?: 1f) == 0f)
 
@@ -413,7 +442,7 @@ class Engine(val project: Project, initialScene: Scene) {
                 if (steerY || threeD) nvp = dvp
             }
             if (threeD) {
-                rb3!!.vx = nvx; rb3.vz = nvp
+                rb3.vx = nvx; rb3.vz = nvp
             } else {
                 rb2!!.vx = nvx
                 if (steerY) rb2.vy = nvp
@@ -527,10 +556,20 @@ class Engine(val project: Project, initialScene: Scene) {
 
     fun findComponentOwner(c: Component): GameObject? = scene.objects.firstOrNull { c in it.components }
 
+    /**
+     * Shuts the engine down. The Rhino context is owned by the GL thread, so
+     * teardown (and therefore `onStop()` callbacks) must be executed there.
+     * [release] may be called from any thread: the work is queued for the next
+     * [tick], while audio - which is thread-safe - is stopped immediately too.
+     */
     fun release() {
-        synchronized(lock) {
-            if (mode != Mode.EDIT) endScene()
+        if (released) return
+        released = true
+        post {
+            if (mode != Mode.EDIT) stopPlay() else endScene()
             audio.stop()
+            listeners.clear()
         }
+        audio.stop()
     }
 }

@@ -19,7 +19,15 @@ class TextureCache(private val project: Project) {
     private val stamps = HashMap<String, Long>()
     private val texts = LinkedHashMap<String, Tex>(64, 0.75f, true)
 
+    /** Discard cached ids after an EGL context loss (old ids belong to the lost context). */
     fun clear() { images.clear(); stamps.clear(); texts.clear() }
+
+    /** Delete every live GL texture before the owning context is destroyed. */
+    fun release() {
+        for (tex in images.values) tex?.let { GLES20.glDeleteTextures(1, intArrayOf(it.id), 0) }
+        for (tex in texts.values) GLES20.glDeleteTextures(1, intArrayOf(tex.id), 0)
+        clear()
+    }
 
     fun image(name: String): Tex? {
         if (name.isBlank()) return null

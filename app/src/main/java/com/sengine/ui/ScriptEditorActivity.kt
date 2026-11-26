@@ -10,6 +10,7 @@ import android.text.Spannable
 import android.text.TextWatcher
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
+import android.view.KeyEvent
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ScrollView
@@ -18,8 +19,13 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.sengine.engine.blueprint.Blueprint
+import com.sengine.engine.blueprint.BlueprintCompiler
+import com.sengine.engine.script.ApiReference
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
+import org.mozilla.javascript.Context
+import org.mozilla.javascript.RhinoException
 
 /** Code editor for JavaScript behaviour scripts with syntax highlighting and quick keys. */
 class ScriptEditorActivity : AppCompatActivity() {
@@ -36,14 +42,18 @@ class ScriptEditorActivity : AppCompatActivity() {
     private var restoring = false
 
     private var glsl = false
+    private var blueprint = false
+    private var syntaxError: String? = null
     private val highlightTask = Runnable { highlight(editor.text) }
     private val historyTask = Runnable { pushHistory() }
+    private val syntaxTask = Runnable { validateSyntax(); updateStatus() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         project = ProjectManager.open(this, intent.getStringExtra("project")!!)
         asset = intent.getStringExtra("asset")!!
         glsl = asset.endsWith(".glsl")
+        blueprint = asset.endsWith(".bp")
         saved = project.readAsset(asset) ?: ""
 
         val root = vbox().apply { setBackgroundColor(C.BG) }
@@ -102,6 +112,8 @@ class ScriptEditorActivity : AppCompatActivity() {
                 }
                 handler.removeCallbacks(highlightTask)
                 handler.postDelayed(highlightTask, 250)
+                handler.removeCallbacks(syntaxTask)
+                handler.postDelayed(syntaxTask, 400)
                 if (!restoring) {
                     handler.removeCallbacks(historyTask)
                     handler.postDelayed(historyTask, 600)
@@ -112,6 +124,7 @@ class ScriptEditorActivity : AppCompatActivity() {
         editor.setOnClickListener { updateStatus() }
         highlight(editor.text)
         pushHistory()
+        validateSyntax()
         updateStatus()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -128,13 +141,64 @@ class ScriptEditorActivity : AppCompatActivity() {
         })
     }
 
+    override fun onDestroy() {
+        handler.removeCallbacks(highlightTask)
+        handler.removeCallbacks(historyTask)
+        handler.removeCallbacks(syntaxTask)
+        super.onDestroy()
+    }
+
     private fun insert(s: String) {
         val st = editor.selectionStart.coerceAtLeast(0)
         val en = editor.selectionEnd.coerceAtLeast(0)
         editor.text.replace(minOf(st, en), maxOf(st, en), s)
     }
 
-    private fun save() {
+    /** Compiles the current text with the real Rhino parser / blueprint compiler. */
+    private fun validateSyntax() {
+        val t = editor.text.toString()
+        if (glsl) { syntaxError = null; return } // GLSL is compiled by the GL runtime
+        val cx = Context.enter()
+        try {
+            cx.optimizationLevel = -1
+            cx.languageVersion = Context.VERSION_ES6
+            val source = if (blueprint) BlueprintCompiler.compile(Blueprint.parse(t)) else t
+            cx.compileString(source, asset, 1, null)
+            syntaxError = null
+        } catch (e: RhinoException) {
+            syntaxError = "Line ${e.lineNumber()}: ${e.details().trim()}"
+        } catch (e: Exception) {
+            syntaxError = e.message ?: "Invalid source"
+        } finally {
+            Context.exit()
+        }
+    }
+
+    /** Real keyboard shortcuts, usable while the code field has focus. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && event.isCtrlPressed) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_S -> { save(); return true }
+                KeyEvent.KEYCODE_Z -> { if (event.isShiftPressed) redo() else undo(); return true }
+                KeyEvent.KEYCODE_Y -> { redo(); return true }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun save(force: Boolean = false) {
+        handler.removeCallbacks(syntaxTask)
+        validateSyntax()
+        val error = syntaxError
+        if (!force && error != null) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Syntax error")
+                .setMessage("$error\n\nSave anyway? The runtime will report this error when the script runs.")
+                .setPositiveButton("Save anyway") { _, _ -> save(force = true) }
+                .setNegativeButton("Fix", null)
+                .show()
+            return
+        }
         val t = editor.text.toString()
         project.writeAsset(asset, t)
         saved = t
@@ -151,7 +215,14 @@ class ScriptEditorActivity : AppCompatActivity() {
             if (text[i] == '\n') { line++; col = 1 } else col++
         }
         val dirty = if (text.toString() != saved) "  •  modified" else ""
-        status.text = "Ln $line, Col $col  •  ${text.count { it == '\n' } + 1} lines  •  JavaScript$dirty"
+        val language = when {
+            glsl -> "GLSL ES 1.0"
+            blueprint -> "Blueprint JSON"
+            else -> "JavaScript"
+        }
+        val check = syntaxError?.let { "  •  ⚠ $it" }
+            ?: if (glsl) "" else "  •  syntax ok"
+        status.text = "Ln $line, Col $col  •  ${text.count { it == '\n' } + 1} lines  •  $language$dirty$check"
     }
 
     private fun pushHistory() {
@@ -225,77 +296,8 @@ class ScriptEditorActivity : AppCompatActivity() {
         private val STRING = Regex("\"(\\\\.|[^\"\\\\\\n])*\"|'(\\\\.|[^'\\\\\\n])*'")
         private val COMMENT = Regex("//[^\\n]*|/\\*[\\s\\S]*?\\*/")
 
-        val API_DOC = """
-LIFECYCLE (define any of these)
-  start()              once, when play begins
-  update(dt)           every frame (dt = seconds)
-  onCollision(other)   solid collision began
-  onTrigger(other)     entered a trigger
-  onTriggerExit(other) left a trigger
-  onTap()              object's collider tapped
-  onDestroy() / onStop()
-
-SELF  (self / transform / gameObject)
-  name tag active order id
-  x y rotation scaleX scaleY   (local)
-  worldX worldY                (read-only)
-  setPosition(x,y) move(dx,dy) rotate(deg)
-  vx vy grounded setVelocity(vx,vy)
-  addForce(fx,fy)              (impulse)
-
- 3D
-  z rotX rotY rotZ scaleZ worldZ vz
-  setPosition(x,y,z) move(dx,dy,dz)
-  rotate(rx,ry,rz) setVelocity(x,y,z)
-  addForce(x,y,z) distanceTo3(o) forward()
-  setMeshColor("#FFRRGGBB")
-
- ANIMATION & RENDER
-  play("Run.anim") stopAnimation()
-  animation isAnimationFinished()
-  setAnimSpeed(s) setShaderParam(v)
-
-  color = "#FFRRGGBB"  visible  flipX
-  text  (TextRenderer)  setTexture(name)
-  burst(n) setEmitting(b)      (particles)
-  size                         (camera)
-  destroy() child(name) parent
-  distanceTo(o) overlaps(o) is(o)
-  send("fn", arg)              call fn on other
-  hasComponent(type)
-  setComponentEnabled(type, b)
-
-INPUT
-  axisX axisY (-1..1)  a b aDown bDown
-  touching tapped touchX touchY (world)
-
-SCENE
-  find(name) findAll(tag) count(tag)
-  spawn(name, x, y)   clones an object
-                      (inactive objects make
-                       great templates)
-  load(sceneName) reload() camera
-  gravityX gravityY name
-  spawn(name, x, y, z)  shake(amount)
-  raycast(ox,oy,oz, dx,dy,dz, max)
-     -> {object, x, y, z, distance} | null
-  getCamera3D() gravity3D
-
-TIME   time.time time.frame time.fps
-AUDIO  audio.play("file.wav") audio.beep()
-       audio.stopAll()
-
-HELPERS
-  log(...) warn(m) error(m)
-  after(sec, fn) every(sec, fn)
-  random(a,b) randomInt(a,b)
-  clamp(v,a,b) lerp(a,b,t)
-
-PARAMS  "speed=5, jump=10" in the Script
-        component become variables.
-
-BLUEPRINTS  .bp files compile to this API.
-""".trimIndent()
+        /** Canonical reference shared by documentation + runtime audit tests. */
+        val API_DOC: String get() = ApiReference.API_DOC
 
         val GLSL_DOC = """
 Shaders are GLSL ES 1.0 effect functions:

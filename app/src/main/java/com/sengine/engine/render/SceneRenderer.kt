@@ -58,6 +58,19 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         lastNs = System.nanoTime()
     }
 
+    /**
+     * Frees shaders, textures and FBOs on the GL thread. GLSurfaceView has no
+     * onSurfaceDestroyed callback, so EditorActivity / PlayerActivity call this
+     * in a queueEvent before the view is destroyed.
+     */
+    fun release() {
+        shaders.release()
+        r.release()
+        r3.release()
+        post.release()
+        textures.release()
+    }
+
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         this.width = width; this.height = height
         GLES20.glViewport(0, 0, width, height)
@@ -80,7 +93,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             r.resW = width.toFloat(); r.resH = height.toFloat(); r3.resW = r.resW; r3.resH = r.resH
             val editing = editor != null && engine.mode == Engine.Mode.EDIT
             val cam3 = engine.mainCamera3D()
-            val use3D = if (editing) editor!!.mode3D else cam3 != null
+            val use3D = if (editing) editor.mode3D else cam3 != null
 
             // post effect selection (play mode only)
             var postProg: PostProgram? = null
@@ -217,7 +230,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             v = editor.view3D
         } else {
             v = gameView3D
-            if (cam != null && camGo != null) {
+            if (cam != null) {
                 v.fov = cam.fov; v.near = cam.near; v.far = cam.far
                 val target = if (cam.lookAtTarget && cam.follow.isNotBlank()) scene.find(cam.follow)?.world3 else null
                 val jx = if (cam.shake > 0f) (rnd.nextFloat() * 2f - 1f) * cam.shake * 0.2f else 0f

@@ -125,7 +125,10 @@ class PhysicsWorld {
                 val kin = if (a.rb?.bodyType == 1) a else if (b.rb?.bodyType == 1) b else null
                 val dyn = if (kin === a) b else a
                 val delta = kin?.let { carry[it.go.id] }
-                if (delta != null && dyn.rb?.bodyType == 0 && m.ny >= -0.55f && dyn.go.id !in carried) {
+                // A rider can be above the mover in either pair order: the normal
+                // is +Y when the kinematic body is `a`, -Y when it is `b`, so
+                // both orientations must reach the onTop check below.
+                if (delta != null && dyn.rb?.bodyType == 0 && dyn.go.id !in carried) {
                     // only when the dynamic body rests on top of (or is pushed by) the mover
                     // normal points a->b: rider above mover => ny>0.55 when mover is a, ny<-0.55 when mover is b
                     val onTop = if (kin === a) m.ny > 0.55f else m.ny < -0.55f
@@ -139,7 +142,7 @@ class PhysicsWorld {
             }
         }
         for (k in prevTriggers) if (k !in triggers) {
-            val a = scene.findById(k shr 32)
+            val a = scene.findById(k ushr 32)
             val b = scene.findById(k and 0xFFFFFFFFL)
             if (a != null && b != null) listener?.onTriggerExit(a, b)
         }
@@ -319,6 +322,22 @@ class PhysicsWorld {
         val rb = b.rb ?: return
         rb.vx += ix * inv
         rb.vy += iy * inv
+    }
+
+    /**
+     * Geometric overlap test between two objects' 2D colliders, using the exact
+     * same box/circle manifolds as the simulation (offsets, scale, circles and
+     * world transforms included). Used by the scripting `overlaps()` API.
+     */
+    fun overlaps(aGo: GameObject, bGo: GameObject): Boolean {
+        if (aGo === bGo || aGo.destroyed || bGo.destroyed) return false
+        if (!aGo.isActiveInHierarchy() || !bGo.isActiveInHierarchy()) return false
+        val ac = aGo.get<Collider2D>() ?: return false
+        val bc = bGo.get<Collider2D>() ?: return false
+        val a = Body(aGo, null, ac)
+        val b = Body(bGo, null, bc)
+        refresh(a); refresh(b)
+        return collide(a, b) != null
     }
 
     /** Returns first active object whose collider contains the world point. */

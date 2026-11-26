@@ -39,6 +39,11 @@ class Renderer2D {
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
     }
 
+    fun release() {
+        if (lineProg != 0) GLES20.glDeleteProgram(lineProg)
+        lineProg = 0
+    }
+
     fun begin(view: View2D) { view.matrix(viewProj) }
 
     fun begin(m: FloatArray) { System.arraycopy(m, 0, viewProj, 0, 16) }
