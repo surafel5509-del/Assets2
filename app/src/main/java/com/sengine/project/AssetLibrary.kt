@@ -8,9 +8,18 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import com.sengine.engine.anim.Animation3DClip
 import com.sengine.engine.anim.AnimationClip
+import com.sengine.engine.core.Base64Codec
+import com.sengine.engine.render.PngCodec
+import com.sengine.engine.render.TextureProfile
+import com.sengine.engine.sprite.SpriteDocument
 import com.sengine.engine.blueprint.Blueprint
 import java.io.ByteArrayOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -36,7 +45,13 @@ object AssetLibrary {
         fun installed(p: Project) = files.all { p.assetFile(it).exists() }
     }
 
-    val categories = listOf("All", "Packs", "Textures", "Sprites", "Sprite Sheets", "Sounds", "Shaders", "Scripts", "Blueprints", "3D Models", "Data Assets")
+    val categories = listOf(
+        "All", "Packs", "Textures", "Sprites", "Sprite Sheets", "Sounds", "Shaders", "Scripts",
+        "Blueprints", "3D Models", "Blender Models", "FBX Models", "Cinema 4D Models",
+        "3ds Max Models", "Maya Models", "Obj Models", "Rigged", "Animated Models",
+        "Lowpoly Models", "3D Animations", "Texture Settings", "Sprite Editor",
+        "Archive Bundles", "Data Assets",
+    )
 
     private fun png(p: Project, name: String, b: Bitmap) {
         p.assetsDir.mkdirs()
@@ -157,7 +172,119 @@ object AssetLibrary {
         list += text("Scene Snapshot", "Data Assets", "Snapshot.scene", "Editable scene snapshot JSON", "SCN") { BigEditionAssets.SCENE }
         list += text("Level Notes", "Data Assets", "Notes.txt", "Free-form level data, dialogue or CSV", "TXT") { BigEditionAssets.TEXT }
 
+        // ---------------------------------------------------------------- Phase 3 complete bundles and format guides
+        list += Item("Fruit Shop Complete Model Pack", "Packs",
+            "One ESR bundle: DCC source, OBJ render mesh, texture, material, sprite clip and 3D clip",
+            listOf("FruitShop.esr"), "PACK") { p -> p.writeBinaryAsset("FruitShop.esr", phase3BundleEsrJson()) }
+        list += Item("Complete ZIP Bundle", "Archive Bundles",
+            "One-click complete model bundle in a standard ZIP archive",
+            listOf("CompleteModel.zip"), "ZIP") { p -> p.writeBinaryAsset("CompleteModel.zip", phase3BundleZip()) }
+        list += Item("Complete RAR Store Bundle", "Archive Bundles",
+            "One-click complete model bundle in an uncompressed RAR 4.x archive",
+            listOf("CompleteModel.rar"), "RAR") { p -> p.writeBinaryAsset("CompleteModel.rar", phase3BundleRar()) }
+        list += Item("Fruit Shop JSON ESR", "Archive Bundles",
+            "ESR JSON bundle alias with Base64 members, no ZIP wrapper",
+            listOf("FruitShopJSON.esr"), "ESR") { p -> p.writeBinaryAsset("FruitShopJSON.esr", phase3BundleEsrJson()) }
+        val guides = listOf(
+            Triple("Blender .blend Source", "Blender Models", "BlenderFormat.txt"),
+            Triple("FBX Source & ASCII", "FBX Models", "FBXFormat.txt"),
+            Triple("Cinema 4D .c4d Source", "Cinema 4D Models", "Cinema4DFormat.txt"),
+            Triple("3ds Max .max and .3ds", "3ds Max Models", "MaxFormat.txt"),
+            Triple("Maya .ma and .mb Source", "Maya Models", "MayaFormat.txt"),
+            Triple("Wavefront OBJ / MTL", "Obj Models", "ObjFormat.txt"),
+            Triple("Rigged glTF / GLB / DAE", "Rigged", "RiggedFormat.txt"),
+            Triple("Animated BVH / anim3d", "Animated Models", "AnimatedFormat.txt"),
+            Triple("Lowpoly STL / PLY / OFF", "Lowpoly Models", "LowpolyFormat.txt"),
+        )
+        for ((title, category, file) in guides) {
+            list += text(title, category, file,
+                "Screenshot category support. Source assets are imported; an open render companion drives runtime geometry.",
+                "3D") { "S Engine Phase 3 format guide\n$title\nCategory: $category\nRuntime: OBJ, GLTF, GLB, STL, PLY, OFF, DAE, ASCII FBX or 3DS.\n" }
+        }
+        list += text("3D Clip Template", "3D Animations", "Phase3Clip.anim3d", "Track-based rigged animation clip", "ANM") { BigEditionAssets.ANIMATION3D }
+        list += text("Texture Profile Template", "Texture Settings", "Phase3Profile.texture", "Wrap, filter and mipmap settings", "TEX") { BigEditionAssets.TEXTURE_META }
+        list += text("Editable Sprite", "Sprite Editor", "Phase3Sprite.sprite", "Layered multi-frame sprite document", "SPR") { BigEditionAssets.SPRITE }
+        list += text("Model Pack Template", "Data Assets", "Phase3Pack.modelpack", "Complete bundle conversion metadata", "PACK") { BigEditionAssets.MODELPACK }
+
         return list
+    }
+
+    /** Deterministic complete model bundle members used by ZIP, RAR and ESR store samples. */
+    private fun phase3BundleFiles(): LinkedHashMap<String, ByteArray> {
+        val files = LinkedHashMap<String, ByteArray>()
+        val manifest = JSONObject()
+            .put("type", "sengine.modelpack")
+            .put("name", "Fruit Shop")
+            .put("model", "FruitShop.blend")
+            .put("renderModel", "FruitShop.obj")
+            .put("textures", JSONArray(listOf("FruitShop.png")))
+            .put("primaryTexture", "FruitShop.png")
+            .put("material", "FruitShop.mat")
+            .put("spriteAnimation", "FruitShop.anim")
+            .put("animation3d", "FruitShop.anim3d")
+            .put("spriteSheet", true)
+            .put("columns", 2).put("rows", 1)
+            .put("frames", JSONArray(listOf(0, 1)))
+            .put("fps", 8.0)
+            .put("scene", "Main")
+            .put("objectName", "Fruit Shop")
+            .put("createObject", true)
+        files["manifest.json"] = manifest.toString(2).toByteArray(Charsets.UTF_8)
+        files["FruitShop.blend"] = "BLENDER-v280 FruitShop source placeholder\nDCC file retained by Phase 3 bundle import.\n".toByteArray()
+        files["FruitShop.fbx"] = "; FBX ASCII source placeholder\nVertices: *1 { 0,0,0, 1,0,0, 0,1,0 }\nPolygonVertexIndex: *1 { 0,1,-3 }\n".toByteArray()
+        files["FruitShop.obj"] = "mtllib FruitShop.mtl\no FruitShop\nv -1 0 0\nv 1 0 0\nv 0 1.5 0\nv 0 0 -1\nvt 0 0\nvt 1 0\nvt 0.5 1\nvt 0.5 0.5\nusemtl FruitMaterial\nf 1/1 2/2 3/3\nf 1/1 4/4 2/2\n".toByteArray()
+        files["FruitShop.mtl"] = "newmtl FruitMaterial\nKd 1.0 0.6 0.2\nmap_Kd FruitShop.png\n".toByteArray()
+        val pixels = IntArray(32 * 32) { i ->
+            val x = i % 32; val y = i / 32
+            if ((x / 8 + y / 8) % 2 == 0) 0xFFFF8A65.toInt() else 0xFFAED581.toInt()
+        }
+        files["FruitShop.png"] = PngCodec.encode(32, 32, pixels)
+        files["FruitShop.anim"] = AnimationClip("FruitShop.png", 2, 1, mutableListOf(0, 1), 8f, true).toJson().toString(2).toByteArray()
+        val clip3d = Animation3DClip("FruitShopBob", 30f, true, "Fruit Shop").apply {
+            tracks.add(com.sengine.engine.anim.AnimationTrack(
+                "Fruit Shop",
+                listOf(0f, 15f, 30f),
+                listOf(floatArrayOf(0f, 0f, 0f), floatArrayOf(0f, 0.25f, 0f), floatArrayOf(0f, 0f, 0f)),
+                listOf(floatArrayOf(0f, 0f, 0f), floatArrayOf(0f, 12f, 0f), floatArrayOf(0f, 0f, 0f)),
+                listOf(floatArrayOf(1f, 1f, 1f), floatArrayOf(1f, 1f, 1f), floatArrayOf(1f, 1f, 1f)),
+            ))
+        }
+        files["FruitShop.anim3d"] = clip3d.toJson().toString(2).toByteArray()
+        files["FruitShop.texture"] = TextureProfile.DEFAULT.copy(
+            minFilter = TextureProfile.FILTER_NEAREST,
+            magFilter = TextureProfile.FILTER_NEAREST,
+            mipmaps = false,
+            spriteSheet = true,
+            atlasColumns = 2,
+            atlasRows = 1,
+        ).toJson().toString(2).toByteArray()
+        files["FruitShop.mat"] = BigEditionAssets.MATERIAL.replace("\"texture\": \"\"", "\"texture\": \"FruitShop.png\"").toByteArray()
+        files["FruitShop.sprite"] = SpriteDocument(16, 16).apply { addFrame() }.toJson().toString(2).toByteArray()
+        return files
+    }
+
+    private fun phase3BundleZip(): ByteArray {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            for ((name, data) in phase3BundleFiles()) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(data, 0, data.size)
+                zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    private fun phase3BundleRar(): ByteArray = ArchiveImporters.createRar4Store(phase3BundleFiles())
+
+    private fun phase3BundleEsrJson(): ByteArray {
+        val files = JSONObject()
+        for ((name, data) in phase3BundleFiles()) files.put(name, Base64Codec.encode(data))
+        return JSONObject()
+            .put("type", "sengine.esr")
+            .put("name", "Fruit Shop")
+            .put("files", files)
+            .toString(2).toByteArray(Charsets.UTF_8)
     }
 
     // ==================================================================== blueprints

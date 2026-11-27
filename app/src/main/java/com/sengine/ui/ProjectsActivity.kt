@@ -58,9 +58,9 @@ class ProjectsActivity : AppCompatActivity() {
         }
         val titleBox = vbox()
         titleBox.addView(label("S Engine", 28f, C.TEXT, true))
-        titleBox.addView(label("2D & 3D game engine & editor for Android  •  Ultimate v2.0", 13f, C.DIM))
+        titleBox.addView(label("2D & 3D game engine & editor for Android  •  Phase 3 3.1.0", 13f, C.DIM))
         header.addView(titleBox, lp(0, WRAP, 1f))
-        header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
+        header.addView(button("Import") { importLauncher.launch(arrayOf("application/zip", "application/vnd.rar", "application/x-rar-compressed", "application/octet-stream", "*/*")) },
             lp(WRAP, WRAP).margins(0, 0, dp(8), 0))
         header.addView(button("+ New Project", C.ACCENT, 0xFFFFFFFF.toInt()) { newProjectDialog() })
         root.addView(header, lp(MATCH, WRAP))
@@ -239,11 +239,11 @@ class ProjectsActivity : AppCompatActivity() {
 
     private fun importProject(uri: Uri) {
         try {
-            var display = "Imported"
+            var display = "Imported.zip"
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
-                if (it.moveToFirst()) display = it.getString(0).substringBeforeLast('.')
+                if (it.moveToFirst()) display = it.getString(0)
             }
-            val p = contentResolver.openInputStream(uri)!!.use { ProjectManager.importZip(this, it, display) }
+            val p = contentResolver.openInputStream(uri)!!.use { ProjectManager.importArchive(this, it, display) }
             toast("Imported ${p.name}")
             refresh()
         } catch (e: Exception) {

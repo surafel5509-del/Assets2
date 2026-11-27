@@ -36,6 +36,7 @@ import com.sengine.engine.core.Camera3D
 import com.sengine.engine.core.Collider3D
 import com.sengine.engine.core.Light
 import com.sengine.engine.core.MeshRenderer
+import com.sengine.engine.core.ModelAnimator
 import com.sengine.engine.core.Rigidbody3D
 import com.sengine.engine.core.AudioSource
 import com.sengine.engine.core.Camera2D
@@ -59,12 +60,14 @@ import com.sengine.engine.core.UIProgressBar
 import com.sengine.engine.core.UIRect
 import com.sengine.engine.core.UIText
 import com.sengine.engine.render.EditorState
+import com.sengine.engine.render.ModelFormatRegistry
 import com.sengine.engine.render.SceneRenderer
 import com.sengine.engine.render.Tool
 import com.sengine.project.AtlasCache
 import com.sengine.project.BigEditionAssets
 import com.sengine.project.MaterialCache
 import com.sengine.project.Project
+import com.sengine.project.ModelBundleImporter
 import com.sengine.project.ProjectManager
 import com.sengine.project.Templates
 import org.json.JSONObject
@@ -125,6 +128,10 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         if (uri != null) importAsset(uri)
     }
 
+    private val archiveLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importArchive(uri)
+    }
+
     private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) try {
             contentResolver.openOutputStream(uri)?.use { ProjectManager.exportZip(project, it) }
@@ -170,7 +177,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         inspector.rebuild()
         refreshAssets()
         updateModeUi()
-        appendConsole(0, "S Engine Big Edition 3.0.0 — project '${project.name}', scene '${scene.name}'")
+        appendConsole(0, "S Engine Phase 3 3.1.0 — project '${project.name}', scene '${scene.name}'")
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -327,7 +334,9 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         assetButtons.addView(button("+ Blueprint") { newAssetDialog("New Blueprint", "NewBlueprint", "bp", { com.sengine.engine.blueprint.Blueprint.defaultGraph().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Shader") { newAssetDialog("New Shader", "NewShader", "glsl", { Templates.NEW_SHADER }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Animation") { newAssetDialog("New Animation", "NewAnimation", "anim", { com.sengine.engine.anim.AnimationClip().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("+ Sprite") { newAssetDialog("New Sprite", "NewSprite", "sprite", { BigEditionAssets.SPRITE }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Data") { anchor -> dataAssetMenu(anchor) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("Import Bundle") { archiveLauncher.launch(arrayOf("application/zip", "application/vnd.rar", "application/x-rar-compressed", "application/octet-stream", "*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Model") { importKind = AssetKind.MODEL; importLauncher.launch(arrayOf("*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Image") { importKind = AssetKind.TEXTURE; importLauncher.launch(arrayOf("image/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Sound") { importKind = AssetKind.SOUND; importLauncher.launch(arrayOf("audio/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
@@ -415,9 +424,17 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     override fun openScript(name: String) {
         when (AssetKind.of(name)) {
             AssetKind.ANIMATION -> openAnimationEditor(name)
+            AssetKind.SPRITE -> openSpriteEditor(name)
             else -> if (name.endsWith(".bp")) startActivity(Intent(this, BlueprintEditorActivity::class.java).putExtra("project", project.name).putExtra("asset", name))
                 else startActivity(Intent(this, ScriptEditorActivity::class.java).putExtra("project", project.name).putExtra("asset", name))
         }
+    }
+
+    fun openSpriteEditor(name: String? = null) {
+        saveScene(silent = true)
+        startActivity(Intent(this, SpriteEditorActivity::class.java).putExtra("project", project.name).apply {
+            if (name != null) putExtra("asset", name)
+        })
     }
 
     fun openAnimationEditor(name: String?) {
@@ -460,6 +477,10 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             DataSpec("Sprite Atlas", "NewAtlas", "atlas") { BigEditionAssets.ATLAS },
             DataSpec("Tilemap", "NewTilemap", "tilemap") { BigEditionAssets.TILEMAP },
             DataSpec("Text Data", "Notes", "txt") { BigEditionAssets.TEXT },
+            DataSpec("Texture Profile", "NewTexture", "texture") { BigEditionAssets.TEXTURE_META },
+            DataSpec("3D Animation", "NewClip3D", "anim3d") { BigEditionAssets.ANIMATION3D },
+            DataSpec("Sprite Document", "NewSpriteDoc", "sprite") { BigEditionAssets.SPRITE },
+            DataSpec("Model Pack", "NewModelPack", "modelpack") { BigEditionAssets.MODELPACK },
         )
         val snapshot = DataSpec("Scene Snapshot", "Snapshot", "scene") {
             synchronized(engine.lock) { SceneSerializer.toJson(engine.scene).toString(2) }
@@ -713,7 +734,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Toggle Bottom Panel" -> toggle(bottomPanel)
                 t == "Script API Reference" -> showText("Script API", ScriptEditorActivity.API_DOC)
                 t.startsWith("About") -> showText("About S Engine",
-                    "S Engine Big Edition 3.0.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                    "S Engine Phase 3 3.1.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
                         "• 3D: meshes, OBJ models, Blinn-Phong + spot lights, orthographic cameras, fog, sky, physics\n" +
                         "• Sprite animation editor, asset store, visual blueprints, GLSL shaders & post FX\n" +
                         "• Build real installable APKs of your game\n" +
@@ -832,6 +853,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 AssetKind.SCENE -> "SCN" to 0xFFFFD54F.toInt()
                 AssetKind.FONT -> "Aa" to 0xFFF06292.toInt()
                 AssetKind.TEXT -> "TXT" to 0xFFB0BEC5.toInt()
+                AssetKind.ANIMATION3D -> "ANM" to 0xFFFFB74D.toInt()
+                AssetKind.ARCHIVE -> "ZIP" to 0xFFCE93D8.toInt()
+                AssetKind.SPRITE -> "SPR" to 0xFF4DD0E1.toInt()
+                AssetKind.TEXTURE_META -> "TEX" to 0xFFF48FB1.toInt()
+                AssetKind.MODELPACK -> "PACK" to 0xFF81C784.toInt()
+                AssetKind.BINARY -> "BIN" to 0xFF90A4AE.toInt()
                 else -> (kind?.glyph ?: "?") to C.DIM
             }
             card.addView(label(glyph, 20f, color, true).apply { gravity = Gravity.CENTER }, lp(dp(56), dp(48)))
@@ -864,6 +891,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.SCENE -> { pm.menu.add("Load Snapshot"); pm.menu.add("Edit") }
             AssetKind.FONT -> { if (sel != null) pm.menu.add("Use font on ${sel.name}") }
             AssetKind.TEXT -> { pm.menu.add("Edit") }
+            AssetKind.ANIMATION3D -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Play 3D on ${sel.name}") }
+            AssetKind.ARCHIVE -> { pm.menu.add("Install Bundle") }
+            AssetKind.SPRITE -> { pm.menu.add("Edit in Sprite Editor") }
+            AssetKind.TEXTURE_META -> { pm.menu.add("Edit") }
+            AssetKind.MODELPACK -> { pm.menu.add("Edit") }
+            AssetKind.BINARY -> {}
             null -> {}
         }
         pm.menu.add("Delete")
@@ -871,6 +904,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             val t = item.title.toString()
             when {
                 t == "Edit" -> openScript(name)
+                t == "Edit in Sprite Editor" -> openSpriteEditor(name)
+                t == "Install Bundle" -> installBundleAsset(name)
                 t == "Preview" -> try {
                     android.media.MediaPlayer().apply {
                         setDataSource(project.assetFile(name).absolutePath); setOnCompletionListener { it.release() }; prepare(); start()
@@ -914,6 +949,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                     synchronized(engine.lock) {
                         if (sel.getAny<SpriteRenderer>() == null) sel.add(SpriteRenderer())
                         (sel.getAny<Animator>() ?: sel.add(Animator())).clip = name
+                    }
+                    inspector.rebuild()
+                }
+                sel != null && t.startsWith("Play 3D on") -> {
+                    history.record(state.selectedId)
+                    synchronized(engine.lock) {
+                        val a = sel.getAny<ModelAnimator>() ?: sel.add(ModelAnimator())
+                        a.clip = name; a.playing = true; a.time = 0f
                     }
                     inspector.rebuild()
                 }
@@ -1084,6 +1127,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
                 if (it.moveToFirst()) display = it.getString(0)
             }
+            val archiveMime = contentResolver.getType(uri) ?: ""
+            if (ModelFormatRegistry.isArchive(display) || archiveMime.contains("zip", true) ||
+                archiveMime.contains("rar", true) || display.endsWith(".esr", true)) {
+                importArchive(uri, display)
+                return
+            }
             var n = display.replace(Regex("[^A-Za-z0-9_.\\-]"), "_")
             if (AssetKind.of(n) == null) {
                 val mime = contentResolver.getType(uri) ?: ""
@@ -1112,6 +1161,49 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         } catch (e: Exception) {
             toast("Import failed: ${e.message}")
         }
+    }
+
+    private fun queryDisplayName(uri: Uri, fallback: String): String {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+            if (it.moveToFirst()) return it.getString(0)
+        }
+        return fallback
+    }
+
+    private fun importArchive(uri: Uri, displayHint: String? = null) {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode before installing a bundle"); return }
+        try {
+            val display = displayHint ?: queryDisplayName(uri, "ModelBundle.zip")
+            val archiveName = Project.safeName(display).ifBlank { "ModelBundle.zip" }
+            history.record(state.selectedId)
+            saveScene(silent = true)
+            val result = contentResolver.openInputStream(uri)!!.use { ModelBundleImporter.install(it, archiveName, project) }
+            applyBundleResult(result)
+        } catch (e: Exception) {
+            toast("Bundle install failed: ${e.message}")
+        }
+    }
+
+    private fun installBundleAsset(name: String) {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode before installing a bundle"); return }
+        try {
+            history.record(state.selectedId)
+            saveScene(silent = true)
+            val result = project.assetFile(name).inputStream().use { ModelBundleImporter.install(it, name, project) }
+            applyBundleResult(result)
+        } catch (e: Exception) {
+            toast("Bundle install failed: ${e.message}")
+        }
+    }
+
+    private fun applyBundleResult(r: com.sengine.project.ModelBundleResult) {
+        val scene = project.loadScene(r.sceneName)
+        synchronized(engine.lock) { engine.replaceScene(scene) }
+        state.selectedId = 0L
+        hierarchy.selectedId = 0L
+        if (!state.mode3D && r.objectName.isNotBlank()) toggle3D()
+        refreshHierarchy(); inspector.rebuild(); refreshAssets(); showTab(1)
+        toast("Installed ${r.name}: ${r.renderModel}, ${r.primaryTexture}, ${r.animation3D} and ${r.spriteAnimation}")
     }
 
     // ================================================================== console & input

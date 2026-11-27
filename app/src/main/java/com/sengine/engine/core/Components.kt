@@ -11,6 +11,7 @@ object ComponentRegistry {
         "ParticleEmitter" to { ParticleEmitter() },
         "AudioSource" to { AudioSource() },
         "Animator" to { Animator() },
+        "ModelAnimator" to { ModelAnimator() },
         "MeshRenderer" to { MeshRenderer() },
         "Camera3D" to { Camera3D() },
         "Light" to { Light() },
@@ -31,7 +32,7 @@ object ComponentRegistry {
 
     val categories: LinkedHashMap<String, List<String>> = linkedMapOf(
         "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "Camera", "Tilemap"),
-        "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light", "Terrain"),
+        "Rendering 3D" to listOf("MeshRenderer", "ModelAnimator", "Camera3D", "Light", "Terrain"),
         "Physics 2D" to listOf("Rigidbody2D", "Collider2D", "PhysicsMaterial2D", "Joint2D"),
         "Physics 3D" to listOf("Rigidbody3D", "Collider3D"),
         "UI & Canvas" to listOf("UICanvas", "UIRect", "UIImage", "UIText", "UIButton", "UIProgressBar"),
@@ -353,6 +354,33 @@ class Animator : Component() {
 
     override fun resetRuntime() {
         current = clip; time = 0f; playing = playOnStart; frame = 0; finished = false
+    }
+}
+
+/** Drives track-based 3D / rigged animation clips imported by Phase 3 bundles. */
+class ModelAnimator : Component() {
+    override val type = "ModelAnimator"
+    var clip = ""
+    var skeleton = ""
+    var playOnStart = true
+    var speed = 1f
+    var loop = true
+
+    // Runtime-only state.
+    var playing = false
+    var time = 0f
+
+    override fun props() = listOf(
+        Prop.Asset("3D Clip", AssetKind.ANIMATION3D, { clip }, { clip = it }),
+        Prop.S("Skeleton", { skeleton }, { skeleton = it }),
+        Prop.B("Play On Start", { playOnStart }, { playOnStart = it }),
+        Prop.F("Speed", { speed }, { speed = it.coerceIn(0f, 8f) }),
+        Prop.B("Loop", { loop }, { loop = it }),
+    )
+
+    override fun resetRuntime() {
+        time = 0f
+        playing = playOnStart
     }
 }
 

@@ -1,5 +1,9 @@
 package com.sengine.engine.core
 
+import com.sengine.engine.anim.Animation3DImporters
+import com.sengine.engine.render.TextureProfile
+import com.sengine.engine.sprite.SpriteDocument
+import com.sengine.project.ModelBundleManifest
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
@@ -230,6 +234,7 @@ object AssetValidator {
     private val SUPPORTED = setOf(
         AssetKind.PREFAB, AssetKind.MATERIAL, AssetKind.ATLAS,
         AssetKind.TILEMAP, AssetKind.SCENE, AssetKind.TEXT, AssetKind.ANIMATION,
+        AssetKind.ANIMATION3D, AssetKind.SPRITE, AssetKind.TEXTURE_META, AssetKind.MODELPACK,
     )
 
     fun supports(name: String): Boolean = AssetKind.of(name) in SUPPORTED
@@ -242,6 +247,12 @@ object AssetValidator {
         AssetKind.SCENE -> "Scene Snapshot JSON"
         AssetKind.ANIMATION -> "Animation JSON"
         AssetKind.TEXT -> "Text Data"
+        AssetKind.ANIMATION3D -> "3D Animation Clip"
+        AssetKind.SPRITE -> "Sprite Document"
+        AssetKind.TEXTURE_META -> "Texture Profile"
+        AssetKind.MODELPACK -> "Model Pack"
+        AssetKind.ARCHIVE -> "Asset Bundle"
+        AssetKind.BINARY -> "Binary Data"
         else -> "Text"
     }
 
@@ -289,6 +300,13 @@ object AssetValidator {
                     if (!o.has("frames") || !o.has("fps")) "missing frames or fps" else null
                 }
                 AssetKind.TEXT -> null
+                AssetKind.ANIMATION3D -> {
+                    val clip = Animation3DImporters.parse(name, text) ?: return "invalid 3D animation clip"
+                    clip.validate()
+                }
+                AssetKind.SPRITE -> SpriteDocument.validateDocument(text)
+                AssetKind.TEXTURE_META -> TextureProfile.fromJson(JSONObject(text)).validate()
+                AssetKind.MODELPACK -> ModelBundleManifest.validate(text)
                 else -> null
             }
         } catch (e: Exception) {

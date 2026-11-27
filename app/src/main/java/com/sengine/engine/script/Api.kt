@@ -141,6 +141,15 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun isAnimationFinished(): Boolean = go.getAny<com.sengine.engine.core.Animator>()?.finished ?: true
     fun setAnimSpeed(v: Double) { go.getAny<com.sengine.engine.core.Animator>()?.speed = v.toFloat() }
 
+    // ---- Phase 3 track-based 3D / rigged animation
+    fun playModelAnimation(clip: String) {
+        val a = go.getAny<com.sengine.engine.core.ModelAnimator>() ?: go.add(com.sengine.engine.core.ModelAnimator())
+        a.clip = clip; a.time = 0f; a.playing = true
+    }
+    fun stopModelAnimation() { go.getAny<com.sengine.engine.core.ModelAnimator>()?.playing = false }
+    fun setModelAnimationSpeed(v: Double) { go.getAny<com.sengine.engine.core.ModelAnimator>()?.speed = v.toFloat().coerceIn(0f, 8f) }
+    fun setModelAnimationTime(v: Double) { go.getAny<com.sengine.engine.core.ModelAnimator>()?.time = v.toFloat().coerceAtLeast(0f) }
+
     // ---- rendering
     fun setShaderParam(v: Double) {
         go.getAny<com.sengine.engine.core.MeshRenderer>()?.shaderParam = v.toFloat()

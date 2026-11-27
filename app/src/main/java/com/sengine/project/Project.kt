@@ -34,7 +34,7 @@ class Project(val dir: File) {
     }
 
     companion object {
-        const val ENGINE_VERSION = "S Engine 3.0.0"
+        const val ENGINE_VERSION = "S Engine 3.1.0"
 
         /** Reduces any user/script-supplied name to a single safe file name. */
         fun safeName(raw: String): String {
@@ -125,6 +125,19 @@ class Project(val dir: File) {
     fun writeAsset(n: String, text: String) {
         require(isSafeName(n)) { "Invalid asset name: $n" }
         atomicWrite(assetFile(n), text, backup = false)
+    }
+
+    /** Writes a binary asset (textures, PNG sprite sheets, archives, DCC files). */
+    fun writeBinaryAsset(n: String, bytes: ByteArray) {
+        require(isSafeName(n)) { "Invalid asset name: $n" }
+        assetsDir.mkdirs()
+        val f = assetFile(n)
+        val tmp = File(assetsDir, ".${f.name}.tmp")
+        tmp.writeBytes(bytes)
+        if (!tmp.renameTo(f)) {
+            tmp.copyTo(f, overwrite = true)
+            tmp.delete()
+        }
     }
 
     fun uniqueAssetName(base: String): String {

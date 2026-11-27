@@ -84,7 +84,7 @@ object ProjectManager {
         }
     }
 
-    /** Imports a project zip exported by S Engine. Returns the new project. */
+    /** Imports a project ZIP exported by S Engine. Returns the new project. */
     fun importZip(ctx: Context, input: InputStream, fallbackName: String): Project {
         val tmp = File(ctx.cacheDir, "import_${System.currentTimeMillis()}")
         tmp.mkdirs()
@@ -100,10 +100,23 @@ object ProjectManager {
                 }
             }
         }
+        return adoptProjectDir(ctx, tmp, fallbackName)
+    }
+
+    /** Imports an S Engine project from ZIP, store-mode RAR or ESR archive. */
+    fun importArchive(ctx: Context, input: InputStream, fallbackName: String): Project {
+        val tmp = File(ctx.cacheDir, "import_${System.currentTimeMillis()}")
+        tmp.mkdirs()
+        ArchiveImporters.extract(input, tmp, fallbackName)
+        return adoptProjectDir(ctx, tmp, fallbackName)
+    }
+
+    private fun adoptProjectDir(ctx: Context, tmp: File, fallbackName: String): Project {
         // project root is the folder containing project.json
         val metaDir = tmp.walkTopDown().firstOrNull { it.name == "project.json" }?.parentFile
             ?: throw IllegalArgumentException("Not an S Engine project (project.json missing)")
-        var name = sanitize(if (metaDir == tmp) fallbackName else metaDir.name).ifBlank { "Imported" }
+        val requested = if (metaDir == tmp) fallbackName.substringBeforeLast('.') else metaDir.name
+        var name = sanitize(requested).ifBlank { "Imported" }
         val base = name
         var i = 2
         while (exists(ctx, name)) name = "$base ${i++}"

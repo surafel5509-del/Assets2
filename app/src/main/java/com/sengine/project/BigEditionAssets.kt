@@ -1,5 +1,12 @@
 package com.sengine.project
 
+import com.sengine.engine.anim.Animation3DClip
+import com.sengine.engine.anim.AnimationTrack
+import com.sengine.engine.render.TextureProfile
+import com.sengine.engine.sprite.SpriteDocument
+import org.json.JSONArray
+import org.json.JSONObject
+
 /** Default, valid content for the new Phase 2 text asset kinds. */
 object BigEditionAssets {
     val PREFAB = """
@@ -80,4 +87,36 @@ object BigEditionAssets {
     val TEXT = """S Engine Big Edition notes.
 Use this .txt asset for level data, dialogue, or custom JSON/text content.
 """.trimIndent()
+
+    /** Phase 3 validated text asset templates. */
+    val TEXTURE_META = TextureProfile.DEFAULT.toJson().toString(2)
+
+    val SPRITE = SpriteDocument(16, 16).apply { addFrame() }.toJson().toString(2)
+
+    val ANIMATION3D = Animation3DClip("NewAnimation", 30f, true, "root").apply {
+        tracks.add(AnimationTrack(
+            "root",
+            listOf(0f, 1f, 2f),
+            listOf(floatArrayOf(0f, 0f, 0f), floatArrayOf(0f, 0.2f, 0f), floatArrayOf(0f, 0f, 0f)),
+            listOf(floatArrayOf(0f, 0f, 0f), floatArrayOf(0f, 15f, 0f), floatArrayOf(0f, 0f, 0f)),
+            listOf(floatArrayOf(1f, 1f, 1f), floatArrayOf(1f, 1f, 1f), floatArrayOf(1f, 1f, 1f)),
+        ))
+    }.toJson().toString(2)
+
+    val MODELPACK = JSONObject()
+        .put("type", "sengine.modelpack")
+        .put("version", 1)
+        .put("name", "NewModelPack")
+        .put("model", "DCCSource.blend")
+        .put("renderModel", "RuntimeModel.obj")
+        .put("primaryTexture", "ModelAlbedo.png")
+        .put("textures", JSONArray(listOf("ModelAlbedo.png")))
+        .put("material", "Model.mat")
+        .put("animation3d", "Model.anim3d")
+        .put("spriteAnimation", "Model.anim")
+        .put("scene", "Main")
+        .put("object", "NewModelPack")
+        .put("status", "template")
+        .toString(2)
+
 }

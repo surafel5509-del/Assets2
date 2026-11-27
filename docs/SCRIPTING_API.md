@@ -1,4 +1,4 @@
-S ENGINE — JAVASCRIPT API, runtime v3.0.0, Big Edition
+S ENGINE — JAVASCRIPT API, runtime v3.1.0, Phase 3
 
 LIFECYCLE — define any of these in a Script component
   start()              once, when play begins
@@ -60,6 +60,11 @@ ANIMATION & RENDERING / SELF
   size                                [Camera2D size]
   send(fn, arg)  send(fn)             [call fn on another object's scripts]
 
+PHASE 3 MODEL ANIMATION / SELF
+  playModelAnimation(clip)  stopModelAnimation()
+  setModelAnimationSpeed(s)  setModelAnimationTime(t)
+  ModelAnimator samples 3D tracks and drives named joint objects.
+
 CANVAS UI / SELF
   uiText  setUIText(value)  uiProgress  setUIProgress(v)
   isUIClicked()  setUIImage(name)  setUIVisible(enabled)
@@ -96,7 +101,7 @@ SCENE
 ASSETS — project-local text data only
   assets.readText(name)  assets.writeText(name,text)
   assets.exists(name)  assets.validate(name)  assets.list(kind)
-  kinds: PREFAB MATERIAL ATLAS TILEMAP SCENE TEXT or all
+  kinds: PREFAB MATERIAL ATLAS TILEMAP SCENE TEXT ANIMATION3D SPRITE TEXTURE_META MODELPACK or all
 
 TIME
   time.time  time.frame  time.fps  time.delta  time.scale [0..4]
@@ -135,6 +140,12 @@ BIG EDITION RUNTIME
   UI buttons dispatch script events, spot lights and orthographic cameras
   render in 3D, polygon hulls, materials and joints extend 2D physics.
   Invalid data assets are rejected by the editor and by assets.writeText.
+
+PHASE 3 ASSET RUNTIME
+  ZIP, store-mode RAR and ESR bundles install model, texture and animation
+  assets together. Model packs link DCC source files to an open render mesh,
+  texture profiles control wrap, filter and mipmaps, sprite documents export
+  PNG sheets with atlas and clip assets, and 3D clips drive rigged tracks.
 
 SAFETY
   Scripts cannot access host Java classes, the file system or the network.

@@ -44,6 +44,7 @@ class Engine(val project: Project, initialScene: Scene) {
     val physics = PhysicsWorld()
     val physics3D = com.sengine.engine.physics.PhysicsWorld3D()
     val animation = com.sengine.engine.anim.AnimationSystem(project)
+    private val modelClipCache = HashMap<String, Pair<Long, com.sengine.engine.anim.Animation3DClip?>>()
     val scripts = ScriptSystem(this)
     val ui = UISystem(this)
     val audio = AudioSystem(project)
@@ -204,7 +205,7 @@ class Engine(val project: Project, initialScene: Scene) {
 
         when (mode) {
             Mode.PLAY -> runFrame(dt)
-            Mode.EDIT -> { scene.updateTransforms(); updateParticles(dt); updateAnimators(dt, false) }
+            Mode.EDIT -> { scene.updateTransforms(); updateParticles(dt); updateAnimators(dt, false); updateModelAnimators(dt, false) }
             Mode.PAUSED -> scene.updateTransforms()
         }
     }
@@ -235,6 +236,7 @@ class Engine(val project: Project, initialScene: Scene) {
         updateGameView()
         updateParticles(dt)
         updateAnimators(dt, true)
+        updateModelAnimators(dt, true)
         decayShake(dt)
 
         val load = pendingSceneLoad
@@ -469,6 +471,43 @@ class Engine(val project: Project, initialScene: Scene) {
             if (playing && !go.isActiveInHierarchy()) continue
             animation.update(a, sr, dt, playing)
         }
+    }
+
+    private fun loadModelClip(name: String): com.sengine.engine.anim.Animation3DClip? {
+        if (name.isBlank()) return null
+        val f = project.assetFile(name)
+        val stamp = f.lastModified()
+        modelClipCache[name]?.let { if (it.first == stamp) return it.second }
+        val clip = try {
+            val text = f.readText()
+            com.sengine.engine.anim.Animation3DImporters.parse(name, text)
+                ?: com.sengine.engine.anim.Animation3DClip.fromJson(JSONObject(text))
+        } catch (_: Exception) { null }
+        val valid = clip?.takeIf { it.validate() == null }
+        modelClipCache[name] = stamp to valid
+        return valid
+    }
+
+    private fun updateModelAnimators(dt: Float, playing: Boolean) {
+        for (go in scene.objects) {
+            val a = go.getAny<com.sengine.engine.core.ModelAnimator>() ?: continue
+            if (playing && (!a.playing || !go.isActiveInHierarchy())) continue
+            val clip = loadModelClip(a.clip) ?: continue
+            if (playing) a.time += dt * a.speed
+            val pose = clip.sample(a.time, a.loop)
+            for ((target, value) in pose) {
+                val node = animationTarget(go, target) ?: continue
+                val (p, r, s) = value
+                node.x = p[0]; node.y = p[1]; node.z = p[2]
+                node.rotX = r[0]; node.rotY = r[1]; node.rotation = r[2]
+                node.scaleX = s[0]; node.scaleY = s[1]; node.scaleZ = s[2]
+            }
+        }
+    }
+
+    private fun animationTarget(owner: GameObject, name: String): GameObject? {
+        if (name.isBlank() || name.equals("root", ignoreCase = true) || name == owner.name) return owner
+        return scene.objects.firstOrNull { it.parent === owner && it.name == name } ?: scene.find(name)
     }
 
     private fun updateCamera3DFollow(dt: Float) {

@@ -1,7 +1,6 @@
 package com.sengine.engine.render
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -33,12 +32,15 @@ class TextureCache(private val project: Project) {
     fun image(name: String): Tex? {
         if (name.isBlank()) return null
         val f: File = project.assetFile(name)
-        val stamp = f.lastModified()
+        val profile = TextureProfile.load(project, name)
+        val stamp = f.lastModified() * 31L + TextureProfile.stamp(project, name)
         if (images.containsKey(name) && stamps[name] == stamp) return images[name]
         images[name]?.let { GLES20.glDeleteTextures(1, intArrayOf(it.id), 0) }
-        val bmp = try { BitmapFactory.decodeFile(f.absolutePath) } catch (_: Throwable) { null }
-        val tex = bmp?.let { upload(it, maxOf(it.width, it.height) <= 128) }
-        bmp?.recycle()
+        val bmp = TextureDecoders.loadBitmap(f)
+        val scaled = bmp?.let { scaledForUpload(it, profile.maxSize) }
+        val tex = scaled?.let { upload(it, profile) }
+        if (scaled != null && scaled !== bmp) recycle(scaled)
+        if (bmp != null) recycle(bmp)
         images[name] = tex
         stamps[name] = stamp
         return tex
@@ -67,7 +69,7 @@ class TextureCache(private val project: Project) {
             }
             c.drawText(line, x, 2f - fm.ascent + i * lineH, paint)
         }
-        val tex = upload(bmp, false)
+        val tex = upload(bmp, TextureProfile.DEFAULT)
         bmp.recycle()
         texts[key] = tex
         if (texts.size > 128) {
@@ -92,16 +94,41 @@ class TextureCache(private val project: Project) {
         }
     }
 
-    private fun upload(bmp: Bitmap, nearest: Boolean): Tex {
+    /** Uploads with Phase 3 wrap/filter/mipmap settings from a .texture profile. */
+    private fun upload(bmp: Bitmap, profile: TextureProfile): Tex {
         val ids = IntArray(1)
         GLES20.glGenTextures(1, ids, 0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ids[0])
-        val filter = if (nearest) GLES20.GL_NEAREST else GLES20.GL_LINEAR
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, filter)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, filter)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        val minFilter = when {
+            profile.minFilter == TextureProfile.FILTER_NEAREST -> GLES20.GL_NEAREST
+            profile.mipmaps -> GLES20.GL_LINEAR_MIPMAP_LINEAR
+            else -> GLES20.GL_LINEAR
+        }
+        val magFilter = if (profile.magFilter == TextureProfile.FILTER_NEAREST) GLES20.GL_NEAREST else GLES20.GL_LINEAR
+        fun wrap(mode: Int) = when (mode) {
+            TextureProfile.WRAP_REPEAT -> GLES20.GL_REPEAT
+            TextureProfile.WRAP_MIRROR -> GLES20.GL_MIRRORED_REPEAT
+            else -> GLES20.GL_CLAMP_TO_EDGE
+        }
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, minFilter)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, magFilter)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, wrap(profile.wrapS))
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, wrap(profile.wrapT))
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0)
+        if (profile.mipmaps) GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D)
         return Tex(ids[0], bmp.width, bmp.height)
+    }
+
+    private fun scaledForUpload(bmp: Bitmap, maxSize: Int): Bitmap {
+        val largest = maxOf(bmp.width, bmp.height)
+        if (largest <= maxSize) return bmp
+        return try {
+            val s = maxSize.toFloat() / largest
+            Bitmap.createScaledBitmap(bmp, (bmp.width * s).toInt().coerceAtLeast(1), (bmp.height * s).toInt().coerceAtLeast(1), false)
+        } catch (_: Throwable) { bmp }
+    }
+
+    private fun recycle(bmp: Bitmap) {
+        try { bmp.recycle() } catch (_: Throwable) {}
     }
 }

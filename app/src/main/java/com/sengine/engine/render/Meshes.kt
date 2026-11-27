@@ -25,7 +25,7 @@ class Mesh(data: FloatArray) {
     }
 }
 
-/** Procedural primitive meshes (unit sized, centred) and a Wavefront OBJ loader. */
+/** Procedural primitives plus Phase 3 OBJ / STL / PLY / OFF / glTF / GLB / DAE / FBX-ASCII / 3DS importers. */
 object Meshes {
     private val cache = HashMap<Int, Mesh>()
     private val models = HashMap<String, Pair<Long, Mesh?>>()
@@ -47,10 +47,26 @@ object Meshes {
         val key = file.absolutePath
         val stamp = file.lastModified()
         models[key]?.let { if (it.first == stamp) return it.second }
-        val m = try { loadObj(file.readText()) } catch (e: Exception) { null }
+        val m = if (file.name.endsWith(".obj", ignoreCase = true)) {
+            try { loadObj(file.readText()) } catch (_: Exception) { null }
+        } else {
+            try { ModelImporters.decode(file)?.let { Mesh(normalized(it)) } } catch (_: Exception) { null }
+        }
         models[key] = stamp to m
         return m
     }
+
+    /** Decodes a model from memory; glTF may resolve external buffers from [baseDir]. */
+    fun fromData(name: String, bytes: ByteArray, baseDir: File? = null): Mesh? = try {
+        if (name.endsWith(".obj", ignoreCase = true)) loadObj(String(bytes, Charsets.UTF_8))
+        else ModelImporters.decode(name, bytes, baseDir)?.let { Mesh(normalized(it)) }
+    } catch (_: Exception) { null }
+
+    /** True when a file can actually produce triangles at runtime. */
+    fun canRender(file: File): Boolean = (model(file)?.vertexCount ?: 0) > 0
+
+    /** First diffuse texture referenced by a Wavefront material sidecar. */
+    fun modelTexture(file: File): String? = ModelImporters.objMaterialTexture(file)
 
     private class B {
         val d = ArrayList<Float>(4096)
@@ -236,12 +252,22 @@ object Meshes {
             }
         }
         val d = b.arr()
-        // normalise to fit a unit cube centred at origin
-        val mn = floatArrayOf(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE); val mx = floatArrayOf(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
-        for (i in 0 until d.size / 8) for (k in 0 until 3) { mn[k] = minOf(mn[k], d[i * 8 + k]); mx[k] = maxOf(mx[k], d[i * 8 + k]) }
+        return Mesh(normalized(d))
+    }
+
+    /** Centres raw triangle data and scales its largest axis to one unit. */
+    private fun normalized(d: FloatArray): FloatArray {
+        if (d.isEmpty()) return d
+        val mn = floatArrayOf(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
+        val mx = floatArrayOf(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
+        for (i in 0 until d.size / 8) for (k in 0 until 3) {
+            mn[k] = minOf(mn[k], d[i * 8 + k]); mx[k] = maxOf(mx[k], d[i * 8 + k])
+        }
         val size = maxOf(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]).coerceAtLeast(1e-6f)
-        for (i in 0 until d.size / 8) for (k in 0 until 3) d[i * 8 + k] = (d[i * 8 + k] - (mn[k] + mx[k]) / 2f) / size
-        return Mesh(d)
+        for (i in 0 until d.size / 8) for (k in 0 until 3) {
+            d[i * 8 + k] = (d[i * 8 + k] - (mn[k] + mx[k]) / 2f) / size
+        }
+        return d
     }
 
     // ------------------------------------------------------------- terrain

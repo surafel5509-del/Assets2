@@ -1,4 +1,4 @@
-# S Engine — Big Edition
+# S Engine — Big Edition / Phase 3
 
 **S Engine** is a 2D **and 3D** game engine **and** full visual editor that runs entirely on an Android phone or tablet – think "a small Unity in your pocket". Create a project, build scenes with a hierarchy / inspector / gizmos, write JavaScript behaviours in the built-in code editor, press **Play** to test immediately, then run your game full-screen.
 
@@ -19,6 +19,15 @@
 * **Editor + project integration** — new object presets, `+ Data` creation menu, prefab capture/instantiate/apply/load actions, font import, scene snapshot loading, a validated **Big Edition Showcase** template and a Data Assets category in the built-in store.
 * **Versioned, audited API** — `scene.spawnPrefab`, `scene.saveSnapshot`, `assets.readText/writeText/exists/validate/list`, tilemap/joint/material/font/UI/orthographic helpers, plus an expanded canonical reference at [`docs/SCRIPTING_API.md`](docs/SCRIPTING_API.md). The headless API audit now covers `SAssets` and the new runtime bridges.
 
+**v3.1.0 — Phase 3** extends the same runtime with complete model and sprite workflows:
+
+* **Complete model bundles** — one-click ZIP, ESR JSON / ESR1+ZIP and store-mode RAR installers retain proprietary DCC sources, link an open runtime `renderModel`, generate `.modelpack` metadata, material, 2D / 3D clips, texture profiles and a fully wired scene object. The built-in store includes a complete Fruit Shop bundle in all three archive formats.
+* **Screenshot-format catalogue** — Blender, FBX, Cinema 4D, 3ds Max, Maya, OBJ, Rigged, Animated and Lowpoly categories, with runtime decoding for OBJ/MTL, STL, PLY, OFF, glTF/GLB, DAE, ASCII FBX and 3DS. Closed binary DCC files are preserved as authoring sources, not falsely claimed as native decoders.
+* **Professional sprite editor** — layered frames, pencil / eraser / line / rectangle / ellipse / fill / eyedropper, palette, adjustable brush, onion skin, grid, zoom, playback, undo / redo, transforms, and one-command export to PNG sheet + `.atlas` + `.anim` + `.texture`.
+* **Texture pipeline** — pure-JVM PNG/TGA/PNM/DDS/KTX/HDR decoding where practical, per-image wrap / filter / mipmap / max-size profiles, atlas-aware sprite sheets and `.mtl` `map_Kd` fallback in the 3D renderer.
+* **Track-based 3D animation** — `.anim3d`, glTF-style clips and BVH imports normalize to named tracks; `ModelAnimator` drives transforms in EDIT and PLAY, with `playModelAnimation`, `stopModelAnimation`, `setModelAnimationSpeed` and `setModelAnimationTime` scripting helpers.
+* **Audited consistency** — `versionCode 5` / `versionName 3.1.0`, `Project.ENGINE_VERSION`, editor strings, the canonical API reference and Markdown docs are aligned; the offline suite adds nine Phase 3 acceptance tests.
+
 **Phase 1 reliability pass** (architecture inspection first, then targeted fixes — no engine rewrite):
 
 * Rhino scripts now run in a real sandbox: safe standard objects, an allow-list `ClassShutter` and a per-frame instruction/time budget. Host Java/file/network access is denied and infinite loops are aborted with a visible console error.
@@ -28,7 +37,7 @@
 * One audited scripting API reference shared by the editor, Markdown docs and an automated test; JS/GLSL/Blueprint editor status, Rhino syntax validation, and real Ctrl+S / Ctrl+Z / Ctrl+Y / Ctrl+P shortcuts.
 * GL programs, textures and FBOs are explicitly released on the GL thread when the editor or player is destroyed.
 
-See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and remaining work. For the v3.0.0 workflows, see `docs/BIG_EDITION_GUIDE.md`; for verification, see `docs/PHASE2_REPORT.md` and `docs/PHASE2_TEST_LOG.txt`.
+See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and remaining work. For the v3.0.0 workflows, see `docs/BIG_EDITION_GUIDE.md`; for Phase 3 workflows, see `docs/PHASE3_GUIDE.md`. Verification is recorded in `docs/PHASE2_REPORT.md`, `docs/PHASE2_TEST_LOG.txt`, `docs/PHASE3_REPORT.md` and `docs/PHASE3_TEST_LOG.txt`.
 
 > Written from scratch in Kotlin. OpenGL ES 2.0 renderer, custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
 
@@ -45,7 +54,10 @@ See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and rem
 | **Undo / Redo** | Snapshot-based history for every edit; Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z shortcuts |
 | **Play mode** | Play / Pause / Step frame inside the editor; scene is restored when you stop (like Unity); Ctrl+P toggles Play/Stop |
 | **Rendering** | Squares, circles, triangles, textured sprites (PNG/JPG/WebP) with flip, material/atlas/frame overrides, custom fonts, text, particles, sorting order, camera background |
-| **3D rendering** | Perspective **and orthographic** cameras (follow / look-at / shake / post-FX), primitive + OBJ meshes, per-vertex lighting (sun + 4 point lights + 2 spot lights), sky with sun disc, distance fog, Toon / Pulse / custom shaders |
+| **3D rendering** | Perspective **and orthographic** cameras (follow / look-at / shake / post-FX), primitive + OBJ meshes, open interchange model importers, `.mtl` texture fallback, per-vertex lighting (sun + 4 point lights + 2 spot lights), sky with sun disc, distance fog, Toon / Pulse / custom shaders |
+| **Complete model bundles** | Import a single ZIP / ESR / RAR store archive; DCC sources, runtime mesh, texture, material, 2D clip, 3D clip, texture profile, `.modelpack` metadata and a wired scene object are installed together |
+| **Sprite editor** | Layered frames, drawing tools, palette, onion skin, grid, zoom, playback, undo / redo and export to PNG sheet + atlas + clip + texture profile |
+| **3D animation** | Track-based clips from `.anim3d` / glTF-style JSON / BVH, `ModelAnimator`, named joint transforms and scriptable play / stop / speed / time controls |
 | **Terrain** | Procedural heightmap (FBM value noise), texture tiling, baked mesh cache, **collides with rigidbodies**, `scene.terrainHeight(x, z)` queries |
 | **AI steering** | `Steering` component: Seek, Flee, Pursue (lead prediction), Wander, Patrol — acceleration-limited movement with optional face-the-movement |
 | **Object pooling** | `scene.pool("Enemy", 16)` → `scene.obtain(...)` / `scene.release(obj)` — pre-warmed, reused instances, runtime state reset |
@@ -57,7 +69,7 @@ See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and rem
 | **Physics 2D** | Dynamic / Kinematic / Static rigidbodies, box, circle **and convex polygon** colliders, **solid tilemaps**, material overrides, distance/spring joints, gravity, bounciness, friction, drag, triggers, collision & trigger callbacks, `grounded` detection |
 | **Scripting** | JavaScript (ES6 subset via Rhino) with `start`, `update(dt)`, `onCollision`, `onTrigger`, `onTap`… plus timers, spawning, messaging |
 | **Code editor** | Syntax highlighting, auto-indent, undo/redo, quick-symbol keyboard row, built-in API reference, Rhino syntax validation, Ctrl+S / Ctrl+Z / Ctrl+Y |
-| **Assets** | Import images, sounds, models and fonts; create scripts, blueprints, shaders, animations and validated Big Edition data assets; preview / assign / instantiate / attach from the Assets panel |
+| **Assets** | Import images, sounds, models, fonts and complete archives; create scripts, blueprints, shaders, animations, sprites, texture profiles and validated Big Edition / Phase 3 data assets; preview / assign / instantiate / attach from the Assets panel |
 | **Canvas UI** | Normalised rectangles, images, text, buttons, progress bars, reference-resolution scaling, tap dispatch and script callbacks |
 | **Audio** | `AudioSource` component + `audio.play()` / `audio.beep()` |
 | **Input** | On-screen joystick + A/B buttons, touch position / taps in world space, hardware keyboard & gamepad (WASD / arrows / Space / Enter) |
@@ -67,7 +79,7 @@ See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and rem
 ### Built-in components
 **2D:** `SpriteRenderer`, `TextRenderer`, `Camera` (size, background, follow target with smoothing), `Rigidbody2D`, `Collider2D` (box / circle / convex polygon), `PhysicsMaterial2D`, `Joint2D`, `Tilemap`, `Script`, `ParticleEmitter`, `AudioSource`.
 **Canvas:** `UICanvas`, `UIRect`, `UIImage`, `UIText`, `UIButton`, `UIProgressBar`.
-**3D:** `MeshRenderer` (primitives / OBJ, materials, shaders, emission), `Camera3D` (perspective / orthographic, follow / look-at / FOV / post-FX), `Light` (directional sun + point + spot lights), `Rigidbody3D`, `Collider3D` (box / sphere), `Terrain`, `Steering`, `Animator`.
+**3D:** `MeshRenderer` (primitives / OBJ / open formats, materials, shaders, emission), `Camera3D` (perspective / orthographic, follow / look-at / FOV / post-FX), `Light` (directional sun + point + spot lights), `Rigidbody3D`, `Collider3D` (box / sphere), `Terrain`, `Steering`, `Animator`, `ModelAnimator`.
 
 ### Templates
 * **Empty 2D** – camera + square
@@ -113,7 +125,7 @@ function onTrigger(other) {
 
 ### API reference
 
-The complete, runtime-audited JavaScript API is in [`docs/SCRIPTING_API.md`](docs/SCRIPTING_API.md). That file, the in-editor **API** button and `ApiAuditTest` all consume the same `ApiReference.kt` constant, so the documentation cannot drift away from the runtime without a test failure. It covers lifecycle hooks, `self`/`transform`/`gameObject`, physics and 3D properties, scene queries, prefabs, asset data, Canvas UI, object pools, audio, timers, tweens, modules, parameters and the safety model.
+The complete, runtime-audited JavaScript API is in [`docs/SCRIPTING_API.md`](docs/SCRIPTING_API.md). That file, the in-editor **API** button and `ApiAuditTest` all consume the same `ApiReference.kt` constant, so the documentation cannot drift away from the runtime without a test failure. It covers lifecycle hooks, `self`/`transform`/`gameObject`, physics and 3D properties, scene queries, prefabs, asset data, Canvas UI, object pools, audio, timers, tweens, modules, parameters, Phase 3 model-animation helpers and the safety model.
 
 Inactive objects make great **prefab templates** – `scene.spawn("Enemy", x, y)` clones them and activates the copy.
 

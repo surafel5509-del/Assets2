@@ -473,7 +473,11 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val mesh = if (drawMr.mesh == MeshRenderer.MESHES.size - 1) {
             (if (drawMr.model.isNotBlank()) Meshes.model(engine.project.assetFile(drawMr.model)) else null) ?: Meshes.primitive(0)
         } else Meshes.primitive(drawMr.mesh)
-        val tex = if (drawMr.texture.isNotBlank()) textures.image(drawMr.texture) else null
+        val texName = if (drawMr.texture.isNotBlank()) drawMr.texture
+        else if (drawMr.model.isNotBlank()) Meshes.modelTexture(engine.project.assetFile(drawMr.model))
+            ?.takeIf { engine.project.assetFile(it).isFile } ?: ""
+        else ""
+        val tex = if (texName.isNotBlank()) textures.image(texName) else null
         val prog = if (drawMr.shader.isNotBlank()) shaders.mesh(drawMr.shader) else null
         r3.drawMesh(mesh, go.world3, drawMr, tex, prog)
     }

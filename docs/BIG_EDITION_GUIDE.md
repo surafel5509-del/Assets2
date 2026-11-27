@@ -1,6 +1,6 @@
 # S Engine Big Edition — feature guide
 
-**Runtime 3.0.0** keeps the complete Phase 1 engine intact and adds real project, runtime, editor and scripting systems. This guide is a practical map of the new workflows. For the authoritative JavaScript reference, see [`SCRIPTING_API.md`](SCRIPTING_API.md); for verification and file-by-file results, see [`PHASE2_REPORT.md`](PHASE2_REPORT.md).
+**Runtime 3.0.0 Big Edition** keeps the complete Phase 1 engine intact and adds real project, runtime, editor and scripting systems. **Phase 3 extends this baseline to runtime 3.1.0** with complete model bundles, a sprite editor, texture profiles and track-based 3D animation; see [`PHASE3_GUIDE.md`](PHASE3_GUIDE.md). For the authoritative JavaScript reference, see [`SCRIPTING_API.md`](SCRIPTING_API.md); for verification and file-by-file results, see [`PHASE2_REPORT.md`](PHASE2_REPORT.md) and [`PHASE3_REPORT.md`](PHASE3_REPORT.md).
 
 ## 1. Data assets
 
@@ -72,9 +72,15 @@ Useful script helpers: `setColliderVertices("x,y; x,y; ...")`, `setJointLength(v
 
 **Big Edition Showcase** is the last built-in template, so the existing Platformer / Space Shooter positional template shortcuts are unchanged. It installs eight validated assets, including a prefab, material, atlas, tilemap, snapshot and two scripts, then builds a playable scene with a tap-to-spawn UI button.
 
-The built-in store gains a **Data Assets** category and a **Big Edition Pack** for projects created before v3.0.0.
+The built-in store gains a **Data Assets** category and a **Big Edition Pack** for projects created before v3.0.0. Phase 3 preserves all of these items and adds **Archive Bundles**, **Texture Settings**, **Sprite Editor**, **3D Animations** and the screenshot model-format categories.
 
-## 8. Verification
+## 8. Phase 3 extensions
+
+Phase 3 is additive: every Big Edition workflow above still works. Use the **Import Bundle** button in the editor Assets panel, or the project manager's **Import** action, to install a complete ZIP / ESR / RAR-store model archive. The installer keeps proprietary authoring files, generates a `.modelpack` manifest and wires the runtime `renderModel`, texture, material, 2D clip, 3D clip and scene object. Use **+ Sprite** or the sprite asset menu to open the new layered Sprite Editor, then **Save** to export a PNG sheet, `.atlas`, `.anim` and `.texture` sidecar. Model clips can be assigned with the **Play 3D on** asset action or driven from JavaScript with `playModelAnimation`.
+
+See [`PHASE3_GUIDE.md`](PHASE3_GUIDE.md) for the complete workflow and explicit format limits.
+
+## 9. Verification
 
 The JVM-only offline suite compiles the real Kotlin engine against Android/Rhino/JSON stubs and runs every `*Test.kt`:
 
@@ -84,4 +90,4 @@ cp tools/offline-build/build.sh /home/user/toolchain/build.sh
 bash /home/user/toolchain/build.sh all
 ```
 
-`BigEditionTest.kt` covers asset validation, cache invalidation, prefab hierarchy, tilemap collision, polygon queries, materials, joints, UI callbacks, the `assets` bridge, orthographic projection, spot-light wiring and the showcase template. `ApiAuditTest` verifies every documented function against the runtime, including `SAssets` and the new lifecycle hooks. The final output is saved in [`PHASE2_TEST_LOG.txt`](PHASE2_TEST_LOG.txt).
+`BigEditionTest.kt` covers asset validation, cache invalidation, prefab hierarchy, tilemap collision, polygon queries, materials, joints, UI callbacks, the `assets` bridge, orthographic projection, spot-light wiring and the showcase template. `ApiAuditTest` verifies every documented function against the runtime, including `SAssets`, the new lifecycle hooks and Phase 3 model-animation helpers. `Phase3Test.kt` adds end-to-end archive, model-pack, sprite, texture, 3D-animation and version-consistency coverage. The Phase 2 and Phase 3 final outputs are saved in [`PHASE2_TEST_LOG.txt`](PHASE2_TEST_LOG.txt) and [`PHASE3_TEST_LOG.txt`](PHASE3_TEST_LOG.txt).

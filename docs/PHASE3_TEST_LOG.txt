@@ -1,0 +1,189 @@
+== compiling java stubs ==
+stubs ok: 27 classes
+== compiling main (kotlinc) ==
+main ok: 261 classes
+== compiling tests (kotlinc) ==
+tests ok: 22 classes
+== running tests ==
+test classes: com.sengine.ApiAuditTest com.sengine.ApkExportTest com.sengine.BigEditionTest com.sengine.EngineSimulationTest com.sengine.EngineUpgradeTest com.sengine.EngineV2Test com.sengine.Phase1RegressionTest com.sengine.Phase3Test
+API AUDIT documented=139 runtime=181 prelude=31 missing=[]
+PASS com.sengine.ApiAuditTest.everyDocumentedFunctionExistsInTheRuntime
+API AUDIT state='self=1,transform=1,gameObject=1,setPosition=1,move=1,setVelocity=1,addForce=1,child=1,parent=1,find=1,findAll=1,count=1,spawn=1,send=1,distanceTo=1,overlaps=1,hasComponent=1,setComponentEnabled=1,random=1,randomInt=1,audio.play=1,every=1,after=1,every=1,every=1,every=1,every=1,every=1,every=1,every=1,every=1,every=1'
+API AUDIT errors=[]
+PASS com.sengine.ApiAuditTest.requiredScriptApisPerformRealWork
+API AUDIT load scene=Level2 logs=[? Play: Main, Loaded scene Level2]
+PASS com.sengine.ApiAuditTest.sceneLoadSwitchesToASavedScene
+API AUDIT reload loads=3 objects=3 errors=[]
+PASS com.sengine.ApiAuditTest.sceneReloadRestoresThePlaySnapshot
+SKIP com.sengine.ApkExportTest.exportStandaloneGameApk (export env not set)
+BIG log[0]: asset:hello big edition
+BIG log[0]: prefabs:1
+BIG log[0]: binary:false
+BIG log[0]: prefab:StarterPrefab
+BIG log[0]: ? Play: Main
+BIG log[0]: ? Stopped
+PASS com.sengine.BigEditionTest.assetsBridgeAndPrefabSpawnWorkFromJavaScriptWithoutEscapingTheProject
+PASS com.sengine.BigEditionTest.bigEditionDataTemplatesAreRecognisedAndValidated
+BIG log[0]: Big Edition: Big Edition notes.
+BIG log[0]: Big Edition: Big Edition notes.
+BIG log[0]: ? Play: Main
+BIG log[0]: UI: SPAWN
+BIG log[0]: spawned Polygon Hero (1)
+BIG log[0]: Big Edition: Big Edition notes.
+BIG showcase objects=13 assets=8
+BIG log[0]: ? Stopped
+PASS com.sengine.BigEditionTest.bigEditionShowcaseTemplateRoundTripsInstallsDataAssetsAndRuns
+BIG log[0]: ? Play: Main
+BIG log[0]: ui:GO
+BIG log[0]: ? Stopped
+PASS com.sengine.BigEditionTest.canvasUiTapInvokesTheScriptAndUpdatesProgress
+PASS com.sengine.BigEditionTest.convexPolygonCollidersUseHullsForRayAndPointQueries
+PASS com.sengine.BigEditionTest.materialAndAtlasCachesReloadAfterExternalEdits
+PASS com.sengine.BigEditionTest.orthographicProjectionAndSpotLightShaderAreActuallyWired
+BIG material bounce peak=3.9730506 ballY=-0.34745267
+BIG joint distance=2.0 broken=false
+PASS com.sengine.BigEditionTest.physicsMaterialsBounceAndDistanceJointsConstrainBodies
+PASS com.sengine.BigEditionTest.prefabCaptureKeepsHierarchyAndInstantiatesAtAnOffset
+BIG tilemap ball y=1.3986973 grounded=true
+PASS com.sengine.BigEditionTest.tilemapSolidsCollideAndAnswerQueries
+SIM log[0]: ? Play: Main
+SIM sandbox objects 18 -> 20, lowest crate y=-5.563462
+PASS com.sengine.EngineSimulationTest.physicsSandboxTapSpawns
+SIM log[0]: Collect all the coins!
+SIM log[0]: ? Play: Main
+SIM settled y=-2.1013029 grounded=true
+SIM after run x=5.9999967
+SIM jump maxY=1.8584682
+SIM coins 6 -> 5 label='Coins: 2' objects=17
+SIM log[0]: ? Stopped
+PASS com.sengine.EngineSimulationTest.platformerPlayerMovesJumpsAndCollects
+SIM log[0]: ? Play: Main
+SIM log[2]: Bad.js:1 in update(): ReferenceError: "undefinedThing" is not defined.
+SIM errors=[Bad.js:1 in update(): ReferenceError: "undefinedThing" is not defined.]
+PASS com.sengine.EngineSimulationTest.scriptErrorsAreReportedNotThrown
+SIM platformer objects=17
+PASS com.sengine.EngineSimulationTest.serializationRoundTrip
+SIM log[0]: ? Play: Main
+SIM shooter stars=40 objects=59 score='Score: 50'
+PASS com.sengine.EngineSimulationTest.shooterRunsWithoutErrors
+SIM audio right=[0.0, 0.89552236] left=[0.89552236, 0.0] mid=[0.5, 0.5]
+SIM up log[0]: pinged 7
+SIM up log[0]: ? Play: Main
+SIM audio smoke ok sfx=0.8 music=0.5
+PASS com.sengine.EngineUpgradeTest.audio3dPanningMathAndApiSmoke
+SIM up log[0]: ? Play: Main
+SIM chase dist 39.96248240537617 -> 28.555797883112845 hunter=(7.78335,5.8046155)
+SIM chase label='HP: 3   Score: 1'
+PASS com.sengine.EngineUpgradeTest.chaseHuntersSeekAndPickupsScore
+SIM up log[0]: ? Play: Main
+SIM flappy label='Score: 1' bird=(5.229998,0.35547504)
+SIM up log[0]: Loaded scene Main
+SIM flappy pair x0=5.0199976 x=-3.8000026 birdY=10.611315
+PASS com.sengine.EngineUpgradeTest.flappyBirdFlapsAndScores
+SIM up log[0]: ? Play: Main
+SIM template 'Flappy Bird' objects=25 errors=0
+SIM up log[0]: ? Play: Main
+SIM template 'Chase' objects=25 errors=0
+SIM up log[0]: ? Play: Main
+SIM template '3D Open World' objects=132 errors=0
+PASS com.sengine.EngineUpgradeTest.newTemplatesSerializeAndRunClean
+SIM up log[0]: ? Play: Main
+SIM ow y=-3.9077373 grounded=true
+SIM ow x0=0.0 x=8.992502
+SIM ow hud='Crystals: 1'
+SIM ow raycast hit=Terrain
+PASS com.sengine.EngineUpgradeTest.openWorldHeroWalksOnTerrain
+SIM up log[0]: ? Play: Main
+SIM phys ccd=7.35 fast=90.5841 ghost=37.499996 solid=5.351 plat=-5.499983 rider=-5.499983
+SIM rayAll=[16.85:BulletCcd, 17.85:Wall1]
+PASS com.sengine.EngineUpgradeTest.physicsLayersCcdQueriesAndCarry
+SIM up log[0]: ? Play: Main
+SIM pool before=25 after=28
+PASS com.sengine.EngineUpgradeTest.poolDefineObtainReleaseReusesInstances
+SIM up log[0]: ? Play: Main
+SIM ray2d hit=Crate (6)
+SIM ray2d miss=null
+PASS com.sengine.EngineUpgradeTest.raycast2DQueryWorks
+SIM up log[0]: ? Play: Main
+SIM life A='f=80 l=80 e=1 d=0' B='doubled=42 ver=1.0 tweened' tweenX=8.0
+SIM life disabled A='f=80 l=80 e=1 d=1'
+SIM life re-enabled A='f=83 l=83 e=2 d=1'
+PASS com.sengine.EngineUpgradeTest.scriptLifecycleTweenAndModules
+SIM up log[0]: ? Play: Main
+SIM terrain h=-2.4127898 h2=-2.4127898
+PASS com.sengine.EngineUpgradeTest.terrainHeightQueryMatchesHeightField
+SIM terrainMesh verts=6144 idx=18432 y=[-5.949985,9.646491]
+PASS com.sengine.EngineUpgradeTest.terrainMeshIsDeterministicAndBounded
+SIM up log[0]: obtained Dummy (1)
+SIM up log[0]: ray2d miss
+SIM up log[0]: terrainHeight 0
+SIM up log[0]: moveToward 0
+SIM up log[0]: queries 0/0/0/0/0
+SIM up log[0]: ? Play: Main
+SIM api dummies=3 fog=true errors=0
+PASS com.sengine.EngineUpgradeTest.upgradeScriptApiRunsClean
+SIM v2 log[0]: ? Play: Main
+SIM anim current='HeroRun.anim' playing=true frame=1 x=2.9999993
+SIM coin anim frame=1 playing=true
+PASS com.sengine.EngineV2Test.animatedPlatformerPlaysClips
+SIM v2 log[0]: Blueprint player ready!
+SIM v2 log[0]: ? Play: Main
+SIM bp player x0=0.0 x=-3.9999983
+SIM bp spinner rotation=150.00002
+SIM bp gems 1 -> 0
+PASS com.sengine.EngineV2Test.blueprintDemoRunsGraphs
+SIM v2 log[0]: ? Play: Main
+SIM 3d settled y=0.79869735 grounded=true
+SIM 3d moved x0=0.0 x=5.994997
+SIM 3d jump maxY=3.1721761
+SIM 3d coins 5 -> 4 label='Coins left: 4'
+SIM 3d raycast hit=Ground
+PASS com.sengine.EngineV2Test.demo3dPhysicsAndPickups
+SIM bp all-nodes js length=1876
+PASS com.sengine.EngineV2Test.everyBlueprintNodeCompilesToValidJs
+SIM store items=104
+PASS com.sengine.EngineV2Test.storeScriptsAndBlueprintsAreValid
+SIM template '3D Demo' objects=31
+SIM template 'Animated Platformer' objects=44
+SIM template 'Blueprint Demo' objects=11
+PASS com.sengine.EngineV2Test.v2TemplatesSerializeRoundTrip
+PASS com.sengine.Phase1RegressionTest.assetAndSceneNamesCannotEscapeTheProject
+PASS com.sengine.Phase1RegressionTest.audioStopAllClearsStateWithoutAPool
+PASS com.sengine.Phase1RegressionTest.extensionlessAssetNamesGetNoTrailingDot
+PHASE1 loop state='watchdog=8' frame=8 errors=[Loop.js in update(): Script execution budget exceeded, timer: Script execution budget exceeded]
+PASS com.sengine.Phase1RegressionTest.infiniteScriptLoopIsAbortedAndEngineKeepsRunning
+PHASE1 reverse carry platform=-5.499983 rider=-5.499983
+PASS com.sengine.Phase1RegressionTest.kinematicCarryWorksWhenRiderIsFirstInPair
+PASS com.sengine.Phase1RegressionTest.markdownApiDocMatchesCanonicalReference
+PHASE1 stale-context state='watchdog=8' frame=8 errors=[Loop.js in update(): Script execution budget exceeded, timer: Script execution budget exceeded]
+PASS com.sengine.Phase1RegressionTest.newEngineOwnsItsOwnSandboxedRhinoContext
+PHASE1 overlaps='far=false,near=true,offset=true' errors=[]
+PASS com.sengine.Phase1RegressionTest.overlapsUsesRealColliderShapesAndOffsets
+PHASE1 gravity3D vx=2.9999983 vz=-1.9999994 x=1.5249995
+PASS com.sengine.Phase1RegressionTest.physics3DAppliesHorizontalGravity
+PHASE1 export entries=[Test/assets/hero.png, Test/scenes/Main.scene.json, Test/project.json]
+PASS com.sengine.Phase1RegressionTest.projectExportExcludesInternalBackupFiles
+PHASE1 random=0.09140983269318737,3.480262533882452,1,7,5 errors=[]
+PASS com.sengine.Phase1RegressionTest.randomHelpersHandleZeroAndOneArguments
+PHASE1 release logs=[? Play: Main, onStopRan, ? Stopped] mode=EDIT
+PASS com.sengine.Phase1RegressionTest.releaseFromAnotherThreadStillDeliversOnStopOnOwnerThread
+PHASE1 recovery objects=1 recovered=true
+PASS com.sengine.Phase1RegressionTest.sceneSavesAreAtomicAndRecoverFromCorruption
+PHASE1 sandbox state='packages=undefined,java=undefined,blocked=1,classBlocked=1,rawClassBlocked=1,systemBlocked=1' errors=[]
+PASS com.sengine.Phase1RegressionTest.scriptsCannotReachHostJavaClasses
+PHASE1 reset time=0.1666666753590107 scale=1.0
+PASS com.sengine.Phase1RegressionTest.stoppingPlayResetsMutableRuntimeState
+PHASE1 timers state='secondTimerRan' errors=[? timer: repeatBoom, ? timer: boom]
+PASS com.sengine.Phase1RegressionTest.timerErrorDoesNotBlockLaterTimersOrTweens
+PASS com.sengine.Phase1RegressionTest.zipSlipEntriesAreRejected
+PASS com.sengine.Phase3Test.3D clips sample tracks and model animation API is documented
+PASS com.sengine.Phase3Test.ESR JSON and RAR store bundles install through the same pipeline
+PASS com.sengine.Phase3Test.ESR1 plus ZIP wrapper and archive path safety are supported
+PASS com.sengine.Phase3Test.asset validator accepts phase 3 templates and rejects malformed ones
+PASS com.sengine.Phase3Test.complete zip bundle installs source, render model, texture, clips and scene object
+PASS com.sengine.Phase3Test.phase 3 exposes all screenshot model categories and asset kinds
+PASS com.sengine.Phase3Test.phase 3 version and docs are consistent
+PASS com.sengine.Phase3Test.sprite document edits, undo, transforms and serialization round-trip
+PASS com.sengine.Phase3Test.sprite export produces PNG sheet, atlas, clip and texture profile
+RESULT passed=63 failed=0 skipped=1
+FINAL_BUILD_EXIT=0
