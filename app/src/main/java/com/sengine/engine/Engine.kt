@@ -367,7 +367,7 @@ class Engine(val project: Project, initialScene: Scene) {
             val px = w3?.get(12) ?: w2!!.tx
             val pz = w3?.get(14) ?: w2!!.ty
             val cvx = rb3?.vx ?: rb2?.vx ?: 0f
-            val cvp = if (threeD) rb3.vz else rb2?.vy ?: 0f
+            val cvp = rb3?.vz ?: rb2?.vy ?: 0f
             // 2D: only steer vertically when gravity is off (top-down style)
             val steerY = !threeD && (scene.gravityY == 0f || (rb2?.gravityScale ?: 1f) == 0f)
 
@@ -447,11 +447,11 @@ class Engine(val project: Project, initialScene: Scene) {
                 nvx = dvx
                 if (steerY || threeD) nvp = dvp
             }
-            if (threeD) {
+            if (rb3 != null) {
                 rb3.vx = nvx; rb3.vz = nvp
             } else {
                 rb2!!.vx = nvx
-                if (steerY) rb2.vy = nvp
+                if (steerY) rb2!!.vy = nvp
             }
 
             if (st.faceMovement && (dvx * dvx + dvp * dvp) > 1e-4f) {

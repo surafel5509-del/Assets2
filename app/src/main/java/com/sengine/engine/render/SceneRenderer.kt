@@ -118,7 +118,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
             r.resW = width.toFloat(); r.resH = height.toFloat(); r3.resW = r.resW; r3.resH = r.resH
             val editing = editor != null && engine.mode == Engine.Mode.EDIT
             val cam3 = engine.mainCamera3D()
-            val use3D = if (editing) editor.mode3D else cam3 != null
+            val use3D = if (editing) editor?.mode3D == true else cam3 != null
 
             // post effect selection (play mode only)
             var postProg: PostProgram? = null
@@ -402,7 +402,7 @@ class SceneRenderer(private val engine: Engine, private val editor: EditorState?
         val v: View3D
         if (editing) {
             editor!!.updateView3D()
-            v = editor.view3D
+            v = editor!!.view3D
         } else {
             v = gameView3D
             if (cam != null) {

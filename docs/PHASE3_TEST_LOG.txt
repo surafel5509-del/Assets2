@@ -1,6 +1,15 @@
 == compiling java stubs ==
 stubs ok: 27 classes
 == compiling main (kotlinc) ==
+/home/user/Assets2/app/src/main/java/com/sengine/engine/Engine.kt:454:32: warning: unnecessary non-null assertion (!!) on a non-null receiver of type 'Rigidbody2D'.
+                if (steerY) rb2!!.vy = nvp
+                               ^^
+/home/user/Assets2/app/src/main/java/com/sengine/engine/render/SceneRenderer.kt:121:44: warning: unnecessary safe call on a non-null receiver of type 'EditorState'.
+            val use3D = if (editing) editor?.mode3D == true else cam3 != null
+                                           ^^
+/home/user/Assets2/app/src/main/java/com/sengine/engine/render/SceneRenderer.kt:405:23: warning: unnecessary non-null assertion (!!) on a non-null receiver of type 'EditorState'.
+            v = editor!!.view3D
+                      ^^
 main ok: 261 classes
 == compiling tests (kotlinc) ==
 tests ok: 22 classes
@@ -64,7 +73,7 @@ PASS com.sengine.EngineSimulationTest.scriptErrorsAreReportedNotThrown
 SIM platformer objects=17
 PASS com.sengine.EngineSimulationTest.serializationRoundTrip
 SIM log[0]: ? Play: Main
-SIM shooter stars=40 objects=59 score='Score: 50'
+SIM shooter stars=40 objects=60 score='Score: 30'
 PASS com.sengine.EngineSimulationTest.shooterRunsWithoutErrors
 SIM audio right=[0.0, 0.89552236] left=[0.89552236, 0.0] mid=[0.5, 0.5]
 SIM up log[0]: pinged 7
@@ -163,7 +172,7 @@ PHASE1 gravity3D vx=2.9999983 vz=-1.9999994 x=1.5249995
 PASS com.sengine.Phase1RegressionTest.physics3DAppliesHorizontalGravity
 PHASE1 export entries=[Test/assets/hero.png, Test/scenes/Main.scene.json, Test/project.json]
 PASS com.sengine.Phase1RegressionTest.projectExportExcludesInternalBackupFiles
-PHASE1 random=0.09140983269318737,3.480262533882452,1,7,5 errors=[]
+PHASE1 random=0.2624404958942771,4.09796814170904,1,6,4 errors=[]
 PASS com.sengine.Phase1RegressionTest.randomHelpersHandleZeroAndOneArguments
 PHASE1 release logs=[? Play: Main, onStopRan, ? Stopped] mode=EDIT
 PASS com.sengine.Phase1RegressionTest.releaseFromAnotherThreadStillDeliversOnStopOnOwnerThread
