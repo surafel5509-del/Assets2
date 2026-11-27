@@ -34,7 +34,7 @@ class Project(val dir: File) {
     }
 
     companion object {
-        const val ENGINE_VERSION = "S Engine 2.2.0"
+        const val ENGINE_VERSION = "S Engine 3.0.0"
 
         /** Reduces any user/script-supplied name to a single safe file name. */
         fun safeName(raw: String): String {

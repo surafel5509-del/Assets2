@@ -51,6 +51,7 @@ class ScriptContextFactory : ContextFactory() {
             "com.sengine.engine.script.SAudio",
             "com.sengine.engine.script.SConsole",
             "com.sengine.engine.script.SModules",
+            "com.sengine.engine.script.SAssets",
             // Returned by SObject.unwrap() for advanced engine interop.
             "com.sengine.engine.core.GameObject",
         )

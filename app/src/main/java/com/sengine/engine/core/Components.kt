@@ -18,13 +18,23 @@ object ComponentRegistry {
         "Collider3D" to { Collider3D() },
         "Terrain" to { Terrain() },
         "Steering" to { Steering() },
+        "Tilemap" to { Tilemap() },
+        "UICanvas" to { UICanvas() },
+        "UIRect" to { UIRect() },
+        "UIImage" to { UIImage() },
+        "UIText" to { UIText() },
+        "UIButton" to { UIButton() },
+        "UIProgressBar" to { UIProgressBar() },
+        "PhysicsMaterial2D" to { PhysicsMaterial2D() },
+        "Joint2D" to { Joint2D() },
     )
 
     val categories: LinkedHashMap<String, List<String>> = linkedMapOf(
-        "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "Camera"),
+        "Rendering 2D" to listOf("SpriteRenderer", "TextRenderer", "Animator", "ParticleEmitter", "Camera", "Tilemap"),
         "Rendering 3D" to listOf("MeshRenderer", "Camera3D", "Light", "Terrain"),
-        "Physics 2D" to listOf("Rigidbody2D", "Collider2D"),
+        "Physics 2D" to listOf("Rigidbody2D", "Collider2D", "PhysicsMaterial2D", "Joint2D"),
         "Physics 3D" to listOf("Rigidbody3D", "Collider3D"),
+        "UI & Canvas" to listOf("UICanvas", "UIRect", "UIImage", "UIText", "UIButton", "UIProgressBar"),
         "AI" to listOf("Steering"),
         "Scripting & Audio" to listOf("Script", "AudioSource"),
     )
@@ -44,6 +54,9 @@ class SpriteRenderer : Component() {
     var shader = ""
     var shaderParam = 1f
     var screenSpace = false
+    var material = ""
+    var atlas = ""
+    var frame = ""
 
     // runtime (set by Animator)
     var animTexture: String? = null
@@ -58,7 +71,21 @@ class SpriteRenderer : Component() {
         Prop.Asset("Shader", AssetKind.SHADER, { shader }, { shader = it }),
         Prop.F("Shader Param", { shaderParam }, { shaderParam = it }),
         Prop.B("Screen Space UI", { screenSpace }, { screenSpace = it }),
+        Prop.Asset("Material", AssetKind.MATERIAL, { material }, { material = it }),
+        Prop.Asset("Atlas", AssetKind.ATLAS, { atlas }, { atlas = it }),
+        Prop.S("Atlas Frame", { frame }, { frame = it }),
     )
+
+    /** Copies a renderer into a scratch instance so material assets do not mutate scene data. */
+    fun copyFrom(o: SpriteRenderer): SpriteRenderer {
+        enabled = o.enabled
+        shape = o.shape; color = o.color; texture = o.texture
+        flipX = o.flipX; flipY = o.flipY; shader = o.shader; shaderParam = o.shaderParam
+        screenSpace = o.screenSpace; material = o.material; atlas = o.atlas; frame = o.frame
+        animTexture = o.animTexture
+        System.arraycopy(o.uv, 0, uv, 0, 4)
+        return this
+    }
 
     fun resetUv() { uv[0] = 0f; uv[1] = 1f; uv[2] = 1f; uv[3] = 0f; animTexture = null }
 
@@ -75,6 +102,7 @@ class TextRenderer : Component() {
     var align = 1 // 0 left, 1 center, 2 right
     var bold = false
     var screenSpace = false
+    var font = ""
 
     override fun props() = listOf(
         Prop.S("Text", { text }, { text = it }, multiline = true),
@@ -83,6 +111,7 @@ class TextRenderer : Component() {
         Prop.Color("Color", { color }, { color = it }),
         Prop.Choice("Align", listOf("Left", "Center", "Right"), { align }, { align = it }),
         Prop.B("Bold", { bold }, { bold = it }),
+        Prop.Asset("Font", AssetKind.FONT, { font }, { font = it }),
     )
 }
 
@@ -150,7 +179,7 @@ class Rigidbody2D : Component() {
 
 class Collider2D : Component() {
     override val type = "Collider2D"
-    var shape = 0 // 0 Box, 1 Circle
+    var shape = 0 // 0 Box, 1 Circle, 2 Convex Polygon
     var width = 1f
     var height = 1f
     var radius = 0.5f
@@ -161,9 +190,11 @@ class Collider2D : Component() {
     var layer = 0
     /** Bitmask of layers this collider can touch (default: everything). */
     var mask = 0xFFFF
+    /** Local convex polygon points: "x,y; x,y; x,y". Concave input is reduced to its hull. */
+    var vertices = "-0.5,-0.5; 0.5,-0.5; 0.5,0.5; -0.5,0.5"
 
     override fun props() = listOf(
-        Prop.Choice("Shape", listOf("Box", "Circle"), { shape }, { shape = it }),
+        Prop.Choice("Shape", listOf("Box", "Circle", "Polygon"), { shape }, { shape = it }),
         Prop.F("Width", { width }, { width = it.coerceAtLeast(0.01f) }),
         Prop.F("Height", { height }, { height = it.coerceAtLeast(0.01f) }),
         Prop.F("Radius", { radius }, { radius = it.coerceAtLeast(0.01f) }),
@@ -172,7 +203,60 @@ class Collider2D : Component() {
         Prop.B("Is Trigger", { isTrigger }, { isTrigger = it }),
         Prop.I("Layer", { layer }, { layer = it.coerceIn(0, 15) }),
         Prop.I("Mask", { mask }, { mask = it and 0xFFFF }),
+        Prop.S("Polygon Points", { vertices }, { vertices = it }, multiline = true),
     )
+
+    /** World-space CCW convex hull of the configured local polygon points. */
+    fun worldPoints(w: com.sengine.engine.math.Affine): Array<FloatArray> {
+        val local = polygonPoints(vertices)
+        return Array(local.size) { i ->
+            val a = local[i]
+            floatArrayOf(w.mapX(a[0] + offsetX, a[1] + offsetY), w.mapY(a[0] + offsetX, a[1] + offsetY))
+        }
+    }
+
+    companion object {
+        val SHAPES = listOf("Box", "Circle", "Polygon")
+
+        /** Parses local vertices and returns a safe CCW convex hull (3..16 points). */
+        fun polygonPoints(vertices: String): Array<FloatArray> {
+            val pts = ArrayList<FloatArray>()
+            for (part in vertices.split(';', '\n', '|')) {
+                val nums = part.trim().split(Regex("[,\\s]+")).filter { it.isNotEmpty() }
+                if (nums.size < 2) continue
+                val x = nums[0].toFloatOrNull() ?: continue
+                val y = nums[1].toFloatOrNull() ?: continue
+                if (!x.isNaN() && !x.isInfinite() && !y.isNaN() && !y.isInfinite()) pts.add(floatArrayOf(x, y))
+                if (pts.size >= 32) break
+            }
+            fun square() = arrayOf(
+                floatArrayOf(-0.5f, -0.5f), floatArrayOf(0.5f, -0.5f),
+                floatArrayOf(0.5f, 0.5f), floatArrayOf(-0.5f, 0.5f),
+            )
+            if (pts.size < 3) return square()
+            val sorted = pts.distinctBy { "${it[0]},${it[1]}" }.sortedWith(compareBy({ it[0] }, { it[1] }))
+            fun cross(o: FloatArray, a: FloatArray, b: FloatArray) =
+                (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+            val lower = ArrayList<FloatArray>()
+            for (a in sorted) {
+                while (lower.size >= 2 && cross(lower[lower.size - 2], lower[lower.size - 1], a) <= 0f) lower.removeAt(lower.size - 1)
+                lower.add(a)
+            }
+            val upper = ArrayList<FloatArray>()
+            for (a in sorted.asReversed()) {
+                while (upper.size >= 2 && cross(upper[upper.size - 2], upper[upper.size - 1], a) <= 0f) upper.removeAt(upper.size - 1)
+                upper.add(a)
+            }
+            val hull = (lower.dropLast(1) + upper.dropLast(1)).take(16).toTypedArray()
+            if (hull.size < 3) return square()
+            var area = 0f
+            for (i in hull.indices) {
+                val a = hull[i]; val b = hull[(i + 1) % hull.size]
+                area += a[0] * b[1] - b[0] * a[1]
+            }
+            return if (area < 0f) hull.reversedArray() else hull
+        }
+    }
 }
 
 class ScriptComponent : Component() {
@@ -285,6 +369,7 @@ class MeshRenderer : Component() {
     var unlit = false
     var shader = ""
     var shaderParam = 1f
+    var material = ""
 
     override fun props() = listOf(
         Prop.Choice("Mesh", MESHES, { mesh }, { mesh = it }),
@@ -298,7 +383,18 @@ class MeshRenderer : Component() {
         Prop.B("Unlit", { unlit }, { unlit = it }),
         Prop.Asset("Shader", AssetKind.SHADER, { shader }, { shader = it }),
         Prop.F("Shader Param", { shaderParam }, { shaderParam = it }),
+        Prop.Asset("Material", AssetKind.MATERIAL, { material }, { material = it }),
     )
+
+    /** Copies a renderer into a scratch instance so material assets do not mutate scene data. */
+    fun copyFrom(o: MeshRenderer): MeshRenderer {
+        enabled = o.enabled
+        mesh = o.mesh; model = o.model; color = o.color; texture = o.texture
+        tiling = o.tiling; specular = o.specular; shininess = o.shininess
+        emission = o.emission; unlit = o.unlit; shader = o.shader
+        shaderParam = o.shaderParam; material = o.material
+        return this
+    }
 
     companion object {
         val MESHES = listOf("Cube", "Sphere", "Plane", "Cylinder", "Cone", "Torus", "Capsule", "Pyramid", "Custom Model")
@@ -312,6 +408,8 @@ class Camera3D : Component() {
     var far = 500f
     var skyTop = 0xFF3B7BD4.toInt()
     var skyHorizon = 0xFFBFD8F0.toInt()
+    var projection = 0 // 0 Perspective, 1 Orthographic
+    var orthoSize = 8f
     var follow = ""
     var offsetX = 0f
     var offsetY = 4f
@@ -327,6 +425,8 @@ class Camera3D : Component() {
         Prop.F("Field of View", { fov }, { fov = it.coerceIn(10f, 150f) }, 1f),
         Prop.F("Near", { near }, { near = it.coerceAtLeast(0.01f) }, 0.01f),
         Prop.F("Far", { far }, { far = it.coerceAtLeast(1f) }, 1f),
+        Prop.Choice("Projection", listOf("Perspective", "Orthographic"), { projection }, { projection = it }),
+        Prop.F("Ortho Size", { orthoSize }, { orthoSize = it.coerceAtLeast(0.01f) }, 0.5f),
         Prop.Color("Sky Top", { skyTop }, { skyTop = it }),
         Prop.Color("Sky Horizon", { skyHorizon }, { skyHorizon = it }),
         Prop.S("Follow Target", { follow }, { follow = it }),
@@ -349,12 +449,16 @@ class Light : Component() {
     var color = 0xFFFFF4E0.toInt()
     var intensity = 1f
     var range = 10f
+    var coneAngle = 35f
+    var penumbra = 0.25f
 
     override fun props() = listOf(
-        Prop.Choice("Type", listOf("Directional", "Point"), { kind }, { kind = it }),
+        Prop.Choice("Type", listOf("Directional", "Point", "Spot"), { kind }, { kind = it }),
         Prop.Color("Color", { color }, { color = it }),
         Prop.F("Intensity", { intensity }, { intensity = it.coerceIn(0f, 10f) }, 0.05f),
         Prop.F("Range", { range }, { range = it.coerceAtLeast(0.1f) }),
+        Prop.F("Cone Angle", { coneAngle }, { coneAngle = it.coerceIn(1f, 89f) }, 1f),
+        Prop.F("Penumbra", { penumbra }, { penumbra = it.coerceIn(0f, 0.95f) }, 0.05f),
     )
 }
 

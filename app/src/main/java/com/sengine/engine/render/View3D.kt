@@ -13,6 +13,10 @@ class View3D {
     var fov = 60f
     var near = 0.1f
     var far = 500f
+    /** 0 = perspective, 1 = orthographic. */
+    var projection = 0
+    /** Half-height in world units for orthographic projection. */
+    var orthoSize = 8f
     var widthPx = 1
     var heightPx = 1
 
@@ -25,7 +29,11 @@ class View3D {
 
     fun update() {
         Mat4.lookAt(view, eye[0], eye[1], eye[2], target[0], target[1], target[2], up[0], up[1], up[2])
-        Mat4.perspective(proj, fov, aspect, near, far)
+        if (projection == 1) {
+            val halfH = orthoSize.coerceAtLeast(0.01f)
+            val halfW = halfH * aspect
+            Mat4.ortho(proj, -halfW, halfW, -halfH, halfH, near, maxOf(far, near + 0.1f))
+        } else Mat4.perspective(proj, fov, aspect, near, far)
         Mat4.mul(viewProj, proj, view)
         Mat4.invert(invViewProj, viewProj)
     }

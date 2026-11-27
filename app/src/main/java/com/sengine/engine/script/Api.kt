@@ -1,14 +1,19 @@
 package com.sengine.engine.script
 
 import com.sengine.engine.Engine
+import com.sengine.engine.core.AssetKind
+import com.sengine.engine.core.AssetValidator
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.Component
 import com.sengine.engine.core.GameObject
 import com.sengine.engine.core.ParticleEmitter
+import com.sengine.engine.core.PrefabAsset
 import com.sengine.engine.core.Rigidbody2D
+import com.sengine.engine.core.SceneSerializer
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
+import com.sengine.project.Project
 import org.mozilla.javascript.Context
 import kotlin.math.sqrt
 
@@ -140,6 +145,33 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun setShaderParam(v: Double) {
         go.getAny<com.sengine.engine.core.MeshRenderer>()?.shaderParam = v.toFloat()
         go.getAny<SpriteRenderer>()?.shaderParam = v.toFloat()
+        go.getAny<com.sengine.engine.core.UIImage>()?.shaderParam = v.toFloat()
+    }
+    /** Applies a .mat asset to this object's mesh or sprite renderer. */
+    fun setMaterial(name: String) {
+        go.getAny<com.sengine.engine.core.MeshRenderer>()?.material = name
+        go.getAny<SpriteRenderer>()?.material = name
+    }
+    /** Selects a named UV rectangle from the SpriteRenderer's .atlas asset. */
+    fun setSpriteFrame(name: String) { go.getAny<SpriteRenderer>()?.frame = name }
+    /** Assigns a .ttf/.otf asset to TextRenderer and UIText components. */
+    fun setFont(name: String) {
+        go.getAny<TextRenderer>()?.font = name
+        go.getAny<com.sengine.engine.core.UIText>()?.font = name
+    }
+    /** Light cone angle in degrees; also switches the Light to Spot mode. */
+    fun setSpotCone(deg: Double) {
+        go.getAny<com.sengine.engine.core.Light>()?.let {
+            it.kind = 2
+            it.coneAngle = deg.toFloat().coerceIn(1f, 89f)
+        }
+    }
+    /** Switches Camera3D to orthographic projection with the given half-height. */
+    fun setOrthoSize(v: Double) {
+        go.getAny<com.sengine.engine.core.Camera3D>()?.let {
+            it.projection = 1
+            it.orthoSize = v.toFloat().coerceAtLeast(0.01f)
+        }
     }
     fun setMeshColor(hex: String) {
         val c = try { Component.parseColor(hex) } catch (e: Exception) { return }
@@ -149,8 +181,61 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     fun overlaps(other: SObject): Boolean = engine.physics.overlaps(go, other.go)
 
     // rendering
-    fun getText(): String = go.getAny<TextRenderer>()?.text ?: ""
-    fun setText(v: Any?) { go.getAny<TextRenderer>()?.text = Context.toString(v) }
+    fun getText(): String = go.getAny<TextRenderer>()?.text ?: go.getAny<com.sengine.engine.core.UIText>()?.text ?: ""
+    fun setText(v: Any?) {
+        val text = Context.toString(v)
+        go.getAny<TextRenderer>()?.text = text
+        go.getAny<com.sengine.engine.core.UIText>()?.text = text
+    }
+    fun getUIText(): String = go.getAny<com.sengine.engine.core.UIText>()?.text ?: go.getAny<TextRenderer>()?.text ?: ""
+    fun setUIText(v: Any?) {
+        val text = Context.toString(v)
+        go.getAny<com.sengine.engine.core.UIText>()?.text = text
+        go.getAny<TextRenderer>()?.text = text
+    }
+    fun getUIProgress(): Double = go.getAny<com.sengine.engine.core.UIProgressBar>()?.value?.toDouble() ?: 0.0
+    fun setUIProgress(v: Double) { go.getAny<com.sengine.engine.core.UIProgressBar>()?.value = v.toFloat() }
+    // Rhino treats getUIProgress as the property "UIProgress"; lower-case aliases
+    // make the documented self.uiProgress / self.uiText names work as expected.
+    fun getUiProgress(): Double = getUIProgress()
+    fun setUiProgress(v: Double) = setUIProgress(v)
+    fun getUiText(): String = getUIText()
+    fun setUiText(v: Any?) = setUIText(v)
+    fun isUIClicked(): Boolean = go.getAny<com.sengine.engine.core.UIButton>()?.clicked ?: false
+    fun setUIImage(name: String) { go.getAny<com.sengine.engine.core.UIImage>()?.texture = name }
+    fun setUIVisible(v: Boolean) {
+        listOfNotNull<Component>(
+            go.getAny<com.sengine.engine.core.UIRect>(), go.getAny<com.sengine.engine.core.UIImage>(),
+            go.getAny<com.sengine.engine.core.UIText>(), go.getAny<com.sengine.engine.core.UIButton>(),
+            go.getAny<com.sengine.engine.core.UIProgressBar>(),
+        ).forEach { it.enabled = v }
+    }
+    /** Sets a UI rect's anchor and size as canvas fractions. */
+    fun setUIRect(x: Double, y: Double, w: Double, h: Double) {
+        go.getAny<com.sengine.engine.core.UIRect>()?.let {
+            it.anchorX = x.toFloat().coerceIn(-1f, 2f)
+            it.anchorY = y.toFloat().coerceIn(-1f, 2f)
+            it.width = w.toFloat().coerceIn(0f, 4f)
+            it.height = h.toFloat().coerceIn(0f, 4f)
+        }
+    }
+    fun getTile(col: Int, row: Int): Double = go.getAny<com.sengine.engine.core.Tilemap>()?.getTile(col, row)?.toDouble() ?: -1.0
+    fun setTile(col: Int, row: Int, id: Int): Boolean = go.getAny<com.sengine.engine.core.Tilemap>()?.setTile(col, row, id) ?: false
+    fun tileAtWorld(x: Double, y: Double): Double =
+        go.getAny<com.sengine.engine.core.Tilemap>()?.tileAtWorld(x.toFloat(), y.toFloat())?.toDouble() ?: -1.0
+    /** Replaces the Collider2D with a convex polygon described by "x,y; x,y; ...". */
+    fun setColliderVertices(vertices: String) {
+        go.getAny<Collider2D>()?.let {
+            it.shape = 2
+            it.vertices = vertices
+        }
+    }
+    fun setJointLength(v: Double) { go.getAny<com.sengine.engine.core.Joint2D>()?.length = v.toFloat().coerceAtLeast(0.01f) }
+    fun getJointLength(): Double = go.getAny<com.sengine.engine.core.Joint2D>()?.length?.toDouble() ?: 0.0
+    fun setJointTarget(name: String) { go.getAny<com.sengine.engine.core.Joint2D>()?.target = name }
+    fun isJointStressed(): Boolean = go.getAny<com.sengine.engine.core.Joint2D>()?.stressed ?: false
+    fun isJointBroken(): Boolean = go.getAny<com.sengine.engine.core.Joint2D>()?.broken ?: false
+    fun setJointEnabled(v: Boolean) { go.getAny<com.sengine.engine.core.Joint2D>()?.enabled = v }
     fun getColor(): String {
         val c = go.getAny<SpriteRenderer>()?.color ?: go.getAny<TextRenderer>()?.color
             ?: go.getAny<com.sengine.engine.core.Light>()?.color ?: -1
@@ -161,6 +246,9 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         go.getAny<SpriteRenderer>()?.color = c
         go.getAny<TextRenderer>()?.color = c
         go.getAny<com.sengine.engine.core.Light>()?.color = c
+        go.getAny<com.sengine.engine.core.UIImage>()?.color = c
+        go.getAny<com.sengine.engine.core.UIButton>()?.color = c
+        go.getAny<com.sengine.engine.core.UIProgressBar>()?.fillColor = c
     }
     /** Light intensity (0..4 typical). */
     fun setIntensity(v: Double) { go.getAny<com.sengine.engine.core.Light>()?.intensity = v.toFloat() }
@@ -170,12 +258,22 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
         try { cam.skyTop = Component.parseColor(Context.toString(top)) } catch (_: Exception) {}
         try { cam.skyHorizon = Component.parseColor(Context.toString(horizon)) } catch (_: Exception) {}
     }
-    fun getVisible(): Boolean = go.getAny<SpriteRenderer>()?.enabled ?: false
+    fun getVisible(): Boolean = go.getAny<SpriteRenderer>()?.enabled
+        ?: go.getAny<com.sengine.engine.core.UIImage>()?.enabled
+        ?: go.getAny<com.sengine.engine.core.UIButton>()?.enabled
+        ?: go.getAny<com.sengine.engine.core.UIText>()?.enabled ?: false
     fun setVisible(v: Boolean) {
         go.getAny<SpriteRenderer>()?.enabled = v
         go.getAny<TextRenderer>()?.enabled = v
+        go.getAny<com.sengine.engine.core.UIImage>()?.enabled = v
+        go.getAny<com.sengine.engine.core.UIText>()?.enabled = v
+        go.getAny<com.sengine.engine.core.UIButton>()?.enabled = v
+        go.getAny<com.sengine.engine.core.UIProgressBar>()?.enabled = v
     }
-    fun setTexture(name: String) { go.getAny<SpriteRenderer>()?.texture = name }
+    fun setTexture(name: String) {
+        go.getAny<SpriteRenderer>()?.texture = name
+        go.getAny<com.sengine.engine.core.UIImage>()?.texture = name
+    }
     fun getFlipX(): Boolean = go.getAny<SpriteRenderer>()?.flipX ?: false
     fun setFlipX(v: Boolean) { go.getAny<SpriteRenderer>()?.flipX = v }
 
@@ -208,7 +306,60 @@ class SObject(private val go: GameObject, private val engine: Engine, private va
     override fun toString() = "GameObject(${go.name})"
 }
 
+/** Safe, project-local text asset bridge. Binary assets and path traversal are rejected. */
+class SAssets(private val engine: Engine, private val sys: ScriptSystem) {
+    private fun safeName(name: String): String? {
+        if (!Project.isSafeName(name)) return null
+        val kind = AssetKind.of(name) ?: return null
+        if (kind.binary) return null
+        return name
+    }
+
+    fun readText(name: String): String? = safeName(name)?.let { engine.project.readAsset(it) }
+    fun writeText(name: String, text: String): Boolean {
+        val n = safeName(name) ?: return false
+        if (AssetValidator.validate(n, text) != null) return false
+        return try { engine.project.writeAsset(n, text); true } catch (_: Exception) { false }
+    }
+    fun exists(name: String): Boolean = safeName(name)?.let { engine.project.assetFile(it).isFile } ?: false
+    fun validate(name: String): String? {
+        val n = safeName(name) ?: return "invalid text asset name"
+        val text = engine.project.readAsset(n) ?: return "missing asset"
+        return AssetValidator.validate(n, text)
+    }
+    /** Lists text assets; pass a kind such as "PREFAB", "SCENE" or "all". */
+    fun list(kind: String): Any? {
+        val k = if (kind.isBlank() || kind.equals("all", ignoreCase = true)) null
+        else AssetKind.ofName(kind) ?: return sys.newArray(emptyList())
+        return sys.newArray(engine.project.listAssets(k))
+    }
+}
+
 class SScene(private val engine: Engine, private val sys: ScriptSystem) {
+    private fun prefabName(name: String): String =
+        if (name.endsWith(".prefab", ignoreCase = true)) name else "$name.prefab"
+
+    private fun spawnPrefabGo(name: String, x: Float, y: Float, z: Float?): GameObject? {
+        val n = prefabName(name)
+        val text = engine.project.readAsset(n) ?: run { engine.log(1, "Prefab not found: $n"); return null }
+        val copy = PrefabAsset.instantiate(engine.scene, text, x, y, z)
+            ?: run { engine.log(1, "Invalid prefab: $n"); return null }
+        sys.attach(copy)
+        return copy
+    }
+
+    /** Instantiates a .prefab asset, preserving its hierarchy and component data. */
+    fun spawnPrefab(name: String, x: Double, y: Double): Any? =
+        spawnPrefabGo(name, x.toFloat(), y.toFloat(), null)?.let { sys.toJs(it) }
+    fun spawnPrefab(name: String, x: Double, y: Double, z: Double): Any? =
+        spawnPrefabGo(name, x.toFloat(), y.toFloat(), z.toFloat())?.let { sys.toJs(it) }
+
+    /** Saves the live scene as a reusable .scene snapshot asset. */
+    fun saveSnapshot(name: String): Boolean {
+        val n = if (name.endsWith(".scene", ignoreCase = true)) name else "$name.scene"
+        return SAssets(engine, sys).writeText(n, SceneSerializer.toJson(engine.scene).toString(2))
+    }
+
     fun getName(): String = engine.scene.name
     fun find(name: String): Any? = engine.scene.find(name)?.let { sys.toJs(it) }
     fun findAll(tag: String): Any? =

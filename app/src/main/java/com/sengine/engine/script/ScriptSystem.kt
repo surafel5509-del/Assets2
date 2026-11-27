@@ -76,6 +76,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         put(g, "scene", SScene(engine, this))
         put(g, "audio", SAudio(engine))
         put(g, "console", SConsole(engine))
+        put(g, "assets", SAssets(engine, this))
         put(g, "__modules", SModules(this))
         withBudget {
             try { c.evaluateString(g, PRELUDE, "prelude", 1, null) }
@@ -84,7 +85,9 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         compiled.clear()
         moduleCache.clear()
         withBudget {
-            for (go in engine.scene.objects.toList()) attach(go)
+            // attach() recurses through children; starting at roots avoids
+            // registering a child's scripts once per ancestor in the flat list.
+            for (go in engine.scene.objects.toList()) if (go.parent == null) attach(go)
             startPending()
         }
     }
@@ -145,6 +148,7 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
         val g = global ?: return@withBudget
         for (comp in go.components) {
             if (comp !is ScriptComponent || comp.script.isBlank()) continue
+            if (instances.any { it.go === go && it.comp === comp }) continue
             val script = compiled[comp.script] ?: compileScript(comp.script) ?: continue
             val scope = c.newObject(g)
             scope.prototype = g
@@ -341,6 +345,15 @@ class ScriptSystem(val engine: Engine) : PhysicsWorld.Listener {
             if (inst.go === go && !inst.failed) result = call(inst, fname, arg) ?: result
         }
         return@withBudget result
+    }
+
+    /** UI button callbacks. [action] is the button's configured script function name. */
+    fun onUIButtonClick(go: GameObject, action: String, label: String): Unit = withBudget {
+        val names = linkedSetOf(action.ifBlank { "onClick" }, "onUIButtonClick", "onClick")
+        for (inst in instances.toList()) {
+            if (inst.go !== go || !inst.started || inst.failed || !inst.comp.enabled) continue
+            for (name in names) call(inst, name, label)
+        }
     }
 
     private fun dispatch(go: GameObject, fname: String, other: GameObject): Unit = withBudget {

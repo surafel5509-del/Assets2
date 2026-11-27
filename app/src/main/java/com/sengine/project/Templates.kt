@@ -9,19 +9,31 @@ import com.sengine.engine.core.MeshRenderer
 import com.sengine.engine.core.Rigidbody3D
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.GameObject
+import com.sengine.engine.core.Joint2D
 import com.sengine.engine.core.ParticleEmitter
+import com.sengine.engine.core.PhysicsMaterial2D
+import com.sengine.engine.core.PrefabAsset
 import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.Scene
+import com.sengine.engine.core.SceneSerializer
 import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.Steering
 import com.sengine.engine.core.Terrain
 import com.sengine.engine.core.TextRenderer
+import com.sengine.engine.core.Tilemap
+import com.sengine.engine.core.UIButton
+import com.sengine.engine.core.UICanvas
+import com.sengine.engine.core.UIImage
+import com.sengine.engine.core.UIProgressBar
+import com.sengine.engine.core.UIRect
+import com.sengine.engine.core.UIText
 
 object Templates {
     class Template(val name: String, val description: String, val build: (Project) -> Unit)
 
-    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, flappyBird, chase, openWorld) }
+    // Existing template positions are stable: ProjectsActivity uses indices 1 and 2.
+    val all: List<Template> by lazy { listOf(empty, platformer, shooter, physics, demo3d, animated, blueprintDemo, flappyBird, chase, openWorld, bigEdition) }
 
     const val NEW_SHADER = """// S Engine effect shader (GLSL ES)
 // Available: uTime, uParam, uTex, uUseTex, uColor, uResolution
@@ -30,6 +42,39 @@ object Templates {
 vec4 effect(vec4 color, vec2 uv) {
     float pulse = 0.75 + 0.25 * sin(uTime * 3.0);
     return vec4(color.rgb * pulse, color.a);
+}
+"""
+
+    /** Shared, syntax-checked callback for generated Canvas UI buttons. */
+    const val BIG_EDITION_UI_SCRIPT = """// Big Edition Canvas UI callback (JavaScript)
+// ScriptSystem calls onClick(label) on the UIButton object.
+
+function onClick(label) {
+    log("UI: " + label);
+    self.uiProgress = Math.min(1, self.uiProgress + 0.25);
+    self.text = "Pressed " + label;
+}
+"""
+
+    const val BIG_EDITION_DEMO_SCRIPT = """// Big Edition showcase (JavaScript)
+// Prefabs, assets, UI progress and tilemap queries share the audited API.
+
+function start() {
+    log("Big Edition: " + assets.readText("Notes.txt").split("\n")[0]);
+}
+
+function update(dt) {
+    self.rotation += 24 * dt;
+    var tile = scene.find("Ground");
+    if (tile) self.uiProgress = Math.min(1, self.uiProgress + dt * 0.12);
+}
+
+function onClick(label) {
+    log("UI: " + label);
+    var bar = scene.find("Progress");
+    if (bar) bar.uiProgress = Math.min(1, bar.uiProgress + 0.25);
+    var copy = scene.spawnPrefab("BigEdition.prefab", 3, 3);
+    if (copy) log("spawned " + copy.name);
 }
 """
 
@@ -687,6 +732,71 @@ function update(dt) {
             it.get<TextRenderer>()!!.screenSpace = true; it.order = 100
         }
         p.saveScene(s)
+        p.startScene = "Main"
+    }
+
+    // ---------------------------------------------------------------- Big Edition showcase
+    private val bigEdition = Template("Big Edition Showcase", "Prefab, material, atlas, tilemap, polygon physics, Canvas UI, spot light and orthographic camera.") { p ->
+        p.writeAsset("BigEdition.mat", BigEditionAssets.MATERIAL)
+        p.writeAsset("HeroAtlas.atlas", """{"texture":"","columns":4,"rows":1,"frames":{"idle":[0,1,0.25,0],"step":[0.25,1,0.5,0],"jump":[0.5,1,0.75,0],"fall":[0.75,1,1,0]}}""")
+        p.writeAsset("Grass.tilemap", BigEditionAssets.TILEMAP)
+        p.writeAsset("Notes.txt", "Big Edition notes.\nThis is a validated text data asset.")
+        p.writeAsset("UIButtonDemo.js", BIG_EDITION_UI_SCRIPT)
+        p.writeAsset("BigEditionDemo.js", BIG_EDITION_DEMO_SCRIPT)
+
+        val s = Scene("Main")
+        camera(s, 6f, 0xFF172033)
+        val ground = obj(s, "Ground", -4f, -2.4f)
+        ground.add(Tilemap().also {
+            it.tileset = ""; it.map = "0,1,0,1;1,1,1,0;0,1,0,0"
+            it.collide = true; it.palette = "#FF6D9E4B,#FF8D6E63,#FF4FC3F7,#FFFFC107"
+        })
+
+        val hero = obj(s, "Polygon Hero", 1.4f, 1.2f, 1.1f, 1.1f)
+        hero.add(SpriteRenderer().also {
+            it.shape = 2; it.color = 0xFFFFB74D.toInt(); it.material = "BigEdition.mat"
+        })
+        hero.add(Collider2D().also { it.shape = 2; it.vertices = "-0.5,-0.5; 0.5,-0.5; 0,0.6" })
+        hero.add(Rigidbody2D().also { it.bounciness = 0.35f; it.friction = 0.45f })
+        hero.add(PhysicsMaterial2D().also { it.density = 1.4f; it.bounciness = 0.5f; it.friction = 0.7f })
+        hero.add(Joint2D().also { it.target = "Anchor"; it.length = 3f; it.mode = 1; it.stiffness = 14f; it.damping = 2f })
+        hero.add(ScriptComponent().also { it.script = "BigEditionDemo.js" })
+        val anchor = obj(s, "Anchor", -1.2f, 2.4f, 0.6f, 0.6f)
+        anchor.add(SpriteRenderer().also { it.shape = 1; it.color = 0xFF80CBC4.toInt(); it.atlas = "HeroAtlas.atlas"; it.frame = "idle" })
+        anchor.add(Collider2D().also { it.shape = 1 })
+        anchor.add(Rigidbody2D().also { it.bodyType = 2 })
+
+        val canvas = obj(s, "Canvas", 0f, 0f)
+        canvas.add(UICanvas().also { it.referenceWidth = 1920f; it.referenceHeight = 1080f; it.sortOrder = 10 })
+        val title = obj(s, "Title", 0f, 0f, parent = canvas)
+        title.add(UIRect().also { it.anchorY = 0.88f; it.width = 0.55f; it.height = 0.08f })
+        title.add(UIText().also { it.text = "BIG EDITION 3.0"; it.size = 0.055f; it.color = 0xFFFFD54F.toInt() })
+        val panel = obj(s, "Panel", 0f, 0f, parent = canvas)
+        panel.add(UIRect().also { it.anchorX = 0.2f; it.anchorY = 0.65f; it.width = 0.28f; it.height = 0.22f })
+        panel.add(UIImage().also { it.color = 0xCC263238.toInt(); it.atlas = "HeroAtlas.atlas"; it.frame = "step" })
+        val button = obj(s, "Button", 0f, 0f, parent = canvas)
+        button.add(UIRect().also { it.anchorX = 0.5f; it.anchorY = 0.42f; it.width = 0.24f; it.height = 0.09f })
+        button.add(UIButton().also { it.label = "SPAWN"; it.action = "onClick"; it.texture = "" })
+        button.add(ScriptComponent().also { it.script = "BigEditionDemo.js" })
+        val progress = obj(s, "Progress", 0f, 0f, parent = canvas)
+        progress.add(UIRect().also { it.anchorX = 0.5f; it.anchorY = 0.28f; it.width = 0.42f; it.height = 0.045f })
+        progress.add(UIProgressBar().also { it.value = 0.2f; it.fillColor = 0xFF4FC3F7.toInt() })
+
+        val cube = obj(s, "Material Cube", -2f, 2f)
+        cube.add(MeshRenderer().also { it.color = 0xFFFFFFFF.toInt(); it.material = "BigEdition.mat" })
+        val ortho = obj(s, "Ortho Camera", 0f, 3f)
+        ortho.z = 10f; ortho.rotX = -12f
+        ortho.add(Camera3D().also { it.projection = 1; it.orthoSize = 8f; it.fov = 55f })
+        val spot = obj(s, "Spot Light", 2f, 4f)
+        spot.z = 6f; spot.rotX = -35f
+        spot.add(Light().also {
+            it.kind = 2; it.coneAngle = 38f; it.penumbra = 0.4f
+            it.range = 24f; it.color = 0xFFFFC870.toInt(); it.intensity = 1.2f
+        })
+
+        p.writeAsset("BigEdition.prefab", PrefabAsset.capture(s, hero).toString(2))
+        p.saveScene(s)
+        p.writeAsset("Snapshot.scene", SceneSerializer.toJson(s).toString(2))
         p.startScene = "Main"
     }
 }

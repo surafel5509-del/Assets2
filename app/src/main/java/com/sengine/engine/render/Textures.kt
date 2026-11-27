@@ -18,9 +18,10 @@ class TextureCache(private val project: Project) {
     private val images = HashMap<String, Tex?>()
     private val stamps = HashMap<String, Long>()
     private val texts = LinkedHashMap<String, Tex>(64, 0.75f, true)
+    private val fonts = HashMap<String, Typeface>()
 
     /** Discard cached ids after an EGL context loss (old ids belong to the lost context). */
-    fun clear() { images.clear(); stamps.clear(); texts.clear() }
+    fun clear() { images.clear(); stamps.clear(); texts.clear(); fonts.clear() }
 
     /** Delete every live GL texture before the owning context is destroyed. */
     fun release() {
@@ -43,13 +44,13 @@ class TextureCache(private val project: Project) {
         return tex
     }
 
-    fun text(text: String, bold: Boolean, align: Int): Tex {
-        val key = "$bold|$align|$text"
+    fun text(text: String, bold: Boolean, align: Int, fontName: String = ""): Tex {
+        val key = "$bold|$align|$fontName|$text"
         texts[key]?.let { return it }
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.color = Color.WHITE
         paint.textSize = 72f
-        paint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        paint.typeface = loadTypeface(bold, fontName)
         val lines = text.split('\n')
         val fm = paint.fontMetrics
         val lineH = (fm.descent - fm.ascent)
@@ -75,6 +76,20 @@ class TextureCache(private val project: Project) {
             texts.remove(eldest.key)
         }
         return tex
+    }
+
+    /** Custom .ttf/.otf assets override the default bold/regular face; failures fall back safely. */
+    private fun loadTypeface(bold: Boolean, fontName: String): Typeface {
+        if (fontName.isBlank()) return if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        val f = project.assetFile(fontName)
+        if (!f.isFile) return if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        val key = "$fontName|${f.lastModified()}"
+        fonts[key]?.let { return it }
+        return try {
+            Typeface.createFromFile(f).also { fonts[key] = it }
+        } catch (_: Throwable) {
+            if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
     }
 
     private fun upload(bmp: Bitmap, nearest: Boolean): Tex {

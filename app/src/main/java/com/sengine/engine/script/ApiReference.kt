@@ -5,12 +5,12 @@ package com.sengine.engine.script
  *
  * The editor's "API" button, `docs/SCRIPTING_API.md` and the API audit test all
  * consume this constant. Every symbol listed here is implemented by [SObject],
- * [SScene], [SInput], [STime], [SAudio], [SConsole], [SModules] or the
+ * [SScene], [SInput], [STime], [SAudio], [SConsole], [SAssets], [SModules] or the
  * [ScriptSystem.PRELUDE] helpers; the audit test fails if that stops being true.
  */
 object ApiReference {
     val API_DOC = """
-S ENGINE — JAVASCRIPT API, runtime v2.2.0, Phase 1 audited
+S ENGINE — JAVASCRIPT API, runtime v3.0.0, Big Edition
 
 LIFECYCLE — define any of these in a Script component
   start()              once, when play begins
@@ -22,12 +22,14 @@ LIFECYCLE — define any of these in a Script component
   onTrigger(other)     entered a trigger
   onTriggerExit(other) left a trigger
   onTap()              this object's collider was tapped
+  onUIButtonClick(label)  UIButton tap, receives the button label
+  onClick(label)       shorthand UIButton tap
   onDestroy()          object was destroyed
   onStop()             play mode / scene ended
 
 GLOBALS
   self  transform  gameObject   [the same object wrapper]
-  scene  input  time  audio  console
+  scene  input  time  audio  console  assets
   log()  warn()  error()
 
 SELF / TRANSFORM / GAMEOBJECT
@@ -50,20 +52,34 @@ PHYSICS / SELF
   addImpulse(fx,fy)  addImpulse(x,y,z)
   groundNormal -> [x,y,z] array, 3D
   setLayer(layer)  setMask(mask)      [0..15 / 16-bit mask]
-  overlaps(o)                         [real box/circle collider test]
+  overlaps(o)                         [real collider and tilemap test]
+  setColliderVertices(vertices)       [convex polygon "x,y; x,y; ..."]
+  setJointLength(v)  setJointTarget(name)  isJointStressed()  isJointBroken()
+  setJointEnabled(enabled)
 
 3D / SELF
   z rotX rotY rotZ scaleZ worldZ vz
   forward() -> [x,y,z] world direction
   setMeshColor(hex)  setIntensity(v)  setSky(top, horizon)
+  setSpotCone(deg)  setOrthoSize(v)
 
 ANIMATION & RENDERING / SELF
   play(clip)  stopAnimation()  animation  animationFinished
   setAnimSpeed(s)  setShaderParam(v)
+  setMaterial(name)  setSpriteFrame(name)  setFont(name)
   color  visible  flipX  text  setTexture(name)
   burst(n)  setEmitting(enabled)      [particles]
   size                                [Camera2D size]
   send(fn, arg)  send(fn)             [call fn on another object's scripts]
+
+CANVAS UI / SELF
+  uiText  setUIText(value)  uiProgress  setUIProgress(v)
+  isUIClicked()  setUIImage(name)  setUIVisible(enabled)
+  setUIRect(x,y,w,h)
+  UIButton taps also call onUIButtonClick(label) and onClick(label)
+
+TILEMAP / SELF
+  setTile(col,row,id)  getTile(col,row)  tileAtWorld(x,y)
 
 INPUT
   axisX axisY [-1..1]  a b aDown bDown
@@ -75,6 +91,8 @@ SCENE
   name  camera  camera3D  gravityX gravityY gravity3D
   find(name)  findAll(tag)  count(tag)
   spawn(name)  spawn(name,x,y)  spawn(name,x,y,z)
+  spawnPrefab(name,x,y)  spawnPrefab(name,x,y,z)
+  saveSnapshot(name)
   load(sceneName)  reload()  shake(amount)
   broadcast(fn)  broadcast(fn, arg)
   pool(name,size)  obtain(name,x,y)  obtain(name,x,y,z)  release(o)
@@ -86,6 +104,11 @@ SCENE
   overlapSphere(x,y,z,r)  overlapSphere(x,y,z,r,tag)
   terrainHeight(x,z)                  -> world height [0 if no terrain]
   setFog(start,end)  setFogColor(hex)
+
+ASSETS — project-local text data only
+  assets.readText(name)  assets.writeText(name,text)
+  assets.exists(name)  assets.validate(name)  assets.list(kind)
+  kinds: PREFAB MATERIAL ATLAS TILEMAP SCENE TEXT or all
 
 TIME
   time.time  time.frame  time.fps  time.delta  time.scale [0..4]
@@ -118,6 +141,12 @@ PARAMS
 
 BLUEPRINTS
   .bp files compile to this same API.
+
+BIG EDITION RUNTIME
+  Prefabs keep hierarchy, materials stay asset-backed, tilemaps collide,
+  UI buttons dispatch script events, spot lights and orthographic cameras
+  render in 3D, polygon hulls, materials and joints extend 2D physics.
+  Invalid data assets are rejected by the editor and by assets.writeText.
 
 SAFETY
   Scripts cannot access host Java classes, the file system or the network.

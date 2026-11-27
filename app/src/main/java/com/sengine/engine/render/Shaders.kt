@@ -36,6 +36,10 @@ class MeshProgram(val id: Int) {
     val uDirColor = GLES20.glGetUniformLocation(id, "uDirColor")
     val uPointPos = GLES20.glGetUniformLocation(id, "uPointPos")
     val uPointColor = GLES20.glGetUniformLocation(id, "uPointColor")
+    val uSpotPos = GLES20.glGetUniformLocation(id, "uSpotPos")
+    val uSpotDir = GLES20.glGetUniformLocation(id, "uSpotDir")
+    val uSpotColor = GLES20.glGetUniformLocation(id, "uSpotColor")
+    val uSpotParams = GLES20.glGetUniformLocation(id, "uSpotParams")
     val uSpec = GLES20.glGetUniformLocation(id, "uSpec")
     val uShine = GLES20.glGetUniformLocation(id, "uShine")
     val uEmission = GLES20.glGetUniformLocation(id, "uEmission")
@@ -218,6 +222,10 @@ uniform vec3 uDirDir;
 uniform vec3 uDirColor;
 uniform vec4 uPointPos[4];
 uniform vec3 uPointColor[4];
+uniform vec4 uSpotPos[2];
+uniform vec3 uSpotDir[2];
+uniform vec3 uSpotColor[2];
+uniform vec4 uSpotParams[2];
 uniform float uSpec;
 uniform float uShine;
 uniform float uEmission;
@@ -251,6 +259,19 @@ void main() {
       float pd = max(dot(n, pl), 0.0);
       light += uPointColor[i] * pd * att;
       specular += uPointColor[i] * pow(max(dot(n, normalize(pl + v)), 0.0), uShine) * uSpec * att * step(0.0001, pd);
+    }
+    for (int j = 0; j < 2; j++) {
+      if (uSpotParams[j].w < 0.5) continue;
+      vec3 sd = uSpotPos[j].xyz - vWorld;
+      float sdist = length(sd);
+      float satt = clamp(1.0 - sdist / max(uSpotPos[j].w, 0.001), 0.0, 1.0);
+      satt *= satt;
+      vec3 sl = sd / max(sdist, 0.0001);
+      float cone = dot(-sl, normalize(uSpotDir[j]));
+      satt *= smoothstep(uSpotParams[j].y, uSpotParams[j].x, cone);
+      float sdiff = max(dot(n, sl), 0.0);
+      light += uSpotColor[j] * sdiff * satt;
+      specular += uSpotColor[j] * pow(max(dot(n, normalize(sl + v)), 0.0), uShine) * uSpec * satt * step(0.0001, sdiff);
     }
     col = col * light + specular;
   }

@@ -8,6 +8,7 @@ import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
 import com.sengine.engine.script.ApiReference
+import com.sengine.engine.script.SAssets
 import com.sengine.engine.script.SAudio
 import com.sengine.engine.script.SConsole
 import com.sengine.engine.script.SInput
@@ -68,12 +69,14 @@ class ApiAuditTest {
         val runtime = listOf(
             SObject::class.java, SScene::class.java, SInput::class.java,
             STime::class.java, SAudio::class.java, SConsole::class.java, SModules::class.java,
+            SAssets::class.java,
         ).flatMap { it.declaredMethods.map { m -> m.name } }.toSet()
         val prelude = Regex("""function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
             .findAll(ScriptSystem.PRELUDE).map { it.groupValues[1] }.toSet()
         val lifecycle = setOf(
             "start", "update", "onFixedUpdate", "onLateUpdate", "onEnable", "onDisable",
             "onCollision", "onTrigger", "onTriggerExit", "onTap", "onDestroy", "onStop",
+            "onUIButtonClick", "onClick",
         )
         val jsBuiltins = setOf(
             "String", "Number", "Boolean", "Object", "Array", "Math", "JSON", "Error",

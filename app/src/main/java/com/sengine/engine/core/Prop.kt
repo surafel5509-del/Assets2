@@ -1,18 +1,39 @@
 package com.sengine.engine.core
 
-enum class AssetKind(val extensions: List<String>) {
-    TEXTURE(listOf("png", "jpg", "jpeg", "webp", "bmp")),
-    SCRIPT(listOf("js", "bp")),
-    SOUND(listOf("wav", "ogg", "mp3", "m4a")),
-    SHADER(listOf("glsl")),
-    ANIMATION(listOf("anim")),
-    MODEL(listOf("obj"));
+/**
+ * File classifications used by asset pickers, the asset browser, import menus
+ * and the data-asset validator. New Big Edition kinds are text JSON/CSV unless
+ * [binary] is set.
+ */
+enum class AssetKind(
+    val extensions: List<String>,
+    val glyph: String,
+    val binary: Boolean = false,
+) {
+    TEXTURE(listOf("png", "jpg", "jpeg", "webp", "bmp"), "IMG", true),
+    SCRIPT(listOf("js", "bp"), "JS"),
+    SOUND(listOf("wav", "ogg", "mp3", "m4a"), "♪", true),
+    SHADER(listOf("glsl"), "GLSL"),
+    ANIMATION(listOf("anim"), "▶▶"),
+    MODEL(listOf("obj"), "3D"),
+    PREFAB(listOf("prefab"), "PF"),
+    MATERIAL(listOf("mat"), "MAT"),
+    ATLAS(listOf("atlas"), "UV"),
+    TILEMAP(listOf("tilemap"), "TILE"),
+    SCENE(listOf("scene"), "SCN"),
+    FONT(listOf("ttf", "otf"), "Aa", true),
+    TEXT(listOf("txt", "json", "csv", "md", "xml"), "TXT");
+
+    val defaultExtension: String get() = extensions.first()
 
     companion object {
         fun of(fileName: String): AssetKind? {
             val ext = fileName.substringAfterLast('.', "").lowercase()
             return values().firstOrNull { ext in it.extensions }
         }
+
+        fun ofName(name: String): AssetKind? =
+            values().firstOrNull { it.name.equals(name, ignoreCase = true) }
     }
 }
 

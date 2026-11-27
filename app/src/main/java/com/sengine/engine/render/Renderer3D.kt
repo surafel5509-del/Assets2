@@ -26,9 +26,20 @@ class Renderer3D {
     private val dirColor = FloatArray(3)
     private val pointPos = FloatArray(16)
     private val pointColor = FloatArray(12)
+    // nearest 2 spot lights: position+range, direction, color, cone params+enabled
+    private val spotPos = FloatArray(8)
+    private val spotDir = FloatArray(6)
+    private val spotColor = FloatArray(6)
+    private val spotParams = FloatArray(8)
     private val fogColor = FloatArray(3)
     private val fog = FloatArray(3)
     lateinit var view: View3D
+
+    /** Number of active point / spot lights collected this frame (also used by offline tests). */
+    var activePoints = 0
+        private set
+    var activeSpots = 0
+        private set
 
     var drawCalls = 0
     var time = 0f
@@ -83,11 +94,15 @@ class Renderer3D {
         var hasDir = false
         dirColor.fill(0f)
         pointPos.fill(0f); pointColor.fill(0f)
+        spotPos.fill(0f); spotDir.fill(0f); spotColor.fill(0f); spotParams.fill(0f)
+        activePoints = 0; activeSpots = 0
         // default: sun from above
         dirDir[0] = -0.4f; dirDir[1] = -1f; dirDir[2] = -0.3f
         var points = 0
-        // point lights: nearest 4 to camera
+        var spots = 0
+        // point / spot lights: nearest 4 / 2 to camera
         val pts = ArrayList<Pair<Float, Pair<FloatArray, Light>>>()
+        val spotList = ArrayList<Pair<Float, Triple<Light, FloatArray, FloatArray>>>()
         for (go in scene.objects) {
             if (!go.isActiveInHierarchy()) continue
             val l = go.get<Light>() ?: continue
@@ -100,11 +115,17 @@ class Renderer3D {
                     dirColor[0] = GL.r(l.color) * l.intensity; dirColor[1] = GL.g(l.color) * l.intensity; dirColor[2] = GL.b(l.color) * l.intensity
                     hasDir = true
                 }
-            } else {
+            } else if (l.kind == 1) {
                 pts.add(v.distanceTo(w[12], w[13], w[14]) to (floatArrayOf(w[12], w[13], w[14]) to l))
+            } else {
+                val d = Mat4.dir(w, 0f, 0f, -1f)
+                val dl = sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).coerceAtLeast(1e-6f)
+                val dir = floatArrayOf(d[0] / dl, d[1] / dl, d[2] / dl)
+                val pos = floatArrayOf(w[12], w[13], w[14])
+                spotList.add(v.distanceTo(w[12], w[13], w[14]) to Triple(l, pos, dir))
             }
         }
-        val anyLight = hasDir || pts.isNotEmpty()
+        val anyLight = hasDir || pts.isNotEmpty() || spotList.isNotEmpty()
         if (!anyLight) { dirColor[0] = 0.85f; dirColor[1] = 0.83f; dirColor[2] = 0.8f }
         for ((_, pl) in pts.sortedBy { it.first }) {
             if (points >= 4) break
@@ -113,6 +134,25 @@ class Renderer3D {
             pointColor[points * 3] = GL.r(l.color) * l.intensity; pointColor[points * 3 + 1] = GL.g(l.color) * l.intensity; pointColor[points * 3 + 2] = GL.b(l.color) * l.intensity
             points++
         }
+        activePoints = points
+        for ((_, packed) in spotList.sortedBy { it.first }) {
+            if (spots >= 2) break
+            val (l, p, d) = packed
+            val outer = Math.toRadians(l.coneAngle.coerceIn(1f, 89f).toDouble()).toFloat()
+            val inner = outer * (1f - l.penumbra.coerceIn(0f, 0.95f))
+            spotPos[spots * 4] = p[0]; spotPos[spots * 4 + 1] = p[1]; spotPos[spots * 4 + 2] = p[2]
+            spotPos[spots * 4 + 3] = l.range
+            spotDir[spots * 3] = d[0]; spotDir[spots * 3 + 1] = d[1]; spotDir[spots * 3 + 2] = d[2]
+            spotColor[spots * 3] = GL.r(l.color) * l.intensity
+            spotColor[spots * 3 + 1] = GL.g(l.color) * l.intensity
+            spotColor[spots * 3 + 2] = GL.b(l.color) * l.intensity
+            spotParams[spots * 4] = Math.cos(inner.toDouble()).toFloat()
+            spotParams[spots * 4 + 1] = Math.cos(outer.toDouble()).toFloat()
+            spotParams[spots * 4 + 2] = l.penumbra
+            spotParams[spots * 4 + 3] = 1f
+            spots++
+        }
+        activeSpots = spots
     }
 
     fun drawMesh(mesh: Mesh, model: FloatArray, mr: MeshRenderer, tex: Tex?, program: MeshProgram?) {
@@ -132,6 +172,10 @@ class Renderer3D {
         GLES20.glUniform3fv(p.uDirColor, 1, dirColor, 0)
         GLES20.glUniform4fv(p.uPointPos, 4, pointPos, 0)
         GLES20.glUniform3fv(p.uPointColor, 4, pointColor, 0)
+        GLES20.glUniform4fv(p.uSpotPos, 2, spotPos, 0)
+        GLES20.glUniform3fv(p.uSpotDir, 2, spotDir, 0)
+        GLES20.glUniform3fv(p.uSpotColor, 2, spotColor, 0)
+        GLES20.glUniform4fv(p.uSpotParams, 2, spotParams, 0)
         GLES20.glUniform1f(p.uSpec, mr.specular)
         GLES20.glUniform1f(p.uShine, mr.shininess)
         GLES20.glUniform1f(p.uEmission, mr.emission)

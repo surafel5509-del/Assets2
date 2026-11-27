@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.sengine.engine.Engine
 import com.sengine.engine.core.AssetKind
+import com.sengine.engine.core.AssetValidator
 import com.sengine.engine.core.Animator
 import com.sengine.engine.core.Camera3D
 import com.sengine.engine.core.Collider3D
@@ -40,18 +41,33 @@ import com.sengine.engine.core.AudioSource
 import com.sengine.engine.core.Camera2D
 import com.sengine.engine.core.Collider2D
 import com.sengine.engine.core.GameObject
+import com.sengine.engine.core.Joint2D
 import com.sengine.engine.core.ParticleEmitter
+import com.sengine.engine.core.PhysicsMaterial2D
+import com.sengine.engine.core.PrefabAsset
 import com.sengine.engine.core.Rigidbody2D
 import com.sengine.engine.core.Scene
+import com.sengine.engine.core.SceneSerializer
 import com.sengine.engine.core.ScriptComponent
 import com.sengine.engine.core.SpriteRenderer
 import com.sengine.engine.core.TextRenderer
+import com.sengine.engine.core.Tilemap
+import com.sengine.engine.core.UIButton
+import com.sengine.engine.core.UICanvas
+import com.sengine.engine.core.UIImage
+import com.sengine.engine.core.UIProgressBar
+import com.sengine.engine.core.UIRect
+import com.sengine.engine.core.UIText
 import com.sengine.engine.render.EditorState
 import com.sengine.engine.render.SceneRenderer
 import com.sengine.engine.render.Tool
+import com.sengine.project.AtlasCache
+import com.sengine.project.BigEditionAssets
+import com.sengine.project.MaterialCache
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
 import com.sengine.project.Templates
+import org.json.JSONObject
 
 class EditorActivity : AppCompatActivity(), EditorHost {
 
@@ -154,7 +170,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         inspector.rebuild()
         refreshAssets()
         updateModeUi()
-        appendConsole(0, "S Engine Ultimate 2.0 — project '${project.name}', scene '${scene.name}'")
+        appendConsole(0, "S Engine Big Edition 3.0.0 — project '${project.name}', scene '${scene.name}'")
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -311,9 +327,11 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         assetButtons.addView(button("+ Blueprint") { newAssetDialog("New Blueprint", "NewBlueprint", "bp", { com.sengine.engine.blueprint.Blueprint.defaultGraph().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Shader") { newAssetDialog("New Shader", "NewShader", "glsl", { Templates.NEW_SHADER }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Animation") { newAssetDialog("New Animation", "NewAnimation", "anim", { com.sengine.engine.anim.AnimationClip().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("+ Data") { anchor -> dataAssetMenu(anchor) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Model") { importKind = AssetKind.MODEL; importLauncher.launch(arrayOf("*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Image") { importKind = AssetKind.TEXTURE; importLauncher.launch(arrayOf("image/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Sound") { importKind = AssetKind.SOUND; importLauncher.launch(arrayOf("audio/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("Import Font") { importKind = AssetKind.FONT; importLauncher.launch(arrayOf("*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         tabs.addView(assetButtons)
         tabs.addView(button("Clear", C.HEADER) { consoleText.text = "" }.apply { textSize = 12f })
         tabs.addView(button("▾", C.HEADER) { toggle(bottomContent) }.apply { textSize = 12f })
@@ -416,12 +434,46 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 var n = f.text.toString().trim().replace(Regex("[^A-Za-z0-9_\\-]"), "").ifBlank { base }
                 if (!n.endsWith(".$ext")) n += ".$ext"
                 n = project.uniqueAssetName(n)
-                project.writeAsset(n, content(n))
+                val text = content(n)
+                val error = AssetValidator.validate(n, text)
+                if (error != null) { toast("Invalid ${AssetValidator.label(n)}: $error"); return@setPositiveButton }
+                try { project.writeAsset(n, text) }
+                catch (e: Exception) { toast("Create failed: ${e.message}"); return@setPositiveButton }
                 refreshAssets()
                 if (open) openScript(n)
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private data class DataSpec(val title: String, val base: String, val ext: String, val content: (String) -> String)
+
+    /** One menu for all validated Big Edition text data assets. */
+    private fun dataAssetMenu(anchor: View) {
+        val specs = listOf(
+            DataSpec("Prefab", "NewPrefab", "prefab") { n ->
+                val sel = synchronized(engine.lock) { engine.scene.findById(state.selectedId) }
+                if (sel != null) PrefabAsset.capture(engine.scene, sel).toString(2)
+                else BigEditionAssets.PREFAB
+            },
+            DataSpec("Material", "NewMaterial", "mat") { BigEditionAssets.MATERIAL },
+            DataSpec("Sprite Atlas", "NewAtlas", "atlas") { BigEditionAssets.ATLAS },
+            DataSpec("Tilemap", "NewTilemap", "tilemap") { BigEditionAssets.TILEMAP },
+            DataSpec("Text Data", "Notes", "txt") { BigEditionAssets.TEXT },
+        )
+        val snapshot = DataSpec("Scene Snapshot", "Snapshot", "scene") {
+            synchronized(engine.lock) { SceneSerializer.toJson(engine.scene).toString(2) }
+        }
+        val all = specs + snapshot
+        val pm = PopupMenu(this, anchor)
+        for (spec in all) pm.menu.add(spec.title)
+        pm.setOnMenuItemClickListener { item ->
+            all.firstOrNull { it.title == item.title.toString() }?.let {
+                newAssetDialog("New ${it.title}", it.base, it.ext, it.content)
+            }
+            true
+        }
+        pm.show()
     }
 
     override fun newScriptDialog(onCreated: (String) -> Unit) {
@@ -489,10 +541,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         pm.menu.add("Empty"); pm.menu.add("Empty Child")
         val m2 = pm.menu.addSubMenu("2D Object")
         listOf("Square", "Circle", "Triangle", "Text", "UI Text", "Camera", "Particle System",
-            "Physics Box", "Physics Ball", "Static Platform", "Trigger Zone", "Animated Sprite").forEach { m2.add(it) }
+            "Physics Box", "Physics Ball", "Static Platform", "Trigger Zone", "Animated Sprite",
+            "Solid Tilemap", "Polygon Rigidbody", "Physics Surface", "Distance Joint").forEach { m2.add(it) }
+        val mui = pm.menu.addSubMenu("Canvas UI")
+        listOf("Canvas UI", "UI Image", "Canvas Text", "UI Button", "UI Progress Bar").forEach { mui.add(it) }
         val m3 = pm.menu.addSubMenu("3D Object")
         listOf("Cube", "Sphere", "Plane", "Cylinder", "Cone", "Torus", "Capsule", "Pyramid",
-            "Physics Cube 3D", "Physics Sphere 3D", "Ground 3D", "3D Camera", "Directional Light", "Point Light").forEach { m3.add(it) }
+            "Physics Cube 3D", "Physics Sphere 3D", "Ground 3D", "3D Camera", "Orthographic Camera",
+            "Directional Light", "Point Light", "Spot Light").forEach { m3.add(it) }
         pm.setOnMenuItemClickListener { if (!it.hasSubMenu()) createObject(it.title.toString()); true }
         pm.show()
     }
@@ -514,8 +570,49 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 "Physics Sphere 3D" -> { g.y += 3f; g.add(MeshRenderer().also { it.mesh = 1; it.color = 0xFF4FC3F7.toInt() }); g.add(Collider3D().also { it.shape = 1 }); g.add(Rigidbody3D().also { it.bounciness = 0.5f }) }
                 "Ground 3D" -> { g.scaleX = 20f; g.scaleY = 0.5f; g.scaleZ = 20f; g.y = -0.25f; g.add(MeshRenderer().also { it.color = 0xFF6D8B5A.toInt() }); g.add(Collider3D()) }
                 "3D Camera" -> { g.y = 3f; g.z = 10f; g.rotX = -12f; g.add(Camera3D()) }
+                "Orthographic Camera" -> { g.y = 3f; g.z = 10f; g.rotX = -12f; g.add(Camera3D().also { it.projection = 1; it.orthoSize = 8f }) }
                 "Directional Light" -> { g.rotX = -50f; g.rotY = 30f; g.add(Light()) }
                 "Point Light" -> { g.y += 2f; g.add(Light().also { it.kind = 1; it.color = 0xFFFFC870.toInt() }) }
+                "Spot Light" -> { g.y += 2f; g.rotX = -35f; g.add(Light().also { it.kind = 2; it.coneAngle = 38f; it.penumbra = 0.35f; it.range = 25f; it.color = 0xFFFFC870.toInt() }) }
+                "Solid Tilemap" -> g.add(Tilemap().also { it.collide = true; it.map = "0,1,0,1;1,1,1,0;0,1,0,0" })
+                "Polygon Rigidbody" -> {
+                    g.add(SpriteRenderer().also { it.shape = 2; it.color = 0xFFFFB74D.toInt() })
+                    g.add(Collider2D().also { it.shape = 2; it.vertices = "-0.5,-0.5; 0.5,-0.5; 0,0.6" })
+                    g.add(Rigidbody2D())
+                }
+                "Physics Surface" -> {
+                    g.add(Collider2D()); g.add(Rigidbody2D())
+                    g.add(PhysicsMaterial2D().also { it.friction = 0.8f; it.bounciness = 0.4f; it.density = 2f })
+                }
+                "Distance Joint" -> {
+                    g.add(Collider2D()); g.add(Rigidbody2D())
+                    g.add(Joint2D().also { it.target = scene.findById(state.selectedId)?.name ?: "" })
+                }
+                "Canvas UI" -> {
+                    g.name = "Canvas"
+                    g.add(UICanvas())
+                    val title = scene.create("Title", g)
+                    title.add(UIRect().also { it.anchorY = 0.86f; it.width = 0.5f; it.height = 0.08f })
+                    title.add(UIText().also { it.text = "BIG EDITION"; it.size = 0.055f })
+                    val image = scene.create("Panel", g)
+                    image.add(UIRect().also { it.anchorX = 0.25f; it.anchorY = 0.62f; it.width = 0.28f; it.height = 0.2f })
+                    image.add(UIImage().also { it.color = 0xFF263238.toInt() })
+                    val button = scene.create("Button", g)
+                    button.add(UIRect().also { it.anchorX = 0.5f; it.anchorY = 0.4f; it.width = 0.24f; it.height = 0.09f })
+                    button.add(UIButton().also { it.label = "PRESS"; it.action = "onClick" })
+                    ensureUiScript()
+                    button.add(ScriptComponent().also { it.script = "UIButtonDemo.js" })
+                    val bar = scene.create("Progress", g)
+                    bar.add(UIRect().also { it.anchorX = 0.5f; it.anchorY = 0.26f; it.width = 0.4f; it.height = 0.045f })
+                    bar.add(UIProgressBar().also { it.value = 0.35f })
+                }
+                "UI Image" -> { g.add(UIRect()); g.add(UIImage()) }
+                "Canvas Text" -> { g.add(UIRect()); g.add(UIText().also { it.text = "Canvas Text" }) }
+                "UI Button" -> {
+                    g.add(UIRect()); g.add(UIButton())
+                    ensureUiScript(); g.add(ScriptComponent().also { it.script = "UIButtonDemo.js" })
+                }
+                "UI Progress Bar" -> { g.add(UIRect()); g.add(UIProgressBar()) }
                 "UI Text" -> { g.x = 0f; g.y = 4f; g.add(TextRenderer().also { it.screenSpace = true; it.text = "Score: 0" }) }
                 "Animated Sprite" -> { g.add(SpriteRenderer()); g.add(Animator()) }
                 "Empty", "Empty Child" -> g.name = scene.uniqueName("GameObject")
@@ -616,12 +713,12 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Toggle Bottom Panel" -> toggle(bottomPanel)
                 t == "Script API Reference" -> showText("Script API", ScriptEditorActivity.API_DOC)
                 t.startsWith("About") -> showText("About S Engine",
-                    "S Engine Ultimate 2.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
-                        "• 3D: meshes, OBJ models, Blinn-Phong lights, fog, sky, 3D physics, orbit editor\n" +
+                    "S Engine Big Edition 3.0.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                        "• 3D: meshes, OBJ models, Blinn-Phong + spot lights, orthographic cameras, fog, sky, physics\n" +
                         "• Sprite animation editor, asset store, visual blueprints, GLSL shaders & post FX\n" +
                         "• Build real installable APKs of your game\n" +
                         "• Scene editor with hierarchy, inspector, gizmos, undo/redo\n• OpenGL ES 2.0 renderer: shapes, sprites, text, particles\n" +
-                        "• Physics: rigidbodies, box/circle colliders, triggers\n• JavaScript behaviours (Mozilla Rhino)\n" +
+                        "• Physics: rigidbodies, convex polygons, tilemap solids, materials and joints\n• Canvas UI, prefabs, materials, atlases and tilemaps\n• JavaScript behaviours (Mozilla Rhino)\n" +
                         "• Multiple scenes, audio, touch joystick, fullscreen player\n• Project import/export as .zip")
             }
             true
@@ -728,7 +825,14 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 AssetKind.SHADER -> "GLSL" to 0xFFE040FB.toInt()
                 AssetKind.ANIMATION -> "▶▶" to 0xFFFF8A65.toInt()
                 AssetKind.MODEL -> "3D" to 0xFF80CBC4.toInt()
-                else -> "?" to C.DIM
+                AssetKind.PREFAB -> "PF" to 0xFFB39DDB.toInt()
+                AssetKind.MATERIAL -> "MAT" to 0xFF80CBC4.toInt()
+                AssetKind.ATLAS -> "UV" to 0xFF4DD0E1.toInt()
+                AssetKind.TILEMAP -> "TILE" to 0xFFAED581.toInt()
+                AssetKind.SCENE -> "SCN" to 0xFFFFD54F.toInt()
+                AssetKind.FONT -> "Aa" to 0xFFF06292.toInt()
+                AssetKind.TEXT -> "TXT" to 0xFFB0BEC5.toInt()
+                else -> (kind?.glyph ?: "?") to C.DIM
             }
             card.addView(label(glyph, 20f, color, true).apply { gravity = Gravity.CENTER }, lp(dp(56), dp(48)))
         }
@@ -747,6 +851,19 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.SHADER -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Use shader on ${sel.name}") }
             AssetKind.ANIMATION -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Play on ${sel.name}") }
             AssetKind.MODEL -> { pm.menu.add("Create 3D Model Object"); if (sel != null) pm.menu.add("Use model on ${sel.name}") }
+            AssetKind.PREFAB -> {
+                pm.menu.add("Instantiate"); pm.menu.add("Edit")
+                if (sel != null) pm.menu.add("Capture ${sel.name}")
+            }
+            AssetKind.MATERIAL -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Apply to ${sel.name}") }
+            AssetKind.ATLAS -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Assign atlas to ${sel.name}") }
+            AssetKind.TILEMAP -> {
+                pm.menu.add("Create Tilemap Object"); pm.menu.add("Edit")
+                if (sel != null) pm.menu.add("Load onto ${sel.name}")
+            }
+            AssetKind.SCENE -> { pm.menu.add("Load Snapshot"); pm.menu.add("Edit") }
+            AssetKind.FONT -> { if (sel != null) pm.menu.add("Use font on ${sel.name}") }
+            AssetKind.TEXT -> { pm.menu.add("Edit") }
             null -> {}
         }
         pm.menu.add("Delete")
@@ -824,6 +941,21 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                     synchronized(engine.lock) { sel.add(AudioSource().also { it.clip = name }) }
                     inspector.rebuild()
                 }
+                t == "Instantiate" -> instantiatePrefab(name)
+                sel != null && t.startsWith("Capture") -> capturePrefabTo(name, sel)
+                sel != null && t.startsWith("Apply to") -> applyMaterialTo(name, sel)
+                sel != null && t.startsWith("Assign atlas") -> assignAtlasTo(name, sel)
+                t == "Create Tilemap Object" -> createTilemapObject(name)
+                sel != null && t.startsWith("Load onto") -> loadTilemapOnto(name, sel)
+                t == "Load Snapshot" -> loadSceneAsset(name)
+                sel != null && t.startsWith("Use font") -> {
+                    history.record(state.selectedId)
+                    synchronized(engine.lock) {
+                        sel.getAny<TextRenderer>()?.font = name
+                        sel.getAny<UIText>()?.font = name
+                    }
+                    inspector.rebuild()
+                }
                 t == "Delete" -> MaterialAlertDialogBuilder(this)
                     .setTitle("Delete $name?")
                     .setPositiveButton("Delete") { _, _ -> project.assetFile(name).delete(); refreshAssets() }
@@ -832,6 +964,118 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             true
         }
         pm.show()
+    }
+
+    private fun ensureUiScript() {
+        if (project.readAsset("UIButtonDemo.js") == null) {
+            try { project.writeAsset("UIButtonDemo.js", Templates.BIG_EDITION_UI_SCRIPT) }
+            catch (e: Exception) { toast("UI script failed: ${e.message}") }
+        }
+    }
+
+    private fun capturePrefabTo(name: String, sel: GameObject) {
+        val json = synchronized(engine.lock) { PrefabAsset.capture(engine.scene, sel).toString(2) }
+        val error = AssetValidator.validate(name, json)
+        if (error != null) { toast("Invalid prefab: $error"); return }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Capture ${sel.name}?")
+            .setMessage("Replace $name with the selected object and all of its children?")
+            .setPositiveButton("Replace") { _, _ ->
+                try { project.writeAsset(name, json); refreshAssets(); toast("Captured ${sel.name} into $name") }
+                catch (e: Exception) { toast("Capture failed: ${e.message}") }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun instantiatePrefab(name: String) {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode first"); return }
+        val text = project.readAsset(name) ?: run { toast("Missing prefab: $name"); return }
+        history.record(state.selectedId)
+        val go = synchronized(engine.lock) {
+            PrefabAsset.instantiate(engine.scene, text, snap(state.view.cx), snap(state.view.cy))
+        }
+        if (go == null) { toast("Invalid prefab: $name"); return }
+        refreshHierarchy(); select(go.id)
+    }
+
+    private fun applyMaterialTo(name: String, sel: GameObject) {
+        if (MaterialCache(project).get(name) == null) { toast("Invalid material: $name"); return }
+        history.record(state.selectedId)
+        synchronized(engine.lock) {
+            val mr = sel.getAny<MeshRenderer>()
+            val sr = sel.getAny<SpriteRenderer>()
+            if (mr == null && sr == null) sel.add(SpriteRenderer()).material = name
+            else { mr?.material = name; sr?.material = name }
+        }
+        inspector.rebuild(); toast("Applied $name")
+    }
+
+    private fun assignAtlasTo(name: String, sel: GameObject) {
+        val atlas = AtlasCache(project).atlas(name) ?: run { toast("Invalid atlas: $name"); return }
+        val frame = atlas.frameNames.firstOrNull() ?: ""
+        history.record(state.selectedId)
+        synchronized(engine.lock) {
+            val sr = sel.getAny<SpriteRenderer>()
+            val img = sel.getAny<UIImage>()
+            if (sr == null && img == null) sel.add(SpriteRenderer())
+            sr?.apply { this.atlas = name; this.frame = frame; if (atlas.texture.isNotBlank()) texture = atlas.texture }
+            img?.apply { this.atlas = name; this.frame = frame; if (atlas.texture.isNotBlank()) texture = atlas.texture }
+        }
+        inspector.rebuild(); toast("Assigned $name")
+    }
+
+    private fun tilemapFromAsset(name: String): Tilemap? {
+        val text = project.readAsset(name) ?: return null
+        val error = AssetValidator.validate(name, text)
+        if (error != null) { toast("Invalid tilemap: $error"); return null }
+        return try { Tilemap.fromAsset(text).also { it.collide = true } }
+        catch (e: Exception) { toast("Invalid tilemap: ${e.message}"); null }
+    }
+
+    private fun createTilemapObject(name: String) {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode first"); return }
+        val tm = tilemapFromAsset(name) ?: return
+        history.record(state.selectedId)
+        val go = synchronized(engine.lock) {
+            val g = engine.scene.create(name.substringBeforeLast('.'))
+            g.x = snap(state.view.cx); g.y = snap(state.view.cy)
+            g.add(tm); g
+        }
+        refreshHierarchy(); select(go.id)
+    }
+
+    private fun loadTilemapOnto(name: String, sel: GameObject) {
+        val tm = tilemapFromAsset(name) ?: return
+        history.record(state.selectedId)
+        synchronized(engine.lock) {
+            sel.components.removeAll { it is Tilemap }
+            sel.add(tm)
+        }
+        inspector.rebuild(); toast("Loaded $name")
+    }
+
+    private fun loadSceneAsset(name: String) {
+        if (engine.mode != Engine.Mode.EDIT) { toast("Stop play mode first"); return }
+        val text = project.readAsset(name) ?: run { toast("Missing snapshot: $name"); return }
+        val error = AssetValidator.validate(name, text)
+        if (error != null) { toast("Invalid snapshot: $error"); return }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Load snapshot?")
+            .setMessage("Replace the current scene with $name? Undo can restore the previous snapshot.")
+            .setPositiveButton("Load") { _, _ ->
+                try {
+                    history.record(state.selectedId)
+                    val scene = SceneSerializer.fromJson(JSONObject(text))
+                    synchronized(engine.lock) { engine.replaceScene(scene) }
+                    state.selectedId = 0L
+                    hierarchy.selectedId = 0L
+                    refreshHierarchy(); inspector.rebuild()
+                    toast("Loaded $name")
+                } catch (e: Exception) { toast("Load failed: ${e.message}") }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun importAsset(uri: Uri) {
@@ -850,8 +1094,11 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                     mime.contains("ogg") -> ".ogg"
                     mime.contains("mpeg") || mime.contains("mp3") -> ".mp3"
                     mime.contains("wav") -> ".wav"
+                    mime.contains("font") || mime.contains("truetype") || mime.contains("opentype") -> ".ttf"
                     importKind == AssetKind.MODEL -> ".obj"
                     importKind == AssetKind.SOUND -> ".ogg"
+                    importKind == AssetKind.FONT -> ".ttf"
+                    importKind == AssetKind.TEXT -> ".txt"
                     else -> ".png"
                 }
             }
@@ -860,7 +1107,8 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             contentResolver.openInputStream(uri)!!.use { input -> project.assetFile(n).outputStream().use { input.copyTo(it) } }
             refreshAssets()
             showTab(1)
-            toast("Imported $n")
+            val warning = if (AssetValidator.supports(n)) AssetValidator.validate(n, project.readAsset(n) ?: "") else null
+            if (warning != null) toast("Imported $n (invalid: $warning)") else toast("Imported $n")
         } catch (e: Exception) {
             toast("Import failed: ${e.message}")
         }

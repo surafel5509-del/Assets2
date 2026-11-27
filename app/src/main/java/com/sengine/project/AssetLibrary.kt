@@ -36,7 +36,7 @@ object AssetLibrary {
         fun installed(p: Project) = files.all { p.assetFile(it).exists() }
     }
 
-    val categories = listOf("All", "Packs", "Textures", "Sprites", "Sprite Sheets", "Sounds", "Shaders", "Scripts", "Blueprints", "3D Models")
+    val categories = listOf("All", "Packs", "Textures", "Sprites", "Sprite Sheets", "Sounds", "Shaders", "Scripts", "Blueprints", "3D Models", "Data Assets")
 
     private fun png(p: Project, name: String, b: Bitmap) {
         p.assetsDir.mkdirs()
@@ -139,6 +139,24 @@ object AssetLibrary {
             listOf("Low-Poly Tree", "Rock", "House", "Crystal", "Checker", "Grass Tile", "Stone", "Player3D", "Rotator", "Toon"))
         pack("VFX Pack", "Particles, fire, shaders and power-up sound",
             listOf("Soft Particle", "Spark", "Fire (6 frames)", "Dissolve", "Hit Flash", "Rainbow", "Hologram", "Power Up"))
+        // ---------------------------------------------------------------- Big Edition data assets
+        list += Item("Big Edition Pack", "Packs", "Validated material, atlas, tilemap, prefab, UI script and notes",
+            listOf("BigEdition.mat", "HeroAtlas.atlas", "Grass.tilemap", "BigEdition.prefab", "UIButtonDemo.js", "Notes.txt"), "BE") { p ->
+            p.writeAsset("BigEdition.mat", BigEditionAssets.MATERIAL)
+            p.writeAsset("HeroAtlas.atlas", BigEditionAssets.ATLAS.replace("\"HeroRun.png\"", "\"\""))
+            p.writeAsset("Grass.tilemap", BigEditionAssets.TILEMAP)
+            p.writeAsset("BigEdition.prefab", BigEditionAssets.PREFAB)
+            p.writeAsset("UIButtonDemo.js", Templates.BIG_EDITION_UI_SCRIPT)
+            p.writeAsset("Notes.txt", BigEditionAssets.TEXT)
+        }
+        list += text("Teal Material", "Data Assets", "Teal.mat", "PBR-style material JSON for meshes and sprites", "MAT") { BigEditionAssets.MATERIAL }
+        list += text("Hero Atlas", "Data Assets", "HeroAtlas.atlas", "Four named UV frames, ready for an imported sheet", "UV") { BigEditionAssets.ATLAS.replace("\"HeroRun.png\"", "\"\"") }
+        list += text("Grass Tilemap", "Data Assets", "Grass.tilemap", "Solid 4×3 tile grid with palette colours", "TILE") { BigEditionAssets.TILEMAP }
+        list += text("Starter Prefab", "Data Assets", "Starter.prefab", "Reusable hierarchy with a SpriteRenderer", "PF") { BigEditionAssets.PREFAB }
+        list += text("UI Button Script", "Data Assets", "UIButtonDemo.js", "onClick callback for Canvas UI buttons", "JS") { Templates.BIG_EDITION_UI_SCRIPT }
+        list += text("Scene Snapshot", "Data Assets", "Snapshot.scene", "Editable scene snapshot JSON", "SCN") { BigEditionAssets.SCENE }
+        list += text("Level Notes", "Data Assets", "Notes.txt", "Free-form level data, dialogue or CSV", "TXT") { BigEditionAssets.TEXT }
+
         return list
     }
 

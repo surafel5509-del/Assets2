@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.sengine.engine.blueprint.Blueprint
 import com.sengine.engine.blueprint.BlueprintCompiler
+import com.sengine.engine.core.AssetValidator
 import com.sengine.engine.script.ApiReference
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
@@ -43,6 +44,7 @@ class ScriptEditorActivity : AppCompatActivity() {
 
     private var glsl = false
     private var blueprint = false
+    private var dataAsset = false
     private var syntaxError: String? = null
     private val highlightTask = Runnable { highlight(editor.text) }
     private val historyTask = Runnable { pushHistory() }
@@ -54,6 +56,7 @@ class ScriptEditorActivity : AppCompatActivity() {
         asset = intent.getStringExtra("asset")!!
         glsl = asset.endsWith(".glsl")
         blueprint = asset.endsWith(".bp")
+        dataAsset = AssetValidator.supports(asset)
         saved = project.readAsset(asset) ?: ""
 
         val root = vbox().apply { setBackgroundColor(C.BG) }
@@ -63,7 +66,8 @@ class ScriptEditorActivity : AppCompatActivity() {
         bar.addView(titleView, lp(0, WRAP, 1f))
         bar.addView(button("↶") { undo() }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
         bar.addView(button("↷") { redo() }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
-        bar.addView(button(if (glsl) "GLSL" else "API") { showApi() }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
+        val referenceLabel = when { glsl -> "GLSL"; dataAsset -> "FORMAT"; else -> "API" }
+        bar.addView(button(referenceLabel) { showApi() }, lp(WRAP, WRAP).margins(dp(3), 0, dp(3), 0))
         bar.addView(button("Save", C.ACCENT, 0xFFFFFFFF.toInt()) { save() }, lp(WRAP, WRAP).margins(dp(3), 0, 0, 0))
         root.addView(bar, lp(MATCH, WRAP))
 
@@ -158,6 +162,7 @@ class ScriptEditorActivity : AppCompatActivity() {
     private fun validateSyntax() {
         val t = editor.text.toString()
         if (glsl) { syntaxError = null; return } // GLSL is compiled by the GL runtime
+        if (dataAsset) { syntaxError = AssetValidator.validate(asset, t); return }
         val cx = Context.enter()
         try {
             cx.optimizationLevel = -1
@@ -192,8 +197,10 @@ class ScriptEditorActivity : AppCompatActivity() {
         val error = syntaxError
         if (!force && error != null) {
             MaterialAlertDialogBuilder(this)
-                .setTitle("Syntax error")
-                .setMessage("$error\n\nSave anyway? The runtime will report this error when the script runs.")
+                .setTitle(if (dataAsset) "Invalid data asset" else "Syntax error")
+                .setMessage("$error\n\nSave anyway? " +
+                    if (dataAsset) "The editor will show this file as invalid until it is fixed."
+                    else "The runtime will report this error when the script runs.")
                 .setPositiveButton("Save anyway") { _, _ -> save(force = true) }
                 .setNegativeButton("Fix", null)
                 .show()
@@ -218,10 +225,11 @@ class ScriptEditorActivity : AppCompatActivity() {
         val language = when {
             glsl -> "GLSL ES 1.0"
             blueprint -> "Blueprint JSON"
+            dataAsset -> AssetValidator.label(asset)
             else -> "JavaScript"
         }
         val check = syntaxError?.let { "  •  ⚠ $it" }
-            ?: if (glsl) "" else "  •  syntax ok"
+            ?: if (glsl) "" else if (dataAsset) "  •  data valid" else "  •  syntax ok"
         status.text = "Ln $line, Col $col  •  ${text.count { it == '\n' } + 1} lines  •  $language$dirty$check"
     }
 
@@ -274,13 +282,15 @@ class ScriptEditorActivity : AppCompatActivity() {
     }
 
     private fun showApi() {
-        val tv = label(if (glsl) GLSL_DOC else API_DOC, 12f, C.TEXT).apply {
+        val doc = when { glsl -> GLSL_DOC; dataAsset -> DATA_DOC; else -> API_DOC }
+        val title = when { glsl -> "S Engine Shaders"; dataAsset -> "S Engine Data Assets"; else -> "S Engine Script API" }
+        val tv = label(doc, 12f, C.TEXT).apply {
             typeface = Typeface.MONOSPACE
             setPadding(dp(18), dp(10), dp(18), dp(10))
             setTextIsSelectable(true)
         }
         MaterialAlertDialogBuilder(this)
-            .setTitle(if (glsl) "S Engine Shaders" else "S Engine Script API")
+            .setTitle(title)
             .setView(ScrollView(this).apply { addView(tv) })
             .setPositiveButton("Close", null)
             .show()
@@ -298,6 +308,22 @@ class ScriptEditorActivity : AppCompatActivity() {
 
         /** Canonical reference shared by documentation + runtime audit tests. */
         val API_DOC: String get() = ApiReference.API_DOC
+
+        val DATA_DOC = """
+Big Edition text data assets
+
+  .prefab   Prefab JSON: format, version, name and objects hierarchy
+  .mat      Material JSON: color, texture, specular, shininess, emission,
+            tiling, shader, shaderParam and unlit
+  .atlas    Sprite Atlas JSON: texture, columns, rows and named UV frames
+  .tilemap  Tilemap JSON: tileset, sheet columns/rows, tileSize, map, palette
+  .scene    Scene Snapshot JSON: same schema as saved scene files
+  .anim     Animation JSON: frames and fps
+  .txt      Free-form text or JSON/CSV/Markdown/XML level data
+
+Validation happens as you type and before saving. Binary assets such as
+fonts, images, sounds and models are imported from the device.
+""".trimIndent()
 
         val GLSL_DOC = """
 Shaders are GLSL ES 1.0 effect functions:

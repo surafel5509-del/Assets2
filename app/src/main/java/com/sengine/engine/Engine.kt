@@ -45,6 +45,7 @@ class Engine(val project: Project, initialScene: Scene) {
     val physics3D = com.sengine.engine.physics.PhysicsWorld3D()
     val animation = com.sengine.engine.anim.AnimationSystem(project)
     val scripts = ScriptSystem(this)
+    val ui = UISystem(this)
     val audio = AudioSystem(project)
     val gameView = View2D()
 
@@ -150,6 +151,7 @@ class Engine(val project: Project, initialScene: Scene) {
         input.clear()
         physics.reset()
         physics3D.reset()
+        ui.reset()
         clearPools()
     }
 
@@ -216,6 +218,8 @@ class Engine(val project: Project, initialScene: Scene) {
         input.beginFrame(gameView)
         val t0 = System.nanoTime()
         updateSteering(dt)
+        try { ui.update() }
+        catch (e: ScriptBudgetException) { log(2, "UI script aborted: ${e.message}") }
         scripts.update(dt)
         val t1 = System.nanoTime()
         physics.step(scene, dt)
