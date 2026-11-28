@@ -3,6 +3,7 @@ package com.sengine.engine.core
 import com.sengine.engine.anim.Animation3DImporters
 import com.sengine.engine.render.TextureProfile
 import com.sengine.engine.sprite.SpriteDocument
+import com.sengine.engine.sprite.SpriteSheetDoc
 import com.sengine.project.ModelBundleManifest
 import org.json.JSONArray
 import org.json.JSONObject
@@ -99,12 +100,18 @@ data class MaterialAsset(
     }
 }
 
-/** Named UV rectangles inside a sprite sheet. UV order matches SpriteRenderer.uv. */
+/**
+ * Named UV rectangles inside a sprite sheet. UV order matches SpriteRenderer.uv.
+ * Optional pixel rectangles (x, y, w, h in texture pixels) are carried alongside
+ * the UVs so editors and picking code can address frames without re-deriving
+ * them from normalized coordinates.
+ */
 data class SpriteAtlas(
     var texture: String = "",
     var columns: Int = 1,
     var rows: Int = 1,
     var frames: LinkedHashMap<String, FloatArray> = linkedMapOf(),
+    var rects: LinkedHashMap<String, IntArray> = linkedMapOf(),
 ) {
     val frameNames: List<String> get() = frames.keys.sorted()
 
@@ -115,10 +122,24 @@ data class SpriteAtlas(
         return true
     }
 
+    /** Pixel rectangle for a frame: x, y, w, h. Returns false when unknown. */
+    fun rect(name: String, out: IntArray): Boolean {
+        val key = if (name.isBlank()) frameNames.firstOrNull() ?: return false else name
+        val r = rects[key] ?: return false
+        out[0] = r[0]; out[1] = r[1]; out[2] = r[2]; out[3] = r[3]
+        return true
+    }
+
     fun toJson(): JSONObject {
         val f = JSONObject()
         for ((name, uv) in frames) f.put(name, JSONArray().apply { uv.forEach { put(it.toDouble()) } })
-        return JSONObject().put("texture", texture).put("columns", columns).put("rows", rows).put("frames", f)
+        val o = JSONObject().put("texture", texture).put("columns", columns).put("rows", rows).put("frames", f)
+        if (rects.isNotEmpty()) {
+            val r = JSONObject()
+            for ((name, rect) in rects) r.put(name, JSONArray().apply { rect.forEach { put(it) } })
+            o.put("rects", r)
+        }
+        return o
     }
 
     companion object {
@@ -144,11 +165,26 @@ data class SpriteAtlas(
                     }
                 }
             }
+            val rectsOut = LinkedHashMap<String, IntArray>()
+            val r = o.optJSONObject("rects")
+            if (r != null) {
+                val keys = r.keys()
+                while (keys.hasNext()) {
+                    val name = keys.next()
+                    val a = r.optJSONArray(name)
+                    if (a != null && a.length() >= 4) {
+                        rectsOut[name] = intArrayOf(
+                            a.optInt(0, 0), a.optInt(1, 0), a.optInt(2, 0), a.optInt(3, 0),
+                        )
+                    }
+                }
+            }
             return SpriteAtlas(
                 o.optString("texture", ""),
                 o.optInt("columns", 1).coerceAtLeast(1),
                 o.optInt("rows", 1).coerceAtLeast(1),
                 out,
+                rectsOut,
             )
         }
     }
@@ -235,6 +271,7 @@ object AssetValidator {
         AssetKind.PREFAB, AssetKind.MATERIAL, AssetKind.ATLAS,
         AssetKind.TILEMAP, AssetKind.SCENE, AssetKind.TEXT, AssetKind.ANIMATION,
         AssetKind.ANIMATION3D, AssetKind.SPRITE, AssetKind.TEXTURE_META, AssetKind.MODELPACK,
+        AssetKind.SHEET,
     )
 
     fun supports(name: String): Boolean = AssetKind.of(name) in SUPPORTED
@@ -251,6 +288,7 @@ object AssetValidator {
         AssetKind.SPRITE -> "Sprite Document"
         AssetKind.TEXTURE_META -> "Texture Profile"
         AssetKind.MODELPACK -> "Model Pack"
+        AssetKind.SHEET -> "Sprite Sheet Document"
         AssetKind.ARCHIVE -> "Asset Bundle"
         AssetKind.BINARY -> "Binary Data"
         else -> "Text"
@@ -274,6 +312,9 @@ object AssetValidator {
                     for ((frame, uv) in a.frames) {
                         if (uv.size != 4 || uv[0] >= uv[2] || uv[1] <= uv[3]) return "invalid UV for frame $frame"
                         if (uv.any { it < -0.001f || it > 1.001f }) return "UV outside 0..1 for frame $frame"
+                    }
+                    for ((frame, rect) in a.rects) {
+                        if (rect.size != 4 || rect[2] < 1 || rect[3] < 1) return "invalid pixel rect for frame $frame"
                     }
                     null
                 }
@@ -305,6 +346,10 @@ object AssetValidator {
                     clip.validate()
                 }
                 AssetKind.SPRITE -> SpriteDocument.validateDocument(text)
+                AssetKind.SHEET -> {
+                    val sheet = SpriteSheetDoc.parse(text) ?: return "invalid sprite sheet document"
+                    sheet.validate()
+                }
                 AssetKind.TEXTURE_META -> TextureProfile.fromJson(JSONObject(text)).validate()
                 AssetKind.MODELPACK -> ModelBundleManifest.validate(text)
                 else -> null

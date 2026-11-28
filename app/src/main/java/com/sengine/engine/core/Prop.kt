@@ -29,7 +29,9 @@ enum class AssetKind(
     SPRITE(listOf("sprite"), "SPR"),
     TEXTURE_META(listOf("texture", "texmeta"), "TEX"),
     MODELPACK(listOf("modelpack"), "PACK"),
-    BINARY(listOf("bin", "dat", "pak"), "BIN", true);
+    BINARY(listOf("bin", "dat", "pak"), "BIN", true),
+    // v3.2.0 sprite sheet workflow. New kinds are appended so existing sort order is stable.
+    SHEET(listOf("sheet", "spritesheet"), "SH");
 
     val defaultExtension: String get() = extensions.first()
 

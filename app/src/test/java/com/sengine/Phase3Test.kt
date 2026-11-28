@@ -280,7 +280,7 @@ class Phase3Test {
         val api = ApiReference.API_DOC
         listOf("playModelAnimation", "stopModelAnimation", "setModelAnimationSpeed", "setModelAnimationTime")
             .forEach { assertTrue("$it missing from API docs", api.contains(it)) }
-        assertTrue(api.contains("runtime v3.1.0"))
+        assertTrue(api.contains("runtime v3.2.0"))
     }
 
     @Test
@@ -301,13 +301,14 @@ class Phase3Test {
 
     @Test
     fun `phase 3 version and docs are consistent`() {
-        assertEquals("S Engine 3.1.0", Project.ENGINE_VERSION)
+        assertEquals("S Engine 3.2.0", Project.ENGINE_VERSION)
         val doc = File(System.getProperty("sengine.repo"), "docs/SCRIPTING_API.md").readText().trim()
         assertEquals(doc, ApiReference.API_DOC.trimIndent().trim())
         val manifest = File(System.getProperty("sengine.repo"), "app/src/main/AndroidManifest.xml").readText()
         assertTrue(manifest.contains("SpriteEditorActivity"))
+        assertTrue(manifest.contains("SpriteSheetEditorActivity"))
         val gradle = File(System.getProperty("sengine.repo"), "app/build.gradle.kts").readText()
-        assertTrue(gradle.contains("versionName = \"3.1.0\""))
-        assertTrue(gradle.contains("versionCode = 5"))
+        assertTrue(gradle.contains("versionName = \"3.2.0\""))
+        assertTrue(gradle.contains("versionCode = 6"))
     }
 }

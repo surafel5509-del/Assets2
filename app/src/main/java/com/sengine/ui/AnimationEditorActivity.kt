@@ -26,17 +26,24 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.sengine.engine.anim.AnimationClip
 import com.sengine.engine.core.AssetKind
+import com.sengine.engine.core.SpriteAtlas
 import com.sengine.project.Project
 import com.sengine.project.ProjectManager
 import org.json.JSONObject
 
-/** Sprite-sheet animation editor: slice a sheet into cells, pick frames, preview and save `.anim` clips. */
+/**
+ * Sprite-sheet animation editor: slice a sheet into cells, pick frames,
+ * preview and save `.anim` clips. Named-frame atlas clips exported by the
+ * Sprite Sheet Editor open here read-only for their frames (edit frames in
+ * the Sprite Sheet Editor) while fps and loop stay editable.
+ */
 class AnimationEditorActivity : AppCompatActivity() {
     private lateinit var project: Project
     private var asset: String? = null
     private var clip = AnimationClip()
     private var bitmap: Bitmap? = null
     private var saved = ""
+    private var atlasRects: Map<String, Rect> = emptyMap()
 
     private lateinit var title: TextView
     private lateinit var sheet: SheetView
@@ -49,6 +56,7 @@ class AnimationEditorActivity : AppCompatActivity() {
     private lateinit var loopBox: CheckBox
     private lateinit var strip: LinearLayout
     private lateinit var info: TextView
+    private lateinit var gridTools: LinearLayout
     private var updating = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,6 +100,7 @@ class AnimationEditorActivity : AppCompatActivity() {
         loopBox = CheckBox(this).apply { text = "Loop"; setTextColor(C.TEXT) }
         left.addView(loopBox)
         val tools = hbox()
+        gridTools = tools
         tools.addView(button("All") { setFrames((0 until clip.columns * clip.rows).toMutableList()) }.apply { textSize = 11f }, lp(0, WRAP, 1f))
         tools.addView(button("Row") { rowFrames() }.apply { textSize = 11f }, lp(0, WRAP, 1f).margins(dp(2), 0, 0, 0))
         tools.addView(button("Rev") { setFrames(clip.frames.reversed().toMutableList()) }.apply { textSize = 11f }, lp(0, WRAP, 1f).margins(dp(2), 0, 0, 0))
@@ -142,7 +151,39 @@ class AnimationEditorActivity : AppCompatActivity() {
         clip = try { AnimationClip.fromJson(JSONObject(project.readAsset(name) ?: "{}")) } catch (_: Exception) { AnimationClip() }
         saved = clip.toJson().toString()
         loadBitmap()
+        loadAtlasRects()
         writeFields(); refresh(true)
+    }
+
+    /** Resolves named atlas frames to source-texture pixel rects for preview and sheet display. */
+    private fun loadAtlasRects() {
+        atlasRects = emptyMap()
+        if (!clip.isAtlasClip) return
+        val atlas = try {
+            val text = project.readAsset(clip.atlas) ?: return
+            SpriteAtlas.fromJson(JSONObject(text))
+        } catch (_: Exception) {
+            return
+        }
+        val b = bitmap
+        val out = HashMap<String, Rect>()
+        for (name in clip.frameNames) {
+            val r = IntArray(4)
+            if (atlas.rect(name, r)) {
+                out[name] = Rect(r[0], r[1], r[0] + r[2], r[1] + r[3])
+            } else {
+                val uv = FloatArray(4)
+                if (b != null && atlas.uv(name, uv)) {
+                    // UV order: u0, vBottom, u1, vTop
+                    val x0 = (uv[0] * b.width).toInt().coerceIn(0, b.width - 1)
+                    val x1 = (uv[2] * b.width).toInt().coerceIn(x0 + 1, b.width)
+                    val y1 = (uv[1] * b.height).toInt().coerceIn(0, b.height - 1)
+                    val y0 = (uv[3] * b.height).toInt().coerceIn(0, y1)
+                    out[name] = Rect(x0, y0, x1, y1)
+                }
+            }
+        }
+        atlasRects = out
     }
 
     private fun newClip(ask: Boolean = true) {
@@ -168,6 +209,10 @@ class AnimationEditorActivity : AppCompatActivity() {
     }
 
     private fun chooseTexture() {
+        if (clip.isAtlasClip) {
+            toast("Frames come from ${clip.atlas} — edit them in the Sprite Sheet Editor")
+            return
+        }
         val items = project.listAssets(AssetKind.TEXTURE)
         if (items.isEmpty()) { toast("Import an image or get sprite sheets from the Asset Store"); return }
         MaterialAlertDialogBuilder(this).setTitle("Sprite sheet")
@@ -222,14 +267,43 @@ class AnimationEditorActivity : AppCompatActivity() {
     private fun refresh(full: Boolean) {
         title.text = "Animation: " + (asset ?: "(unsaved)")
         texBtn.text = clip.texture.ifBlank { "(choose texture)" }
-        sheet.set(bitmap, clip)
-        preview.set(bitmap, clip)
-        info.text = "${clip.frames.size} frames • ${fmt(clip.duration)} s" + (bitmap?.let { " • sheet ${it.width}×${it.height}" } ?: "")
+        val atlasClip = clip.isAtlasClip
+        // Grid slicing controls only apply to cell-based clips.
+        listOf(colsField, rowsField, framesField).forEach {
+            it.isEnabled = !atlasClip
+            it.alpha = if (atlasClip) 0.4f else 1f
+        }
+        for (i in 0 until gridTools.childCount) {
+            val c = gridTools.getChildAt(i)
+            c.isEnabled = !atlasClip
+            c.alpha = if (atlasClip) 0.4f else 1f
+        }
+        sheet.set(bitmap, clip, atlasRects)
+        preview.set(bitmap, clip, atlasRects)
+        val count = if (atlasClip) clip.frameNames.size else clip.frames.size
+        info.text = buildString {
+            append("$count frames • ${fmt(clip.duration)} s")
+            if (atlasClip) append(" • atlas: ${clip.atlas}")
+            bitmap?.let { append(" • sheet ${it.width}×${it.height}") }
+        }
         strip.removeAllViews()
-        clip.frames.forEachIndexed { i, cell ->
-            val v = FrameThumb(this, bitmap, clip, cell, i)
-            v.setOnClickListener { setFrames(clip.frames.toMutableList().also { it.removeAt(i) }) }
-            strip.addView(v, lp(dp(64), dp(64)).margins(dp(2), 0, dp(2), 0))
+        if (atlasClip) {
+            clip.frameNames.forEachIndexed { i, name ->
+                val v = label(name, 11f, C.TEXT).apply {
+                    gravity = android.view.Gravity.CENTER
+                    background = round(C.PANEL2, dp(4).toFloat())
+                    setPadding(dp(6), 0, dp(6), 0)
+                    maxLines = 2
+                    setOnClickListener { preview.goto(i) }
+                }
+                strip.addView(v, lp(dp(84), dp(64)).margins(dp(2), 0, dp(2), 0))
+            }
+        } else {
+            clip.frames.forEachIndexed { i, cell ->
+                val v = FrameThumb(this, bitmap, clip, cell, i)
+                v.setOnClickListener { setFrames(clip.frames.toMutableList().also { it.removeAt(i) }) }
+                strip.addView(v, lp(dp(64), dp(64)).margins(dp(2), 0, dp(2), 0))
+            }
         }
         if (full) preview.restart()
     }
@@ -277,13 +351,17 @@ class AnimationEditorActivity : AppCompatActivity() {
     class SheetView(ctx: Context, val onCell: (Int) -> Unit) : View(ctx) {
         private var bmp: Bitmap? = null
         private var clip = AnimationClip()
+        private var atlasRects: Map<String, Rect> = emptyMap()
         private val p = Paint().apply { isFilterBitmap = false }
         private val line = Paint().apply { color = 0x88FFFFFF.toInt(); strokeWidth = 1f; style = Paint.Style.STROKE }
         private val hi = Paint().apply { color = 0x554C8DFF }
+        private val atlasLine = Paint().apply { color = 0xAAFFD54F.toInt(); strokeWidth = 2f; style = Paint.Style.STROKE }
         private val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFD54F.toInt(); textSize = 12f * resources.displayMetrics.density; isFakeBoldText = true }
         private val dst = RectF()
 
-        fun set(b: Bitmap?, c: AnimationClip) { bmp = b; clip = c; invalidate() }
+        fun set(b: Bitmap?, c: AnimationClip, rects: Map<String, Rect> = emptyMap()) {
+            bmp = b; clip = c; atlasRects = rects; invalidate()
+        }
 
         override fun onDraw(c: Canvas) {
             c.drawColor(0xFF1B1D21.toInt())
@@ -299,6 +377,19 @@ class AnimationEditorActivity : AppCompatActivity() {
             dst.set((width - w) / 2, (height - h) / 2, (width + w) / 2, (height + h) / 2)
             drawChecker(c, dst, 12f * resources.displayMetrics.density, p)
             c.drawBitmap(b, null, dst, p)
+            if (clip.isAtlasClip) {
+                // Packed sheet: outline each named frame in playback order.
+                clip.frameNames.forEachIndexed { i, name ->
+                    val r = atlasRects[name] ?: return@forEachIndexed
+                    val l = dst.left + r.left * s
+                    val t = dst.top + r.top * s
+                    val rg = dst.left + r.right * s
+                    val bt = dst.top + r.bottom * s
+                    c.drawRect(l, t, rg, bt, atlasLine)
+                    c.drawText("${i + 1}", l + 3f, t + txt.textSize + 2f, txt)
+                }
+                return
+            }
             val cols = clip.columns.coerceAtLeast(1); val rows = clip.rows.coerceAtLeast(1)
             val cw = w / cols; val ch = h / rows
             for (cell in clip.frames.distinct()) {
@@ -317,6 +408,7 @@ class AnimationEditorActivity : AppCompatActivity() {
 
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouchEvent(e: MotionEvent): Boolean {
+            if (clip.isAtlasClip) return true // frames come from the atlas, not cell taps
             if (e.actionMasked == MotionEvent.ACTION_UP && bmp != null && dst.contains(e.x, e.y)) {
                 val col = ((e.x - dst.left) / (dst.width() / clip.columns.coerceAtLeast(1))).toInt().coerceIn(0, clip.columns - 1)
                 val row = ((e.y - dst.top) / (dst.height() / clip.rows.coerceAtLeast(1))).toInt().coerceIn(0, clip.rows - 1)
@@ -329,6 +421,7 @@ class AnimationEditorActivity : AppCompatActivity() {
     class PreviewView(ctx: Context) : View(ctx) {
         private var bmp: Bitmap? = null
         private var clip = AnimationClip()
+        private var atlasRects: Map<String, Rect> = emptyMap()
         var playing = true
         private var start = SystemClock.uptimeMillis()
         private var manual = 0
@@ -337,12 +430,28 @@ class AnimationEditorActivity : AppCompatActivity() {
         private val dst = RectF()
         private val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9AA0A6.toInt(); textSize = 11f * resources.displayMetrics.density }
 
-        fun set(b: Bitmap?, c: AnimationClip) { bmp = b; clip = c; invalidate() }
+        fun set(b: Bitmap?, c: AnimationClip, rects: Map<String, Rect> = emptyMap()) {
+            bmp = b; clip = c; atlasRects = rects; invalidate()
+        }
+
         fun restart() { start = SystemClock.uptimeMillis(); manual = 0 }
-        fun step(d: Int) { playing = false; manual = Math.floorMod(currentIndex() + d, clip.frames.size.coerceAtLeast(1)); invalidate() }
+
+        fun step(d: Int) {
+            playing = false
+            manual = Math.floorMod(currentIndex() + d, frameCount().coerceAtLeast(1))
+            invalidate()
+        }
+
+        fun goto(i: Int) {
+            playing = false
+            manual = i.coerceIn(0, (frameCount() - 1).coerceAtLeast(0))
+            invalidate()
+        }
+
+        private fun frameCount(): Int = if (clip.isAtlasClip) clip.frameNames.size else clip.frames.size
 
         private fun currentIndex(): Int {
-            val n = clip.frames.size
+            val n = frameCount()
             if (n == 0) return 0
             if (!playing) return manual.coerceIn(0, n - 1)
             val idx = (((SystemClock.uptimeMillis() - start) / 1000f) * clip.fps).toInt()
@@ -353,15 +462,30 @@ class AnimationEditorActivity : AppCompatActivity() {
             dst.set(0f, 0f, width.toFloat(), height.toFloat())
             drawChecker(c, dst, 10f * resources.displayMetrics.density, p)
             val b = bmp
-            if (b != null && clip.frames.isNotEmpty()) {
+            val n = frameCount()
+            if (b != null && n > 0) {
                 val i = currentIndex()
                 if (playing) manual = i
-                cellRect(b, clip, clip.frames[i], src)
+                val label: String
+                if (clip.isAtlasClip) {
+                    val name = clip.frameNames[i]
+                    val r = atlasRects[name]
+                    if (r == null || r.width() < 1 || r.height() < 1) {
+                        c.drawText("frame ${i + 1}/$n", 8f, height - 8f, txt)
+                        if (playing) postInvalidateOnAnimation()
+                        return
+                    }
+                    src.set(r)
+                    label = "$name  ${i + 1}/$n"
+                } else {
+                    cellRect(b, clip, clip.frames[i], src)
+                    label = "frame ${i + 1}/${clip.frames.size}  (cell ${clip.frames[i]})"
+                }
                 val s = minOf(width * 0.9f / src.width(), height * 0.9f / src.height())
                 val w = src.width() * s; val h = src.height() * s
                 dst.set((width - w) / 2, (height - h) / 2, (width + w) / 2, (height + h) / 2)
                 c.drawBitmap(b, src, dst, p)
-                c.drawText("frame ${i + 1}/${clip.frames.size}  (cell ${clip.frames[i]})", 8f, height - 8f, txt)
+                c.drawText(label, 8f, height - 8f, txt)
             }
             if (playing) postInvalidateOnAnimation()
         }

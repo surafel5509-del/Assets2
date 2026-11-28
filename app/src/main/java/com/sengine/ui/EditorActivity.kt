@@ -177,7 +177,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         inspector.rebuild()
         refreshAssets()
         updateModeUi()
-        appendConsole(0, "S Engine Phase 3 3.1.0 — project '${project.name}', scene '${scene.name}'")
+        appendConsole(0, "S Engine 3.2.0 — project '${project.name}', scene '${scene.name}'")
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -335,6 +335,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         assetButtons.addView(button("+ Shader") { newAssetDialog("New Shader", "NewShader", "glsl", { Templates.NEW_SHADER }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Animation") { newAssetDialog("New Animation", "NewAnimation", "anim", { com.sengine.engine.anim.AnimationClip().toJson().toString(2) }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Sprite") { newAssetDialog("New Sprite", "NewSprite", "sprite", { BigEditionAssets.SPRITE }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
+        assetButtons.addView(button("+ Sheet") { newAssetDialog("New Sprite Sheet", "NewSpriteSheet", "sheet", { BigEditionAssets.SHEET }) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("+ Data") { anchor -> dataAssetMenu(anchor) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Bundle") { archiveLauncher.launch(arrayOf("application/zip", "application/vnd.rar", "application/x-rar-compressed", "application/octet-stream", "*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
         assetButtons.addView(button("Import Model") { importKind = AssetKind.MODEL; importLauncher.launch(arrayOf("*/*")) }.apply { textSize = 12f }, lp(WRAP, WRAP).margins(dp(2), 0, dp(2), 0))
@@ -425,6 +426,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
         when (AssetKind.of(name)) {
             AssetKind.ANIMATION -> openAnimationEditor(name)
             AssetKind.SPRITE -> openSpriteEditor(name)
+            AssetKind.SHEET -> openSpriteSheetEditor(name)
             else -> if (name.endsWith(".bp")) startActivity(Intent(this, BlueprintEditorActivity::class.java).putExtra("project", project.name).putExtra("asset", name))
                 else startActivity(Intent(this, ScriptEditorActivity::class.java).putExtra("project", project.name).putExtra("asset", name))
         }
@@ -440,6 +442,13 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     fun openAnimationEditor(name: String?) {
         saveScene(silent = true)
         startActivity(Intent(this, AnimationEditorActivity::class.java).putExtra("project", project.name).apply { if (name != null) putExtra("asset", name) })
+    }
+
+    fun openSpriteSheetEditor(name: String? = null) {
+        saveScene(silent = true)
+        startActivity(Intent(this, SpriteSheetEditorActivity::class.java).putExtra("project", project.name).apply {
+            if (name != null) putExtra("asset", name)
+        })
     }
 
     private fun newAssetDialog(title: String, base: String, ext: String, content: (String) -> String, open: Boolean = true) {
@@ -480,6 +489,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             DataSpec("Texture Profile", "NewTexture", "texture") { BigEditionAssets.TEXTURE_META },
             DataSpec("3D Animation", "NewClip3D", "anim3d") { BigEditionAssets.ANIMATION3D },
             DataSpec("Sprite Document", "NewSpriteDoc", "sprite") { BigEditionAssets.SPRITE },
+            DataSpec("Sprite Sheet", "NewSpriteSheet", "sheet") { BigEditionAssets.SHEET },
             DataSpec("Model Pack", "NewModelPack", "modelpack") { BigEditionAssets.MODELPACK },
         )
         val snapshot = DataSpec("Scene Snapshot", "Snapshot", "scene") {
@@ -709,7 +719,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
     private fun mainMenu(anchor: View) {
         val pm = PopupMenu(this, anchor)
         val entries = listOf(
-            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Export Project (.zip)",
+            "Save Scene", "Scenes…", "Build & Run (fullscreen)", "Build APK…", "Asset Store", "Animation Editor", "Sprite Sheet Editor", "Export Project (.zip)",
             (if (state.showProfiler) "Hide" else "Show") + " Profiler",
             (if (state.showGrid) "Hide" else "Show") + " Grid",
             (if (state.showColliders) "Hide" else "Show") + " Colliders",
@@ -726,6 +736,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Build APK…" -> { saveScene(silent = true); startActivity(Intent(this, BuildActivity::class.java).putExtra("project", project.name)) }
                 t == "Asset Store" -> startActivity(Intent(this, AssetStoreActivity::class.java).putExtra("project", project.name))
                 t == "Animation Editor" -> openAnimationEditor(null)
+                t == "Sprite Sheet Editor" -> openSpriteSheetEditor(null)
                 t.endsWith("Profiler") -> state.showProfiler = !state.showProfiler
                 t.startsWith("Export") -> { saveScene(silent = true); exportLauncher.launch("${project.name}.zip") }
                 t.endsWith("Grid") -> state.showGrid = !state.showGrid
@@ -734,8 +745,9 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 t == "Toggle Bottom Panel" -> toggle(bottomPanel)
                 t == "Script API Reference" -> showText("Script API", ScriptEditorActivity.API_DOC)
                 t.startsWith("About") -> showText("About S Engine",
-                    "S Engine Phase 3 3.1.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
+                    "S Engine 3.2.0\n\nA 2D & 3D game engine and editor that runs entirely on your Android device.\n\n" +
                         "• 3D: meshes, OBJ models, Blinn-Phong + spot lights, orthographic cameras, fog, sky, physics\n" +
+                        "• Sprite sheet editor: grid / cell / auto slicing, frame packing, atlases & clips\n" +
                         "• Sprite animation editor, asset store, visual blueprints, GLSL shaders & post FX\n" +
                         "• Build real installable APKs of your game\n" +
                         "• Scene editor with hierarchy, inspector, gizmos, undo/redo\n• OpenGL ES 2.0 renderer: shapes, sprites, text, particles\n" +
@@ -856,6 +868,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
                 AssetKind.ANIMATION3D -> "ANM" to 0xFFFFB74D.toInt()
                 AssetKind.ARCHIVE -> "ZIP" to 0xFFCE93D8.toInt()
                 AssetKind.SPRITE -> "SPR" to 0xFF4DD0E1.toInt()
+                AssetKind.SHEET -> "SH" to 0xFF26A69A.toInt()
                 AssetKind.TEXTURE_META -> "TEX" to 0xFFF48FB1.toInt()
                 AssetKind.MODELPACK -> "PACK" to 0xFF81C784.toInt()
                 AssetKind.BINARY -> "BIN" to 0xFF90A4AE.toInt()
@@ -894,6 +907,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             AssetKind.ANIMATION3D -> { pm.menu.add("Edit"); if (sel != null) pm.menu.add("Play 3D on ${sel.name}") }
             AssetKind.ARCHIVE -> { pm.menu.add("Install Bundle") }
             AssetKind.SPRITE -> { pm.menu.add("Edit in Sprite Editor") }
+            AssetKind.SHEET -> { pm.menu.add("Edit in Sprite Sheet Editor") }
             AssetKind.TEXTURE_META -> { pm.menu.add("Edit") }
             AssetKind.MODELPACK -> { pm.menu.add("Edit") }
             AssetKind.BINARY -> {}
@@ -905,6 +919,7 @@ class EditorActivity : AppCompatActivity(), EditorHost {
             when {
                 t == "Edit" -> openScript(name)
                 t == "Edit in Sprite Editor" -> openSpriteEditor(name)
+                t == "Edit in Sprite Sheet Editor" -> openSpriteSheetEditor(name)
                 t == "Install Bundle" -> installBundleAsset(name)
                 t == "Preview" -> try {
                     android.media.MediaPlayer().apply {

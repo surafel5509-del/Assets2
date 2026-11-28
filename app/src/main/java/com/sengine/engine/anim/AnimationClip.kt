@@ -2,6 +2,7 @@ package com.sengine.engine.anim
 
 import com.sengine.engine.core.Animator
 import com.sengine.engine.core.SpriteRenderer
+import com.sengine.project.AtlasCache
 import com.sengine.project.Project
 import org.json.JSONArray
 import org.json.JSONObject
@@ -14,12 +15,22 @@ class AnimationClip(
     var frames: MutableList<Int> = mutableListOf(0),
     var fps: Float = 10f,
     var loop: Boolean = true,
+    /** When set, the clip plays named frames from this .atlas instead of grid cells. */
+    var atlas: String = "",
+    /** Ordered atlas frame names, parallel to playback; used when [atlas] is set. */
+    var frameNames: MutableList<String> = mutableListOf(),
 ) {
+    /** True when playback is driven by named atlas frames (packed sprite sheets). */
+    val isAtlasClip: Boolean get() = atlas.isNotBlank() && frameNames.isNotEmpty()
+
     fun toJson(): JSONObject = JSONObject()
         .put("texture", texture).put("columns", columns).put("rows", rows)
         .put("frames", JSONArray(frames)).put("fps", fps.toDouble()).put("loop", loop)
+        .put("atlas", atlas)
+        .put("frameNames", JSONArray(frameNames))
 
-    val duration: Float get() = if (fps <= 0f) 0f else frames.size / fps
+    val duration: Float
+        get() = if (fps <= 0f) 0f else (if (isAtlasClip) frameNames.size else frames.size) / fps
 
     /** UV rectangle for a sheet cell: u0, vBottom, u1, vTop. */
     fun cellUv(cell: Int, out: FloatArray) {
@@ -38,9 +49,12 @@ class AnimationClip(
             val arr = o.optJSONArray("frames") ?: JSONArray()
             val frames = MutableList(arr.length()) { arr.getInt(it) }
             if (frames.isEmpty()) frames.add(0)
+            val namesArr = o.optJSONArray("frameNames") ?: JSONArray()
+            val names = MutableList(namesArr.length()) { namesArr.optString(it, "") }.filter { it.isNotEmpty() }.toMutableList()
             return AnimationClip(
                 o.optString("texture", ""), o.optInt("columns", 1).coerceAtLeast(1), o.optInt("rows", 1).coerceAtLeast(1),
-                frames, o.optDouble("fps", 10.0).toFloat(), o.optBoolean("loop", true)
+                frames, o.optDouble("fps", 10.0).toFloat(), o.optBoolean("loop", true),
+                o.optString("atlas", ""), names
             )
         }
 
@@ -77,6 +91,7 @@ class AnimationClip(
 /** Loads clips (cached by modification time) and drives Animator components. */
 class AnimationSystem(private val project: Project) {
     private val cache = HashMap<String, Pair<Long, AnimationClip>>()
+    private val atlases = AtlasCache(project)
 
     fun clip(name: String): AnimationClip? {
         if (name.isBlank()) return null
@@ -94,15 +109,25 @@ class AnimationSystem(private val project: Project) {
         val name = if (playing) anim.current else anim.clip
         val c = clip(name)
         if (c == null) { sr.resetUv(); return }
+        val total = if (c.isAtlasClip) c.frameNames.size else c.frames.size
+        if (total < 1) { sr.resetUv(); return }
         if (playing && anim.playing && anim.enabled) {
             anim.time += dt * anim.speed
-            val total = c.frames.size
             var idx = (anim.time * c.fps).toInt()
             if (c.loop) idx = Math.floorMod(idx, total)
             else if (idx >= total) { idx = total - 1; anim.finished = true }
             anim.frame = idx.coerceIn(0, total - 1)
         } else if (!playing) anim.frame = 0
-        sr.animTexture = c.texture.ifBlank { null }
-        c.cellUv(c.frames[anim.frame.coerceIn(0, c.frames.size - 1)], sr.uv)
+        val frame = anim.frame.coerceIn(0, total - 1)
+        if (c.isAtlasClip) {
+            // Packed sprite sheet: resolve the named frame through its atlas.
+            val a = atlases.atlas(c.atlas)
+            if (a == null) { sr.resetUv(); return }
+            if (!a.uv(c.frameNames[frame], sr.uv)) { sr.resetUv(); return }
+            sr.animTexture = a.texture.ifBlank { null }
+        } else {
+            sr.animTexture = c.texture.ifBlank { null }
+            c.cellUv(c.frames[frame], sr.uv)
+        }
     }
 }

@@ -10,7 +10,7 @@ package com.sengine.engine.script
  */
 object ApiReference {
     val API_DOC = """
-S ENGINE — JAVASCRIPT API, runtime v3.1.0, Phase 3
+S ENGINE — JAVASCRIPT API, runtime v3.2.0, Phase 3
 
 LIFECYCLE — define any of these in a Script component
   start()              once, when play begins
@@ -113,7 +113,7 @@ SCENE
 ASSETS — project-local text data only
   assets.readText(name)  assets.writeText(name,text)
   assets.exists(name)  assets.validate(name)  assets.list(kind)
-  kinds: PREFAB MATERIAL ATLAS TILEMAP SCENE TEXT ANIMATION3D SPRITE TEXTURE_META MODELPACK or all
+  kinds: PREFAB MATERIAL ATLAS TILEMAP SCENE TEXT ANIMATION3D SPRITE TEXTURE_META MODELPACK SHEET or all
 
 TIME
   time.time  time.frame  time.fps  time.delta  time.scale [0..4]
@@ -158,6 +158,14 @@ PHASE 3 ASSET RUNTIME
   assets together. Model packs link DCC source files to an open render mesh,
   texture profiles control wrap, filter and mipmaps, sprite documents export
   PNG sheets with atlas and clip assets, and 3D clips drive rigged tracks.
+
+SPRITE SHEET RUNTIME — v3.2.0
+  Sprite sheet documents slice a texture into named pixel rectangles with a
+  grid, fixed cells or automatic alpha detection. Export packs the frames into
+  a fresh PNG, writes an atlas whose frames carry both UVs and pixel
+  rectangles, and emits a named-frame animation clip: the Animator plays
+  frameNames through the atlas so packed, irregularly sized sprites animate
+  without a uniform grid. Re-exporting the same sheet keeps its asset names.
 
 SAFETY
   Scripts cannot access host Java classes, the file system or the network.

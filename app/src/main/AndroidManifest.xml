@@ -65,6 +65,12 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard" />
 
         <activity
+            android:name=".ui.SpriteSheetEditorActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustPan"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
+        <activity
             android:name=".ui.BlueprintEditorActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustPan"

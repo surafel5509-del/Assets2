@@ -318,7 +318,10 @@ Big Edition text data assets
   .atlas    Sprite Atlas JSON: texture, columns, rows and named UV frames
   .tilemap  Tilemap JSON: tileset, sheet columns/rows, tileSize, map, palette
   .scene    Scene Snapshot JSON: same schema as saved scene files
-  .anim     Animation JSON: frames and fps
+  .anim     Animation JSON: grid frames and fps, or atlas + frameNames
+            for packed named-frame clips exported by the Sprite Sheet Editor
+  .sheet    Sprite Sheet JSON: texture, slice mode, grid/cell settings,
+            fps, loop and the ordered named frame rectangles
   .txt      Free-form text or JSON/CSV/Markdown/XML level data
 
 Validation happens as you type and before saving. Binary assets such as

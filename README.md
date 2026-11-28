@@ -1,4 +1,4 @@
-# S Engine — Big Edition / Phase 3
+# S Engine — Big Edition / Phase 3 / v3.2.0
 
 **S Engine** is a 2D **and 3D** game engine **and** full visual editor that runs entirely on an Android phone or tablet – think "a small Unity in your pocket". Create a project, build scenes with a hierarchy / inspector / gizmos, write JavaScript behaviours in the built-in code editor, press **Play** to test immediately, then run your game full-screen.
 
@@ -28,6 +28,13 @@
 * **Track-based 3D animation** — `.anim3d`, glTF-style clips and BVH imports normalize to named tracks; `ModelAnimator` drives transforms in EDIT and PLAY, with `playModelAnimation`, `stopModelAnimation`, `setModelAnimationSpeed` and `setModelAnimationTime` scripting helpers.
 * **Audited consistency** — `versionCode 5` / `versionName 3.1.0`, `Project.ENGINE_VERSION`, editor strings, the canonical API reference and Markdown docs are aligned; the offline suite adds nine Phase 3 acceptance tests.
 
+**v3.2.0 — Sprite Sheet Studio** is a professional sprite-sheet pipeline layered on the same runtime:
+
+* **Sprite sheet editor** — slice any texture by **uniform grid**, **fixed cell size** or **automatic alpha detection** (4-connected opaque regions with alpha-threshold and minimum-size controls), then arrange frames by hand: add, drag, resize and rename rectangles directly on a zoomable / pannable sheet canvas with pinch zoom, double-tap fit and per-frame reordering.
+* **Professional packing** — a shelf packer with padding and power-of-two sizing compiles the frames into a fresh PNG; one export writes the `.sheet` document, a named `.atlas` carrying **both UVs and pixel rectangles**, a nearest-filtered `.texture` profile and an `.anim` clip — re-exporting keeps the same asset names so scene references never break.
+* **Named-frame animation** — `.anim` clips can reference an atlas by frame name (`atlas` + `frameNames`), so irregularly packed sprites animate without a uniform grid; `AnimationSystem` resolves frames through the atlas cache each frame, and the Animation Editor previews atlas clips read-only (fps / loop stay editable) while grid clips work exactly as before.
+* **Audited consistency** — `versionCode 6` / `versionName 3.2.0`, `Project.ENGINE_VERSION`, editor strings, the canonical API reference (including a new sprite-sheet runtime section), Markdown docs and a new 15-test sprite-sheet acceptance suite are aligned. See [`docs/SPRITE_SHEET_GUIDE.md`](docs/SPRITE_SHEET_GUIDE.md).
+
 **Phase 1 reliability pass** (architecture inspection first, then targeted fixes — no engine rewrite):
 
 * Rhino scripts now run in a real sandbox: safe standard objects, an allow-list `ClassShutter` and a per-frame instruction/time budget. Host Java/file/network access is denied and infinite loops are aborted with a visible console error.
@@ -37,7 +44,7 @@
 * One audited scripting API reference shared by the editor, Markdown docs and an automated test; JS/GLSL/Blueprint editor status, Rhino syntax validation, and real Ctrl+S / Ctrl+Z / Ctrl+Y / Ctrl+P shortcuts.
 * GL programs, textures and FBOs are explicitly released on the GL thread when the editor or player is destroyed.
 
-See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and remaining work. For the v3.0.0 workflows, see `docs/BIG_EDITION_GUIDE.md`; for Phase 3 workflows, see `docs/PHASE3_GUIDE.md`. Verification is recorded in `docs/PHASE2_REPORT.md`, `docs/PHASE2_TEST_LOG.txt`, `docs/PHASE3_REPORT.md` and `docs/PHASE3_TEST_LOG.txt`.
+See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and remaining work. For the v3.0.0 workflows, see `docs/BIG_EDITION_GUIDE.md`; for Phase 3 workflows, see `docs/PHASE3_GUIDE.md`; for the v3.2.0 sprite-sheet pipeline, see `docs/SPRITE_SHEET_GUIDE.md`. Verification is recorded in `docs/PHASE2_REPORT.md`, `docs/PHASE2_TEST_LOG.txt`, `docs/PHASE3_REPORT.md` and `docs/PHASE3_TEST_LOG.txt`.
 
 > Written from scratch in Kotlin. OpenGL ES 2.0 renderer, custom physics, Mozilla Rhino JavaScript runtime. No NDK, no external game frameworks.
 
@@ -57,6 +64,7 @@ See `docs/PHASE1_REPORT.md` for the full Phase 1 file list, test results and rem
 | **3D rendering** | Perspective **and orthographic** cameras (follow / look-at / shake / post-FX), primitive + OBJ meshes, open interchange model importers, `.mtl` texture fallback, per-vertex lighting (sun + 4 point lights + 2 spot lights), sky with sun disc, distance fog, Toon / Pulse / custom shaders |
 | **Complete model bundles** | Import a single ZIP / ESR / RAR store archive; DCC sources, runtime mesh, texture, material, 2D clip, 3D clip, texture profile, `.modelpack` metadata and a wired scene object are installed together |
 | **Sprite editor** | Layered frames, drawing tools, palette, onion skin, grid, zoom, playback, undo / redo and export to PNG sheet + atlas + clip + texture profile |
+| **Sprite sheet editor** | Grid / cell / automatic alpha slicing, manual rect editing with zoom & pan, named frame list with reorder, playback preview, packed PNG + atlas (UV + pixel rects) + named-frame clip + texture profile export |
 | **3D animation** | Track-based clips from `.anim3d` / glTF-style JSON / BVH, `ModelAnimator`, named joint transforms and scriptable play / stop / speed / time controls |
 | **Terrain** | Procedural heightmap (FBM value noise), texture tiling, baked mesh cache, **collides with rigidbodies**, `scene.terrainHeight(x, z)` queries |
 | **AI steering** | `Steering` component: Seek, Flee, Pursue (lead prediction), Wander, Patrol — acceleration-limited movement with optional face-the-movement |

@@ -4,6 +4,7 @@ import com.sengine.engine.anim.Animation3DClip
 import com.sengine.engine.anim.AnimationTrack
 import com.sengine.engine.render.TextureProfile
 import com.sengine.engine.sprite.SpriteDocument
+import com.sengine.engine.sprite.SpriteSheetDoc
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -92,6 +93,8 @@ Use this .txt asset for level data, dialogue, or custom JSON/text content.
     val TEXTURE_META = TextureProfile.DEFAULT.toJson().toString(2)
 
     val SPRITE = SpriteDocument(16, 16).apply { addFrame() }.toJson().toString(2)
+
+    val SHEET = SpriteSheetDoc().toJson().toString(2)
 
     val ANIMATION3D = Animation3DClip("NewAnimation", 30f, true, "root").apply {
         tracks.add(AnimationTrack(
